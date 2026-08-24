@@ -1,0 +1,80 @@
+{
+  "name": "@cruel-synthesis/agy-auth",
+  "version": "0.1.0",
+  "description": "Local credential profile manager for Antigravity and Google AI development",
+  "type": "module",
+  "bin": {
+    "agy-auth": "bin/agy-auth.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "docs",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "PRIVACY.md",
+    "CHANGELOG.md",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "pretest": "npm run build",
+    "pretest:coverage": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "lint": "biome lint .",
+    "check:version": "node ./scripts/check-version.mjs",
+    "check": "npm run check:version && npm run format:check && npm run lint && npm run typecheck && npm run test:coverage",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run check"
+  },
+  "keywords": [
+    "antigravity",
+    "agy",
+    "gemini",
+    "google-cloud",
+    "gcloud",
+    "vertex-ai",
+    "auth",
+    "account-switcher",
+    "cli",
+    "multi-account"
+  ],
+  "author": "cruel-synthesis (https://github.com/cruel-synthesis)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cruel-synthesis/agy-auth.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cruel-synthesis/agy-auth/issues"
+  },
+  "homepage": "https://github.com/cruel-synthesis/agy-auth#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.3.2",
+    "commander": "^13.1.0",
+    "picocolors": "^1.1.1",
+    "string-width": "^7.2.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^22.13.9",
+    "@vitest/coverage-v8": "^3.0.7",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.7"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

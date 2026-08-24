@@ -1,0 +1,53 @@
+name: CI
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test on Node ${{ matrix.node-version }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [22.x, 24.x]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Check source, tests, and build
+        run: npm run check
+
+      - name: Install and smoke-test the package tarball
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '24.x'
+        shell: bash
+        run: |
+          expected_version="$(node -p "require('./package.json').version")"
+          package_file="cruel-synthesis-agy-auth-${expected_version}.tgz"
+          install_dir="$(mktemp -d)"
+          trap 'rm -rf "${install_dir}" "${package_file}"' EXIT
+          npm pack --ignore-scripts
+          test -f "${package_file}"
+          npm install --prefix "${install_dir}" --ignore-scripts "./${package_file}"
+          version_out="$("${install_dir}/node_modules/.bin/agy-auth" --version)"
+          test "${version_out}" = "${expected_version}"
+          "${install_dir}/node_modules/.bin/agy-auth" --help

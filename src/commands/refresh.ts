@@ -1,0 +1,79 @@
+import {
+  QuotaClient,
+  QuotaFailureReason,
+  QuotaOptions,
+  QuotaRefresh,
+  QuotaRefreshSummary,
+  summarizeQuotaRefresh,
+} from '../core/quota.js';
+import { Account } from '../core/types.js';
+
+const REASON_TEXT: Record<QuotaFailureReason, string> = {
+  'not-applicable': 'no usable OAuth token on the profile',
+  'token-expired': 'token expired; sign in through Antigravity, then run `agy-auth sync`',
+  'scope-insufficient':
+    'token is missing the required scopes; sign in through Antigravity, then run `agy-auth sync`',
+  'auth-failed':
+    'authentication was rejected; sign in through Antigravity, then run `agy-auth sync`',
+  'quota-unavailable': 'the service did not return recognized quota data',
+  'network-error': 'network or service error',
+};
+
+function describeQuotaFailure(reason: QuotaFailureReason | undefined): string {
+  return reason ? REASON_TEXT[reason] : 'unknown error';
+}
+
+export interface QuotaRefreshOutcome {
+  refreshes: QuotaRefresh[];
+  summary: QuotaRefreshSummary;
+  /** One concise human-mode warning, present only when a refresh failed. */
+  warning?: string;
+}
+
+/** Live quota only applies to OAuth profiles; nothing else is contacted. */
+export function selectRefreshable(accounts: Account[]): Account[] {
+  return accounts.filter((account) => account.authType === 'oauth');
+}
+
+/**
+ * Best-effort live refresh for the given profiles. Failures are reported, never
+ * thrown: the caller still renders whatever cached data exists.
+ */
+export async function refreshQuota(
+  accounts: Account[],
+  offline: boolean,
+  options: QuotaOptions = {}
+): Promise<QuotaRefreshOutcome> {
+  const targets = offline ? [] : selectRefreshable(accounts);
+  if (targets.length === 0) {
+    return { refreshes: [], summary: summarizeQuotaRefresh(offline, []) };
+  }
+
+  const results = await QuotaClient.refreshAccountQuotas(targets, options);
+  const refreshes = targets
+    .map((account) => results.get(account.id))
+    .filter(Boolean) as QuotaRefresh[];
+
+  const failed = refreshes.filter((refresh) => !refresh.result.ok);
+  let warning: string | undefined;
+
+  if (failed.length === 1) {
+    const account = targets.find((a) => a.id === failed[0].result.accountId);
+    warning =
+      `Warning: could not refresh live quota for ${account?.alias || account?.email || failed[0].result.accountId} ` +
+      `(${describeQuotaFailure(failed[0].result.reason)}). Showing cached quota where available.`;
+  } else if (failed.length > 1) {
+    const reasons = [...new Set(failed.map((f) => describeQuotaFailure(f.result.reason)))].join(
+      '; '
+    );
+    warning =
+      `Warning: could not refresh live quota for ${failed.length} of ${refreshes.length} profiles ` +
+      `(${reasons}). Showing cached quota where available.`;
+  }
+
+  return {
+    refreshes,
+    summary: summarizeQuotaRefresh(offline, refreshes),
+    ...(warning ? { warning } : {}),
+  };
+}

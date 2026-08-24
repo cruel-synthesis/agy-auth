@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release git tag to publish (e.g. v0.1.0)'
+        required: true
+        type: string
+
+jobs:
+  publish:
+    name: Publish npm package and GitHub release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24.x
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Use an npm CLI with trusted-publishing support
+        run: npm install --global npm@11.19.0
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Verify tag matches package version
+        shell: bash
+        run: |
+          input_tag="${{ inputs.tag }}"
+          package_version="$(node -p "require('./package.json').version")"
+          expected_tag="v${package_version}"
+          if [ "${input_tag}" != "${expected_tag}" ]; then
+            echo "ERROR: Input tag '${input_tag}' does not match package.json version '${package_version}' (expected '${expected_tag}')."
+            exit 1
+          fi
+
+      - name: Run verification checks
+        run: npm run check
+
+      - name: Publish to npm or verify existing release
+        id: npm_publish
+        shell: bash
+        run: |
+          package_name="$(node -p "require('./package.json').name")"
+          package_version="$(node -p "require('./package.json').version")"
+
+          pack_json="$(npm pack --ignore-scripts --json)"
+          tarball="$(node -e 'console.log(JSON.parse(process.argv[1])[0].filename)' "${pack_json}")"
+          candidate_integrity="$(node -e 'console.log(JSON.parse(process.argv[1])[0].integrity)' "${pack_json}")"
+
+          if npm view "${package_name}@${package_version}" version >/dev/null 2>&1; then
+            registry_integrity="$(npm view "${package_name}@${package_version}" dist.integrity || true)"
+            echo "Version ${package_version} already exists on npm registry."
+            if [ -n "${registry_integrity}" ] && [ "${registry_integrity}" = "${candidate_integrity}" ]; then
+              echo "Registry package integrity matches candidate build. Skipping publish."
+            else
+              echo "ERROR: Version ${package_version} exists on npm with different integrity (${registry_integrity} != ${candidate_integrity}). Will not republish."
+              exit 1
+            fi
+          else
+            echo "Publishing ${package_name}@${package_version} (${tarball}) to npm with provenance..."
+            npm publish "./${tarball}" --access public --provenance --ignore-scripts
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: ${{ inputs.tag }}
+          name: ${{ inputs.tag }}
+          generate_release_notes: true

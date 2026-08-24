@@ -1,0 +1,223 @@
+import { Account, AccountStatus, AuthType, RateLimitWindow } from '../core/types.js';
+import { colors } from './theme.js';
+
+export function formatAccountShort(account: Account): string {
+  if (account.alias) {
+    return `${account.alias} (${account.email})`;
+  }
+  return account.email;
+}
+
+export function formatAuthType(authType: AuthType): string {
+  switch (authType) {
+    case 'oauth':
+      return 'OAuth';
+    case 'api-key':
+      return 'API Key';
+    case 'service-account':
+      return 'Service Account';
+    case 'adc':
+      return 'ADC';
+    default:
+      return authType;
+  }
+}
+
+export function formatStatus(status: AccountStatus, isActive = false): string {
+  switch (status) {
+    case 'valid':
+      return colors.green('valid');
+    case 'rate-limited':
+      return colors.yellow('rate-limited');
+    case 'invalid':
+      return colors.red('invalid');
+    case 'expired':
+      return colors.red('expired');
+    case 'needs-reauth':
+      return colors.yellow('needs-reauth');
+    case 'unverified':
+      return isActive ? 'unverified' : colors.dim('unverified');
+    case 'unknown':
+      return colors.yellow('unknown');
+    default:
+      return status;
+  }
+}
+
+export function formatTimeAgo(timestamp?: number): string {
+  if (!timestamp || timestamp <= 0) {
+    return '-';
+  }
+
+  const now = Date.now();
+  const diffMs = now - timestamp;
+  if (diffMs < 0) return 'just now';
+
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHours = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSec < 60) {
+    return 'just now';
+  }
+  if (diffMin < 60) {
+    return `${diffMin}m ago`;
+  }
+  if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  }
+  return `${diffDays}d ago`;
+}
+
+/**
+ * Short plan label for the PLAN column. Falls back to the authentication method
+ * for profiles that have no subscription plan to report.
+ */
+export function formatPlan(account: Account): string {
+  const plan = account.plan?.trim();
+  if (plan) {
+    const normalized = plan.toLowerCase();
+    if (normalized.includes('ultra')) return 'Ultra';
+    if (normalized.includes('pro')) return 'Pro';
+    if (normalized.includes('premium')) return 'Premium';
+    if (normalized.includes('enterprise')) return 'Enterprise';
+    if (normalized.includes('free')) return 'Free';
+    return plan.replace(/^Google AI /i, '').replace(/^Antigravity /i, '');
+  }
+  if (account.authType === 'api-key') return 'API Key';
+  if (account.authType === 'service-account') return 'Service Acct';
+  if (account.authType === 'adc') return 'ADC';
+  return '-';
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Statuses that replace the quota reading with the reason it cannot be read. */
+function quotaStatusLabel(status: AccountStatus | undefined): string | undefined {
+  switch (status) {
+    case 'rate-limited':
+      return 'limited';
+    case 'needs-reauth':
+      return 'reauth';
+    case 'expired':
+      return 'expired';
+    case 'invalid':
+      return 'invalid';
+    default:
+      return undefined;
+  }
+}
+
+export interface QuotaCell {
+  /** Compact form for a table cell. */
+  text: string;
+  isError: boolean;
+  state: 'unknown' | 'error' | 'stale' | 'value';
+  /** Remaining percentage, e.g. `35%`, present only when state is `value`. */
+  percentText?: string;
+  /** Local reset instant, e.g. `14:30` or `1 Jan`, when the window reports one. */
+  resetText?: string;
+}
+
+/**
+ * Render one cached usage window.
+ *
+ * A window whose reset instant has passed is reported as `stale`, never as its
+ * old percentage and never optimistically as `100%`: the cache says nothing
+ * about usage after the reset, and only a live refresh can.
+ */
+export function formatQuotaCell(
+  window: RateLimitWindow | undefined,
+  status?: AccountStatus,
+  nowMs: number = Date.now()
+): QuotaCell {
+  const statusLabel = quotaStatusLabel(status);
+  if (statusLabel) return { text: statusLabel, isError: true, state: 'error' };
+  if (!window) return { text: '-', isError: false, state: 'unknown' };
+
+  const remaining = Math.max(0, Math.min(100, Math.round(100 - window.usedPercent)));
+  const percentText = `${remaining}%`;
+  const isEmpty = remaining === 0;
+
+  if (window.resetsAt === undefined) {
+    return { text: percentText, isError: isEmpty, state: 'value', percentText };
+  }
+
+  const nowSec = Math.floor(nowMs / 1000);
+  if (nowSec >= window.resetsAt) {
+    return { text: 'stale', isError: false, state: 'stale' };
+  }
+
+  const resetDate = new Date(window.resetsAt * 1000);
+  const nowDate = new Date(nowMs);
+  const sameDay =
+    resetDate.getFullYear() === nowDate.getFullYear() &&
+    resetDate.getMonth() === nowDate.getMonth() &&
+    resetDate.getDate() === nowDate.getDate();
+
+  const resetText = sameDay
+    ? `${String(resetDate.getHours()).padStart(2, '0')}:${String(resetDate.getMinutes()).padStart(2, '0')}`
+    : `${resetDate.getDate()} ${MONTHS[resetDate.getMonth()]}`;
+
+  return {
+    text: `${percentText} (${resetText})`,
+    isError: isEmpty,
+    state: 'value',
+    percentText,
+    resetText,
+  };
+}
+
+const DETAIL_LABEL_WIDTH = 14;
+
+function detailLine(label: string, value: string): string {
+  const key = `${label}:`;
+  // Always leave at least one separating space, even for a full-width label.
+  return `${key.padEnd(Math.max(DETAIL_LABEL_WIDTH, key.length + 1))}${value}`;
+}
+
+/**
+ * Plan and quota block shared by `current` and `details` so the two views can
+ * never drift apart. Windows with no cached data render as `-`.
+ */
+export function quotaSummaryLines(account: Account, nowMs: number = Date.now()): string[] {
+  const lines = [detailLine('Plan', account.plan?.trim() || formatPlan(account))];
+
+  const windows: [string, RateLimitWindow | undefined][] = [
+    ['Gemini 5h', account.rateLimit?.gemini?.rate5h],
+    ['Gemini week', account.rateLimit?.gemini?.rateWeekly],
+    ['Claude 5h', account.rateLimit?.claude?.rate5h],
+    ['Claude week', account.rateLimit?.claude?.rateWeekly],
+  ];
+
+  for (const [label, window] of windows) {
+    const cell = formatQuotaCell(window, account.status, nowMs);
+    let value: string;
+    switch (cell.state) {
+      case 'unknown':
+        value = '-';
+        break;
+      case 'stale':
+        value = 'stale (window elapsed; refresh to update)';
+        break;
+      case 'error':
+        value = cell.text;
+        break;
+      default:
+        value = cell.resetText
+          ? `${cell.percentText} remaining (resets ${cell.resetText})`
+          : `${cell.percentText} remaining`;
+    }
+    lines.push(detailLine(label, value));
+  }
+
+  lines.push(
+    detailLine(
+      'Quota check',
+      account.quotaCheckedAt ? formatTimeAgo(account.quotaCheckedAt) : 'never'
+    )
+  );
+
+  return lines;
+}
