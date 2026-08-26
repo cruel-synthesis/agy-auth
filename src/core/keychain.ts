@@ -1,21 +1,21 @@
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
-import { type KeychainPayload, KeychainPayloadSchema } from './types.js';
+import { KeychainPayload } from './types.js';
 
 export type AgyKeychainPayload = KeychainPayload;
 
-export function parseAgyKeychainPayload(value: unknown): AgyKeychainPayload | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-
-  const raw = value as Record<string, unknown>;
-  if (typeof raw.auth_method !== 'string' || raw.auth_method.trim().length === 0) {
-    return null;
-  }
-
-  const result = KeychainPayloadSchema.safeParse(value);
-  if (!result.success) return null;
-
-  return result.data;
+function isAgyKeychainPayload(value: unknown): value is AgyKeychainPayload {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const payload = value as Partial<AgyKeychainPayload>;
+  const token = payload.token;
+  return Boolean(
+    token &&
+      typeof token === 'object' &&
+      typeof token.access_token === 'string' &&
+      token.access_token.length > 0 &&
+      typeof payload.auth_method === 'string' &&
+      payload.auth_method.length > 0
+  );
 }
 
 export type KeychainReadResult =
@@ -84,14 +84,13 @@ export class KeychainManager {
     try {
       const jsonStr = Buffer.from(base64Str, 'base64').toString('utf-8');
       const payload: unknown = JSON.parse(jsonStr);
-      const parsed = parseAgyKeychainPayload(payload);
-      if (!parsed) {
+      if (!isAgyKeychainPayload(payload)) {
         return {
           status: 'error',
           message: 'The Antigravity Keychain item has an invalid token payload.',
         };
       }
-      return { status: 'found', payload: parsed };
+      return { status: 'found', payload };
     } catch {
       return {
         status: 'error',
@@ -104,12 +103,11 @@ export class KeychainManager {
    * Writes the Antigravity OAuth token payload to the macOS Keychain.
    */
   public static writeAgyToken(payload: AgyKeychainPayload): boolean {
-    const parsed = parseAgyKeychainPayload(payload);
-    if (!parsed) return false;
+    if (!isAgyKeychainPayload(payload)) return false;
     if (!this.isSupported()) return false;
 
     try {
-      const jsonStr = JSON.stringify(parsed);
+      const jsonStr = JSON.stringify(payload);
       const base64Str = Buffer.from(jsonStr, 'utf-8').toString('base64');
       const formatted = `go-keyring-base64:${base64Str}`;
 

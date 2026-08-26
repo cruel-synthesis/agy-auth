@@ -1,6 +1,6 @@
 # env
 
-Print shell environment commands (`export` or `$env:`) for the currently active credential profile.
+Print shell export commands for active profile.
 
 ```shell
 agy-auth env [options]
@@ -8,25 +8,20 @@ agy-auth env [options]
 
 Options:
 
-- `--shell <posix|powershell>`: Shell syntax format (default: `posix` on Unix/macOS, `powershell` on Windows)
-- `--clear`: Print `unset` / `Remove-Item` commands to reset Google environment variables
-- `-j, --json`: Output environment variables as a JSON object
-
-`env` is intentionally secret-bearing for API-key profiles. Its shell output can contain an API key, and JSON output returns the same values with `data.containsSecrets: true`. Do not log, publish, or paste this output into issue reports.
+- `--shell <posix|powershell>`: Shell output format (default: `posix` on Unix/macOS, `powershell` on Windows)
+- `--clear`: Print unset statements to reset environment (default: false)
+- `-j, --json`: Output as JSON
+- `-h, --help`: Show this help
 
 Usage Examples:
 
-POSIX Shells (zsh / bash):
 ```shell
+# Apply variables in POSIX shell (zsh / bash)
 eval "$(agy-auth env)"
-```
 
-PowerShell:
-```powershell
+# Apply variables in PowerShell
 Invoke-Expression (agy-auth env --shell powershell)
-```
 
-Resetting environment variables:
-```shell
+# Reset environment variables
 eval "$(agy-auth env --clear)"
 ```

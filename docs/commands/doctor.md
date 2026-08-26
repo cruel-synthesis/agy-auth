@@ -1,6 +1,6 @@
 # doctor
 
-Inspect the local installation, storage directories, registry schema integrity, macOS Keychain state, settings file, and Google API reachability.
+Inspect the local installation and environment.
 
 ```shell
 agy-auth doctor [options]
@@ -9,6 +9,13 @@ agy-auth doctor [options]
 Options:
 
 - `--offline`: Skip external network reachability probe (default: false)
-- `-j, --json`: Output diagnostics results as JSON
+- `-j, --json`: Output diagnostics as JSON
+- `-h, --help`: Show this help
 
-The command performs read-only diagnostics. It does not modify credentials, rewrite files, or mutate registry configuration. Checks cover POSIX storage and registry modes, registry schema, credential shape, unique IDs, unique aliases and identities, and valid active/previous pointers.
+Diagnostics checked:
+- Storage directory permissions and integrity (`~/.agy-auth/`)
+- Registry Schema v2 parsing and integrity (flags pending migration for legacy formats)
+- macOS Keychain integration status
+- Antigravity `settings.json` parsing
+- Application Default Credentials (ADC) file validation
+- Google API reachability probe (skipped when `--offline` is specified)

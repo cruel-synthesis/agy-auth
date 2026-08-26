@@ -1,6 +1,6 @@
 # sync
 
-Import active Antigravity macOS Keychain or local ADC credentials into the agy-auth registry.
+Import active Antigravity macOS Keychain tokens or local Google Cloud ADC credentials.
 
 ```shell
 agy-auth sync [options]
@@ -10,7 +10,8 @@ Options:
 
 - `--oauth-email <email>`: Google account email for Keychain token
 - `--adc-email <email>`: Email for local ADC credentials
-- `-y, --yes`: Do not prompt; skip discoveries that still require an email (default: false)
-- `-j, --json`: Output sync results as JSON
+- `-y, --yes`: Do not prompt; skip discoveries that require an email (default: false)
+- `-j, --json`: Output discovered and imported profiles as JSON
+- `-h, --help`: Show this help
 
-The command inspects local Keychain items and standard gcloud ADC files, importing discovered credentials into the registry. Discovered profiles automatically derive and verify identity via Google's userinfo endpoint when an access token is present, marking verified profiles as `valid`. If the profile already exists in the registry, existing refresh tokens and metadata are safely preserved. In non-interactive use where live userinfo lookup is unavailable, pass `--oauth-email` or `--adc-email`.
+Discovered profiles are imported into the local registry. Discovered profiles start as unverified until explicitly verified or activated. `sync` does not automatically activate discovered profiles.

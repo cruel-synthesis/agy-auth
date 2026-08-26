@@ -45,20 +45,20 @@ agy-auth sync
 Add credentials via the interactive terminal prompt or CLI options:
 
 ```bash
-# Interactive onboarding (Antigravity Keychain OAuth when session detected, API Key, Service Account, or ADC)
+# Interactive onboarding (Antigravity Keychain OAuth, Custom Browser OAuth, API Key, Service Account, or ADC)
 agy-auth login
 
-# Import active Antigravity session from macOS Keychain (no client ID required)
-agy-auth login --method oauth
+# Import active Antigravity session from macOS Keychain (default on macOS, no client ID required)
+agy-auth login --oauth-source keychain
 
 # Or sign in with a custom Google Desktop OAuth Client ID (requires AGY_OAUTH_CLIENT_ID)
-agy-auth login --method oauth --oauth-source browser
+agy-auth login --oauth-source browser
 ```
 
 Or add via command-line arguments:
 
 ```bash
-agy-auth add --email work@example.com --api-key AIzaSy_MOCK_GEMINI_KEY_FOR_DOCS_00000 --alias work
+agy-auth add --email work@example.com --api-key <gemini-api-key> --alias work
 ```
 
 For a real API key, prefer the masked `agy-auth login` prompt. Command-line arguments can be retained in shell history or exposed to local process inspection.
@@ -104,9 +104,9 @@ This feature is **experimental** because it depends on undocumented upstream con
 `agy-auth` ships **no OAuth client ID and no client secret**.
 
 - **macOS Keychain Session Import (Out-of-the-box)**:
-  On macOS, running `agy-auth login --method oauth` or `agy-auth sync` imports active Antigravity session tokens directly from the macOS Keychain. This flow verifies your identity via Google's `userinfo` endpoint using the access token and **does not require setting an OAuth client ID**.
+  On macOS, running `agy-auth login` (or `agy-auth sync`) imports active Antigravity session tokens directly from the macOS Keychain. This flow verifies your identity via Google's `userinfo` endpoint using the access token and **does not require setting an OAuth client ID**.
 - **Custom Browser Sign-In**:
-  To perform custom browser OAuth login (`agy-auth login --method oauth --oauth-source browser`), you must configure your own Google Cloud Desktop OAuth Client ID:
+  To perform custom browser OAuth login (`agy-auth login --oauth-source browser`), you must configure your own Google Cloud Desktop OAuth Client ID:
 
 ```bash
 export AGY_OAUTH_CLIENT_ID='your-client-id.apps.googleusercontent.com'

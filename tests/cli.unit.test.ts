@@ -252,7 +252,7 @@ describe('CLI unit tests and option dispatch', () => {
     }
   });
 
-  it('returns exit code 2 on invalid login method or invalid options', async () => {
+  it('returns exit code 2 for the removed login method option', async () => {
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
       const code = await runCli(['node', 'agy-auth', 'login', '--method', 'invalid-mode']);

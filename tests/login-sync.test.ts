@@ -55,7 +55,6 @@ vi.mock('@inquirer/prompts', () => ({
   }),
 }));
 
-import * as antigravityStore from '../src/core/antigravity-store.js';
 import { exportCommand } from '../src/commands/export.js';
 import {
   loginCommand,
@@ -298,8 +297,9 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     ).rejects.toThrow(UsageError);
   });
 
-  it('automatically imports Antigravity Keychain OAuth account on bare login when session is found', async () => {
-    vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
+  it('interactively adds an Antigravity Keychain OAuth account when selected from menu', async () => {
+    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
       status: 'found',
       payload: {
         auth_method: 'consumer',
@@ -309,12 +309,11 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
           token_type: 'Bearer',
         },
       },
-      keyringStatus: 'found',
-      fileStatus: 'missing',
     });
 
     const origTTY = process.stdin.isTTY;
     process.stdin.isTTY = true;
+    mockState.selectValue = 'oauth-keychain';
 
     try {
       await loginCommand(
@@ -337,7 +336,6 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
       expect(account?.status).toBe('valid');
     } finally {
       process.stdin.isTTY = origTTY;
-      vi.restoreAllMocks();
     }
   });
 
@@ -376,12 +374,6 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
   });
 
   it('interactively adds an API Key account using alias-only in loginCommand', async () => {
-    vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
-      status: 'missing',
-      keyringStatus: 'missing',
-      fileStatus: 'missing',
-    });
-
     const origTTY = process.stdin.isTTY;
     process.stdin.isTTY = true;
 
@@ -398,17 +390,10 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
       expect(acc?.credentials?.apiKey).toBe('AIzaSyAliasKey');
     } finally {
       process.stdin.isTTY = origTTY;
-      vi.restoreAllMocks();
     }
   });
 
   it('interactively adds an API Key account via loginCommand', async () => {
-    vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
-      status: 'missing',
-      keyringStatus: 'missing',
-      fileStatus: 'missing',
-    });
-
     const origTTY = process.stdin.isTTY;
     process.stdin.isTTY = true;
 
@@ -425,17 +410,10 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
       expect(acc?.credentials?.apiKey).toBe('AIzaSyInteractiveKey');
     } finally {
       process.stdin.isTTY = origTTY;
-      vi.restoreAllMocks();
     }
   });
 
   it('interactively adds a Service Account via loginCommand', async () => {
-    vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
-      status: 'missing',
-      keyringStatus: 'missing',
-      fileStatus: 'missing',
-    });
-
     const origTTY = process.stdin.isTTY;
     process.stdin.isTTY = true;
 
@@ -463,17 +441,10 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
       expect(acc?.authType).toBe('service-account');
     } finally {
       process.stdin.isTTY = origTTY;
-      vi.restoreAllMocks();
     }
   });
 
   it('interactively adds an ADC profile via loginCommand', async () => {
-    vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
-      status: 'missing',
-      keyringStatus: 'missing',
-      fileStatus: 'missing',
-    });
-
     const origTTY = process.stdin.isTTY;
     process.stdin.isTTY = true;
 
@@ -500,7 +471,6 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
       expect(acc?.authType).toBe('adc');
     } finally {
       process.stdin.isTTY = origTTY;
-      vi.restoreAllMocks();
     }
   });
 

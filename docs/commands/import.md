@@ -1,14 +1,17 @@
 # import
 
-Import profiles from an `agy-auth` JSON export backup file.
+Import profiles from a backup file.
 
 ```shell
-agy-auth import <file> [options]
+agy-auth import [options] <file>
 ```
+
+Arguments:
+
+- `file`: Path to export JSON file
 
 Options:
 
-- `--overwrite`: Overwrite matching accounts with imported profile metadata
-- `-j, --json`: Output import summary as JSON envelope
-
-The import operation runs under a process lock and creates a pre-import registry backup. A profile whose email and auth type match an existing profile is skipped unless `--overwrite` is specified. Account ID and identity collisions are rejected instead of being guessed or merged.
+- `--overwrite`: Overwrite existing accounts with imported metadata (default: false)
+- `-j, --json`: Output as JSON
+- `-h, --help`: Show this help

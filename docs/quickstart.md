@@ -29,21 +29,21 @@ agy-auth sync
 Add or refresh profiles, automatically import your macOS Antigravity session, or sign in via custom browser OAuth:
 
 ```bash
-# On macOS with an active Antigravity session, imports it directly (prompts for email only if unverified); otherwise opens interactive menu
+# On macOS with an active Antigravity session, imports it directly without prompts; otherwise opens interactive menu
 agy-auth login
 
 # Explicitly import active Antigravity session from macOS Keychain
-agy-auth login --method oauth
+agy-auth login --oauth-source keychain
 
 # Or sign in with a custom Google Desktop OAuth Client ID
-agy-auth login --method oauth --oauth-source browser
+agy-auth login --oauth-source browser
 ```
 
 ### Option C: Add via CLI Arguments
 Add a Gemini API key profile directly:
 
 ```bash
-agy-auth add --email developer@example.com --api-key AIzaSy_MOCK_GEMINI_KEY_FOR_DOCS_00000 --alias personal
+agy-auth add --email developer@example.com --api-key <gemini-api-key> --alias personal
 ```
 
 ---

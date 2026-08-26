@@ -1,22 +1,30 @@
 # project
 
-Manage Google Cloud project and region settings for profiles.
+Manage Google Cloud Project settings for account profiles.
 
 ```shell
 agy-auth project set <account> <project> [location] [options]
 agy-auth project clear <account> [options]
 ```
 
+Arguments:
+
+- `account`: Account selector (number, email, ID, alias)
+- `project`: GCP project ID
+- `location`: Optional compute region/location (positional)
+
 Options:
 
-- `-j, --json`: Output result as JSON
+- `-j, --json`: Output as JSON
+- `-h, --help`: Show this help
 
 Examples:
 
 ```shell
+# Set project and optional location
 agy-auth project set 1 my-gcp-project us-central1
-agy-auth project set work prod-ai-project
+agy-auth project set work my-prod-project
+
+# Clear project configuration
 agy-auth project clear work
 ```
-
-The project and location settings are saved to profile metadata and written to Antigravity `settings.json` when the profile is switched to active.

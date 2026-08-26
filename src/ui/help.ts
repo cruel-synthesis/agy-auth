@@ -19,8 +19,8 @@ export function printTopLevelHelp(all = false, version = VERSION): void {
       'Show active profile details with live plan and quota'
     );
     writeCommandSummary(
-      'login [--method <method>] [--email <email>] [options]',
-      'Add or refresh a credential profile (OAuth, API key, service account, ADC)'
+      'login [--oauth-source <source>] [--email <email>] [options]',
+      'Add or refresh a Google OAuth account'
     );
     writeCommandSummary(
       'sync [--oauth-email <email>] [--adc-email <email>] [--yes] [--json]',
@@ -65,8 +65,8 @@ export function printTopLevelHelp(all = false, version = VERSION): void {
     'Show detailed metadata for a profile with live plan and quota'
   );
   writeCommandSummary(
-    'login [--method <method>] [--email <email>] [--oauth-source <source>] [options]',
-    'Add or refresh a credential profile (OAuth, API key, service account, ADC)'
+    'login [--oauth-source <source>] [--email <email>] [options]',
+    'Add or refresh a Google OAuth account'
   );
   writeCommandSummary(
     'sync [--oauth-email <email>] [--adc-email <email>] [--yes] [--json]',

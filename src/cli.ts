@@ -111,10 +111,9 @@ export function createCli(): Command {
   // login
   program
     .command('login')
-    .description('Add or refresh a credential profile (OAuth, API key, service account, ADC)')
-    .option('--method <method>', 'Authentication method (oauth, api-key, service-account, adc)')
-    .option('--oauth-source <source>', 'OAuth onboarding source (keychain, browser)')
-    .option('--email <email>', 'Account email address')
+    .description('Add or refresh a Google OAuth account')
+    .option('--oauth-source <source>', 'Login source (keychain, browser)')
+    .option('--email <email>', 'Email fallback for current Antigravity account')
     .option('--alias <alias>', 'Profile alias')
     .option('--project <id>', 'GCP project ID')
     .option('--location <location>', 'Compute region/location')

@@ -116,64 +116,96 @@ export async function loginCommand(
       chosenMethod = normMethod;
     }
   } else {
-    // When an active Antigravity session is found on macOS, import it directly
-    // (prompts for email only if unverified, without presenting method selection).
+    // 1. Direct auto-import on macOS when an importable Antigravity session exists
     if (os.platform() === 'darwin') {
       const tokenState = readAntigravityToken();
       if (tokenState.status === 'found') {
-        chosenMethod = 'oauth';
-        chosenOAuthSource = 'keychain';
+        const importResult = await importKeychainOAuth({
+          email: options.email,
+          alias: options.alias,
+          project: options.project,
+          location: options.location,
+          model: options.model,
+          fetchFn: services?.fetchFn,
+          registry,
+        });
+
+        if (importResult.status === 'success') {
+          const account = importResult.account;
+          const verb = importResult.isNew
+            ? 'Profile added successfully'
+            : 'Profile updated successfully';
+          console.log(
+            `\n  ${colors.green('[ok]')} ${verb}: ${colors.green(formatAccountShort(account))}`
+          );
+          console.log(
+            `  Run ${colors.cyan(`agy-auth switch "${account.alias || account.email}"`)} to activate it.\n`
+          );
+          return;
+        }
       }
     }
 
-    if (!chosenMethod) {
-      if (!process.stdin.isTTY) {
-        throw new UsageError(
-          'Interactive login is only supported in a TTY environment. Use `agy-auth add` for scripts and automation or specify `--method`.'
-        );
-      }
+    if (!process.stdin.isTTY) {
+      throw new UsageError(
+        'Interactive login is only supported in a TTY environment. Use `agy-auth add` for scripts and automation or specify `--method`.'
+      );
+    }
 
-      const isMac = os.platform() === 'darwin';
-      if (!isMac) {
-        console.log(
-          colors.dim(
-            'Antigravity OAuth is macOS-only. Available authentication methods on this platform: API key, service account, and ADC.\n'
-          )
-        );
-      }
+    const isMac = os.platform() === 'darwin';
+    if (!isMac) {
+      console.log(
+        colors.dim(
+          'Antigravity OAuth is macOS-only. Available authentication methods on this platform: API key, service account, and ADC.\n'
+        )
+      );
+    }
 
-      type MenuSelection = 'api-key' | 'service-account' | 'adc';
-      const choices = [
-        {
-          name: 'Google Gemini API Key (recommended for direct API access)',
-          value: 'api-key' as MenuSelection,
-          description: 'Provide an API key from Google AI Studio',
-        },
-        {
-          name: 'Google Cloud Service Account (JSON key file)',
-          value: 'service-account' as MenuSelection,
-          description: 'Provide the path to a Google Cloud IAM Service Account JSON key',
-        },
-        {
-          name: 'Application Default Credentials (ADC)',
-          value: 'adc' as MenuSelection,
-          description: 'Use existing gcloud ADC or point to an ADC JSON file',
-        },
-      ];
+    type MenuSelection = 'oauth-keychain' | 'api-key' | 'service-account' | 'adc';
+    const choices = [
+      ...(isMac
+        ? [
+            {
+              name: 'Antigravity OAuth — import active macOS session',
+              value: 'oauth-keychain' as MenuSelection,
+              description: 'Import active Google session from Antigravity macOS Keychain',
+            },
+          ]
+        : []),
+      {
+        name: 'Google Gemini API Key (recommended for direct API access)',
+        value: 'api-key' as MenuSelection,
+        description: 'Provide an API key from Google AI Studio',
+      },
+      {
+        name: 'Google Cloud Service Account (JSON key file)',
+        value: 'service-account' as MenuSelection,
+        description: 'Provide the path to a Google Cloud IAM Service Account JSON key',
+      },
+      {
+        name: 'Application Default Credentials (ADC)',
+        value: 'adc' as MenuSelection,
+        description: 'Use existing gcloud ADC or point to an ADC JSON file',
+      },
+    ];
 
-      try {
-        const selected = (await select({
-          message: 'Select authentication method:',
-          choices,
-        })) as MenuSelection;
+    try {
+      const selected = (await select({
+        message: 'Select authentication method:',
+        choices,
+      })) as MenuSelection;
 
+      if (selected === 'oauth-keychain') {
+        chosenMethod = 'oauth';
+        chosenOAuthSource = 'keychain';
+      } else {
         chosenMethod = selected;
-      } catch (err: unknown) {
-        if (err instanceof Error && err.name === 'ExitPromptError') {
-          throw new CancellationError();
-        }
-        throw err;
       }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'ExitPromptError') {
+        throw new CancellationError();
+      }
+      throw err;
     }
   }
 

@@ -7,7 +7,6 @@ const promptMockState = {
   selectChoices: [] as Array<{ name: string; value: string }>,
   selectCallCount: 0,
   inputCallCount: 0,
-  inputValue: 'default-input',
   shouldCancelSelect: false,
 };
 
@@ -24,7 +23,7 @@ vi.mock('@inquirer/prompts', () => ({
   }),
   input: vi.fn(async () => {
     promptMockState.inputCallCount++;
-    return promptMockState.inputValue;
+    return 'default-input';
   }),
   password: vi.fn(async () => 'default-pass'),
   confirm: vi.fn(async () => true),
@@ -51,7 +50,6 @@ describe('First-run and OAuth onboarding behavior', () => {
     promptMockState.selectChoices = [];
     promptMockState.selectCallCount = 0;
     promptMockState.inputCallCount = 0;
-    promptMockState.inputValue = 'default-input';
     promptMockState.shouldCancelSelect = false;
   });
 
@@ -135,90 +133,6 @@ describe('First-run and OAuth onboarding behavior', () => {
     expect(accounts[0].email).toBe('auto-imported-user@example.com');
   });
 
-  it('prompts directly for email with zero method-selection prompts when session is found but userinfo is unavailable', async () => {
-    vi.spyOn(os, 'platform').mockReturnValue('darwin');
-    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
-    vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
-      status: 'found',
-      payload: {
-        auth_method: 'consumer',
-        token: {
-          access_token: 'offline-valid-token',
-          refresh_token: '',
-          expiry: '2030-01-01T00:00:00.000Z',
-        },
-      },
-      keyringStatus: 'found',
-      fileStatus: 'missing',
-    });
-
-    const fetchFail = vi.fn(async () => {
-      throw new Error('Network offline');
-    });
-
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = true;
-    promptMockState.inputValue = 'fallback-user@example.com';
-
-    try {
-      await loginCommand({}, { fetchFn: fetchFail as unknown as typeof fetch });
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
-
-    expect(promptMockState.selectCallCount).toBe(0);
-    expect(promptMockState.inputCallCount).toBe(1);
-
-    const registry = new RegistryManager();
-    const accounts = registry.getAccounts();
-    expect(accounts.length).toBe(1);
-    expect(accounts[0].email).toBe('fallback-user@example.com');
-    expect(accounts[0].status).toBe('unverified');
-  });
-
-  it('rejects empty and whitespace-only access_token in token file schema and falls back to non-OAuth menu on bare login', async () => {
-    vi.spyOn(os, 'platform').mockReturnValue('darwin');
-    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(false);
-
-    const { Paths } = await import('../src/core/paths.js');
-    const fs = await import('node:fs');
-    fs.mkdirSync(path.dirname(Paths.antigravityTokenFile), { recursive: true });
-
-    for (const invalidToken of ['', '   ', '\t\n ']) {
-      fs.writeFileSync(
-        Paths.antigravityTokenFile,
-        JSON.stringify({
-          auth_method: 'consumer',
-          token: {
-            access_token: invalidToken,
-            refresh_token: '',
-          },
-        })
-      );
-
-      promptMockState.selectCallCount = 0;
-      promptMockState.inputCallCount = 0;
-      promptMockState.selectChoices = [];
-      const origTTY = process.stdin.isTTY;
-      process.stdin.isTTY = true;
-      promptMockState.shouldCancelSelect = true;
-
-      try {
-        await loginCommand({});
-      } catch {
-        // Expected abort
-      } finally {
-        process.stdin.isTTY = origTTY;
-      }
-
-      expect(promptMockState.selectCallCount).toBe(1);
-      expect(promptMockState.inputCallCount).toBe(0);
-      const values = promptMockState.selectChoices.map((c) => c.value);
-      expect(values).not.toContain('oauth-keychain');
-      expect(values).toEqual(['api-key', 'service-account', 'adc']);
-    }
-  });
-
   it('shows interactive menu without custom browser OAuth when import is unavailable', async () => {
     vi.spyOn(os, 'platform').mockReturnValue('darwin');
     vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
@@ -241,9 +155,12 @@ describe('First-run and OAuth onboarding behavior', () => {
 
     expect(promptMockState.selectCallCount).toBe(1);
     const values = promptMockState.selectChoices.map((c) => c.value);
-    expect(values).not.toContain('oauth-keychain');
+    expect(values).toContain('oauth-keychain');
+    expect(values).toContain('api-key');
+    expect(values).toContain('service-account');
+    expect(values).toContain('adc');
+
     expect(values).not.toContain('oauth-browser');
-    expect(values).toEqual(['api-key', 'service-account', 'adc']);
     const names = promptMockState.selectChoices.map((c) => c.name);
     expect(names.some((n) => n.toLowerCase().includes('custom'))).toBe(false);
   });

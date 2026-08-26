@@ -1,6 +1,6 @@
 # export
 
-Export stored profiles to a backup file.
+Export stored profiles to a backup file on disk.
 
 ```shell
 agy-auth export [options] [output]
@@ -8,12 +8,13 @@ agy-auth export [options] [output]
 
 Arguments:
 
-- `output`: Optional destination file path or directory (defaults to a timestamped file in the current working directory)
+- `output`: Optional output destination file path or directory (defaults to a timestamped JSON file in the current working directory)
 
 Options:
 
-- `--include-secrets`: Include API keys and tokens in plaintext (mode `0600` on POSIX systems; verify destination ACLs on Windows; default: false)
-- `-y, --yes`: Skip plaintext warning confirmation prompt (default: false)
-- `-j, --json`: Output destination metadata envelope as JSON
+- `--include-secrets`: Include API keys and tokens in plaintext (default: false)
+- `-y, --yes`: Skip plaintext warning confirmation (default: false)
+- `-j, --json`: Output export summary metadata as JSON (destination, account count, and secrets flag)
+- `-h, --help`: Show this help
 
-Exports always write to a file on disk. In JSON mode (`-j, --json`), the command completes file creation and outputs the destination metadata and account count envelope.
+Exports always write to a file on disk. Exported files are sanitized by default with credentials redacted. When `--include-secrets` is enabled, the exported file is written with owner-only permissions (`0600`).
