@@ -294,6 +294,28 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
     }
   });
 
+  it('fails if Antigravity settings.json is a symbolic link', async () => {
+    if (process.platform === 'win32') return;
+
+    const realSettings = path.join(testEnv.dir, 'real-settings.json');
+    fs.writeFileSync(realSettings, JSON.stringify({ gcp: { project: 'outside-profile' } }));
+    fs.mkdirSync(path.dirname(Paths.antigravitySettingsFile), { recursive: true });
+    fs.symlinkSync(realSettings, Paths.antigravitySettingsFile);
+
+    await expect(doctorCommand({ offline: true, json: true })).rejects.toMatchObject({
+      code: 'doctor_failed',
+      details: {
+        checks: expect.arrayContaining([
+          expect.objectContaining({
+            name: 'Antigravity Settings File',
+            status: 'fail',
+            message: expect.stringContaining('must be a regular file'),
+          }),
+        ]),
+      },
+    });
+  });
+
   it('warns when the token file works but the macOS Keychain cannot be read', async () => {
     const isSupportedSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
     const readSpy = vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({

@@ -248,6 +248,10 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
   // 4. Check Antigravity Settings file
   try {
     if (fs.existsSync(Paths.antigravitySettingsFile)) {
+      const stat = fs.lstatSync(Paths.antigravitySettingsFile);
+      if (stat.isSymbolicLink() || !stat.isFile()) {
+        throw new Error('settings.json must be a regular file and not a symbolic link.');
+      }
       const raw = fs.readFileSync(Paths.antigravitySettingsFile, 'utf-8');
       JSON.parse(raw);
       checks.push({
