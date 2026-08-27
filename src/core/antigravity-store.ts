@@ -44,6 +44,7 @@ function readFileToken(): {
   message?: string;
 } {
   const tokenFile = Paths.antigravityTokenFile;
+  let fd: number | null = null;
   try {
     if (!fs.existsSync(tokenFile)) {
       return { status: 'missing' };
@@ -63,7 +64,24 @@ function readFileToken(): {
       };
     }
 
-    const content = fs.readFileSync(tokenFile, 'utf-8');
+    const flags =
+      fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
+    fd = fs.openSync(tokenFile, flags);
+    const openedStat = fs.fstatSync(fd);
+    if (!openedStat.isFile() || openedStat.dev !== stat.dev || openedStat.ino !== stat.ino) {
+      return {
+        status: 'error',
+        message: 'Token file changed while it was being opened.',
+      };
+    }
+    if (openedStat.size > MAX_CREDENTIAL_FILE_SIZE) {
+      return {
+        status: 'error',
+        message: `Token file exceeds maximum size of ${MAX_CREDENTIAL_FILE_SIZE} bytes.`,
+      };
+    }
+
+    const content = fs.readFileSync(fd, 'utf-8');
     if (!content.trim()) {
       return { status: 'missing' };
     }
@@ -83,11 +101,21 @@ function readFileToken(): {
       expiry: payload.token.expiry,
     };
   } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'ELOOP') {
+      return {
+        status: 'error',
+        message: 'Token path must be a regular file and not a symbolic link.',
+      };
+    }
     const msg = err instanceof Error ? err.message : String(err);
     return {
       status: 'error',
       message: `Failed to read token file: ${msg}`,
     };
+  } finally {
+    if (fd !== null) {
+      fs.closeSync(fd);
+    }
   }
 }
 

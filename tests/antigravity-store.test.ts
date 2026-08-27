@@ -148,6 +148,44 @@ describe('Composite Antigravity Token Store Subsystem', () => {
     expect(result.payload).toBeUndefined();
   });
 
+  it('rejects a token file replaced by a symbolic link between validation and read', () => {
+    if (process.platform === 'win32') return;
+
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({ status: 'missing' });
+    const tokenFile = Paths.antigravityTokenFile;
+    const externalToken = path.join(testEnv.dir, 'race-target.json');
+    fs.mkdirSync(path.dirname(tokenFile), { recursive: true });
+    fs.writeFileSync(
+      tokenFile,
+      JSON.stringify({
+        auth_method: 'consumer',
+        token: { access_token: 'original-token', refresh_token: '' },
+      })
+    );
+    fs.writeFileSync(
+      externalToken,
+      JSON.stringify({
+        auth_method: 'consumer',
+        token: { access_token: 'linked-token', refresh_token: '' },
+      })
+    );
+
+    const originalLstat = fs.lstatSync.bind(fs);
+    vi.spyOn(fs, 'lstatSync').mockImplementation((filePath, options) => {
+      const stat = originalLstat(filePath, options as never);
+      if (path.resolve(String(filePath)) === path.resolve(tokenFile)) {
+        fs.unlinkSync(tokenFile);
+        fs.symlinkSync(externalToken, tokenFile);
+      }
+      return stat as never;
+    });
+
+    const result = readAntigravityToken();
+    expect(result.status).toBe('error');
+    expect(result.fileStatus).toBe('error');
+    expect(result.payload).toBeUndefined();
+  });
+
   it('rejects an Antigravity token file larger than the credential size limit', () => {
     vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({ status: 'missing' });
     const payload = JSON.stringify({
