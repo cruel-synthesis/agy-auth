@@ -18,6 +18,7 @@ describe('Switcher Transactional State Machine & Rollback', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     testEnv.cleanup();
   });
 
@@ -308,6 +309,61 @@ describe('Switcher Transactional State Machine & Rollback', () => {
       readSpy.mockRestore();
       writeSpy.mockRestore();
     }
+  });
+
+  it('aborts an OAuth switch before mutation when the existing Keychain item cannot be read', () => {
+    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
+      status: 'error',
+      message: 'synthetic Keychain read failure',
+    });
+    const writeSpy = vi.spyOn(KeychainManager, 'writeAgyToken').mockReturnValue(true);
+
+    const registry = new RegistryManager();
+    const account = registry.addOrUpdateAccount({
+      email: 'unreadable-keychain@example.com',
+      authType: 'oauth',
+      credentials: {
+        keychainPayload: {
+          auth_method: 'consumer',
+          token: { access_token: 'new-access-token', refresh_token: '' },
+        },
+      },
+    });
+
+    expect(() => Switcher.switchAccount(account)).toThrow(/cannot safely snapshot/i);
+    expect(writeSpy).not.toHaveBeenCalled();
+    expect(fs.existsSync(Paths.antigravityTokenFile)).toBe(false);
+    expect(new RegistryManager().getActiveAccount()).toBeNull();
+  });
+
+  it('reports a failed Keychain restore instead of claiming rollback succeeded', () => {
+    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
+      status: 'found',
+      payload: {
+        auth_method: 'consumer',
+        token: { access_token: 'old-access-token', refresh_token: '' },
+      },
+    });
+    vi.spyOn(KeychainManager, 'writeAgyToken').mockReturnValueOnce(true).mockReturnValueOnce(false);
+    vi.spyOn(RegistryManager.prototype, 'setActiveAccount').mockReturnValue(false);
+
+    const registry = new RegistryManager();
+    const account = registry.addOrUpdateAccount({
+      email: 'failed-keychain-restore@example.com',
+      authType: 'oauth',
+      credentials: {
+        keychainPayload: {
+          auth_method: 'consumer',
+          token: { access_token: 'new-access-token', refresh_token: '' },
+        },
+      },
+    });
+
+    expect(() => Switcher.switchAccount(account)).toThrow(
+      /Rollback also failed: Failed to restore the Antigravity Keychain item/
+    );
   });
 
   it('handles switching to default ADC path and preserving custom settings fields', () => {

@@ -216,6 +216,39 @@ export class Switcher {
           );
         }
 
+        let keychainRollback: (() => void) | null = null;
+        if (KeychainManager.isSupported()) {
+          const keychainState = KeychainManager.readAgyTokenState();
+          if (keychainState.status === 'error') {
+            throw new CliError(
+              `Cannot safely snapshot the existing Antigravity Keychain item: ${keychainState.message}`,
+              'keychain_snapshot_failed',
+              1
+            );
+          }
+          if (keychainState.status === 'unsupported') {
+            throw new CliError(
+              'Cannot safely snapshot the existing Antigravity Keychain item on this platform.',
+              'keychain_snapshot_failed',
+              1
+            );
+          }
+          if (keychainState.status === 'found') {
+            const savedPayload = keychainState.payload;
+            keychainRollback = () => {
+              if (!KeychainManager.writeAgyToken(savedPayload)) {
+                throw new Error('Failed to restore the Antigravity Keychain item.');
+              }
+            };
+          } else {
+            keychainRollback = () => {
+              if (!KeychainManager.deleteAgyToken()) {
+                throw new Error('Failed to remove the Antigravity Keychain item during rollback.');
+              }
+            };
+          }
+        }
+
         // Snapshot file half of composite store
         const tokenFilePath = Paths.antigravityTokenFile;
         const tokenFileSnapshot = captureFile(
@@ -225,27 +258,16 @@ export class Switcher {
         );
         rollbackActions.push(() => restoreFile(tokenFileSnapshot));
 
-        // Snapshot keyring half if supported
-        if (KeychainManager.isSupported()) {
-          const keychainState = KeychainManager.readAgyTokenState();
-          if (keychainState.status === 'found') {
-            const savedPayload = keychainState.payload;
-            rollbackActions.push(() => {
-              KeychainManager.writeAgyToken(savedPayload);
-            });
-          } else {
-            rollbackActions.push(() => {
-              KeychainManager.deleteAgyToken();
-            });
-          }
-        }
-
         // Write both halves
         const writeResult = writeAntigravityToken(payload);
         if (!writeResult.ok) {
           throw new Error(
             `Failed to write session credentials: ${writeResult.error || 'file write failed'}`
           );
+        }
+
+        if (writeResult.keyringWritten && keychainRollback) {
+          rollbackActions.push(keychainRollback);
         }
 
         if (writeResult.warning) {
