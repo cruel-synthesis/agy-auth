@@ -464,4 +464,43 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
       logSpy.mockRestore();
     }
   });
+
+  it('warns when the selected Antigravity session has expired', async () => {
+    const isSupportedSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+    const readSpy = vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
+      status: 'missing',
+    });
+    const expiry = new Date(Date.now() - 60_000).toISOString();
+    fs.writeFileSync(
+      Paths.antigravityTokenFile,
+      JSON.stringify({
+        auth_method: 'consumer',
+        token: {
+          access_token: 'expired-file-token',
+          refresh_token: '',
+          expiry,
+        },
+      })
+    );
+
+    let output = '';
+    const logSpy = vi.spyOn(console, 'log').mockImplementation((value: string) => {
+      output += value;
+    });
+    try {
+      await doctorCommand({ offline: true, json: true });
+      const result = JSON.parse(output) as { data: { checks: Array<Record<string, string>> } };
+      expect(result.data.checks).toContainEqual(
+        expect.objectContaining({
+          name: 'Antigravity Session Store',
+          status: 'warn',
+          message: expect.stringContaining(`expired at ${expiry}`),
+        })
+      );
+    } finally {
+      isSupportedSpy.mockRestore();
+      readSpy.mockRestore();
+      logSpy.mockRestore();
+    }
+  });
 });

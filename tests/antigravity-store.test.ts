@@ -369,7 +369,7 @@ describe('Composite Antigravity Token Store Subsystem', () => {
         token: {
           access_token: 'stale-keyring',
           refresh_token: 'stale-ref',
-          expiry: '2026-08-23T11:00:00.000Z',
+          expiry: '2030-08-23T11:00:00.000Z',
         },
       },
     });
@@ -379,7 +379,7 @@ describe('Composite Antigravity Token Store Subsystem', () => {
       token: {
         access_token: 'fresh-file',
         refresh_token: 'fresh-ref',
-        expiry: '2026-08-24T18:00:00.000Z',
+        expiry: '2030-08-24T18:00:00.000Z',
       },
     };
     fs.mkdirSync(path.dirname(Paths.antigravityTokenFile), { recursive: true });

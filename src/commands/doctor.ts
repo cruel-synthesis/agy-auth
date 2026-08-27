@@ -198,7 +198,17 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
 
   // 3. Check Antigravity session token storage (composite store)
   const tokenState = readAntigravityToken();
-  if (KeychainManager.isSupported()) {
+  const selectedExpiry =
+    tokenState.status === 'found' ? tokenState.payload?.token.expiry : undefined;
+  const selectedExpiryMs = selectedExpiry ? Date.parse(selectedExpiry) : Number.NaN;
+  if (Number.isFinite(selectedExpiryMs) && selectedExpiryMs <= Date.now()) {
+    const source = tokenState.source === 'keyring' ? 'system Keychain' : 'token file';
+    checks.push({
+      name: 'Antigravity Session Store',
+      status: 'warn',
+      message: `Antigravity session in ${source} expired at ${selectedExpiry}. Sign in to Google Antigravity again, then run \`agy-auth sync\`.`,
+    });
+  } else if (KeychainManager.isSupported()) {
     if (tokenState.status === 'found') {
       const fileExp = tokenState.fileExpiry || 'no expiry';
       const keyExp = tokenState.keyringExpiry || 'no expiry';
