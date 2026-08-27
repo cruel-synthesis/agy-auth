@@ -20,11 +20,11 @@ describe('Keychain OAuth Import Module', () => {
     testEnv.cleanup();
   });
 
-  it('fails when Keychain is unsupported on non-macOS platforms', async () => {
+  it('explains the supported fallback when no token file or native keyring is available', async () => {
     vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(false);
 
     await expect(importKeychainOAuth()).rejects.toThrow(CliError);
-    await expect(importKeychainOAuth()).rejects.toThrow(/only supported on macOS/);
+    await expect(importKeychainOAuth()).rejects.toThrow(/use `--oauth-source browser` instead/);
   });
 
   it('reports composite session-store errors without mislabeling token-file failures', async () => {

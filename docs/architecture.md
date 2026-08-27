@@ -4,16 +4,17 @@
 
 - `src/core/storage.ts`: Owns atomic file writes, backup rotation (`MAX_BACKUP_RETENTION = 10`), and PID-guarded cross-process locking (`withLockSync`, `withLock`).
 - `src/core/registry.ts`: Schema v2 registry validation, unique email/auth constraints, alias uniqueness, optimistic locking (`expectedUpdatedAt`), and atomic mutations.
-- `src/core/switcher.ts`: Transactional profile switcher with preflight checks and dynamic journal rollbacks across Keychain, `settings.json`, service account JSON, and ADC credentials.
+- `src/core/switcher.ts`: Transactional profile switcher with preflight checks and dynamic journal rollbacks across Antigravity session stores, `settings.json`, service account JSON, and ADC credentials.
 - `src/core/credential-files.ts`: File size guards (1 MiB max credential file, 5 MiB max import), symlink traversal prevention, and regular file validation.
 - `src/core/verifier.ts`: Pure credential verifier (0 network calls for OAuth/SA/ADC, official models endpoint check for API keys, capped at 4 concurrent requests).
 - `src/core/quota.ts`: Live plan and quota client for the undocumented Antigravity `v1internal` contracts (**experimental**). Injectable `fetch`, clock, per-request timeout and total per-account deadline; endpoint fallback; strict payload validation; bounded concurrency of 4.
 - `src/core/quota-apply.ts`: The only path that writes quota-derived state, under the registry's locked transaction with optimistic concurrency on `updatedAt`.
-- `src/core/keychain-import.ts`: Shared Antigravity macOS Keychain session importer, userinfo-based email derivation/verification, and atomic profile merger.
+- `src/core/antigravity-store.ts`: Composite Antigravity session reader and writer for Apple Keychain and the token file, with deterministic freshness selection and partial-store warnings.
+- `src/core/keychain-import.ts`: Shared Antigravity session importer, userinfo-based email derivation/verification, and atomic profile merger.
 - `src/core/oauth.ts`: Browser OAuth 2.0 PKCE flow with loopback callback server on `127.0.0.1`, state validation, verified userinfo lookup, security headers, and single-settlement server cleanup.
 - `src/core/oauth-config.ts`: Environment-only OAuth client configuration. The package ships no client ID and no client secret.
 - `src/core/keychain.ts`: Local macOS Keychain item inspection and replacement (0 network calls).
-- `src/core/discovery.ts`: Local discovery from macOS Keychain and Application Default Credentials.
+- `src/core/discovery.ts`: Local Antigravity settings metadata and Application Default Credentials discovery.
 - `src/commands/refresh.ts`: Shared best-effort refresh helper used by `list`, `current`, and `details`; selects OAuth profiles, produces the JSON `quotaRefresh` summary and the single human-mode warning.
 - `src/ui/table.ts`: Clean terminal output folding, responsive layout, Unicode/CJK-safe column widths, and the shared seven-column plan and quota renderer used by both `list` and the interactive picker.
 - `src/ui/format.ts`: Single implementation of plan labels, quota cells, and the reset countdown, shared by the table, `current`, and `details`.
@@ -41,7 +42,7 @@ Profile switching is serialized under process locks and executes through a journ
 
 1. **Preflight Validation**: Validates credential existence, schema, size, and file safety.
 2. **Settings Preservation**: Backs up existing Antigravity settings and ADC files.
-3. **Journaled Execution**: Applies file and Keychain changes while recording compensating actions.
+3. **Journaled Execution**: Applies file and session-store changes while recording compensating actions.
 4. **Optimistic Registry Commit**: Updates active account pointer only if the registry was not concurrently modified.
 5. **Compensating Rollback**: Automatically undoes changes in reverse order if any intermediate step fails.
 

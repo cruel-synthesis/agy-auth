@@ -7,9 +7,9 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 ### Added
 
 - Credential profiles for OAuth, API keys, service-account JSON, and Application Default Credentials.
-- Direct Antigravity macOS Keychain session import and identity verification (default out-of-box OAuth flow without client ID).
+- Direct Antigravity session import from Apple Keychain or the token file, with identity verification and no required client ID.
 - Browser OAuth 2.0 PKCE onboarding (`--oauth-source browser`) and in-place profile refreshing with user-supplied client configuration.
-- Journaled profile switching with rollback attempts for Antigravity settings, service-account files, ADC, and macOS Keychain state.
+- Journaled profile switching with rollback attempts for Antigravity settings, session stores, service-account files, and ADC.
 - Experimental live plan and quota reporting for OAuth profiles, with bounded requests, cached fallback, and offline mode.
 - A responsive account table shared by `list` and the interactive picker, including Unicode-safe width handling.
 - Versioned JSON output and exit codes for automation.
@@ -26,6 +26,7 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 - `remove` rejects selectors combined with `--all` instead of silently deleting every profile.
 - The machine-readable interface documentation now includes `sync --json`.
 - Composite Antigravity session failures use the accurate `session_store_error` code and wording.
+- Interactive login detects file-backed Antigravity sessions on every platform and never offers an unconfigured browser flow.
 
 ### Security
 

@@ -15,7 +15,7 @@ Options:
 Diagnostics checked:
 - Storage directory permissions and integrity (`~/.agy-auth/`)
 - Registry Schema v2 parsing and integrity (flags pending migration for legacy formats)
-- macOS Keychain integration status
+- Antigravity token-file and native keyring session status
 - Antigravity `settings.json` parsing
 - Application Default Credentials (ADC) file validation
 - Google API reachability probe (skipped when `--offline` is specified)

@@ -22,7 +22,7 @@
    - Hosts contacted: `daily-cloudcode-pa.googleapis.com` and `cloudcode-pa.googleapis.com`.
    - Contracts used: `v1internal:retrieveUserQuotaSummary`, `v1internal:loadCodeAssist`, `v1internal:retrieveUserQuota`.
    - What is sent: your OAuth access token as a `Bearer` header, an `agy-auth/<version>` user agent, and, for `retrieveUserQuota`, the GCP project ID associated with the profile. These requests do not include local filenames, hostnames, or registry contents.
-   - Token refresh and browser OAuth login, when configured via `AGY_OAUTH_CLIENT_ID`, contact `accounts.google.com`, `oauth2.googleapis.com`, and `www.googleapis.com`. Keychain session import contacts `www.googleapis.com` to verify the account email.
+   - Token refresh and browser OAuth login, when configured via `AGY_OAUTH_CLIENT_ID`, contact `accounts.google.com`, `oauth2.googleapis.com`, and `www.googleapis.com`. Antigravity session import contacts `www.googleapis.com` to verify the account email.
 
    `agy-auth` does not embed an OAuth client secret and does not bundle an unverified third-party OAuth client ID.
 
@@ -57,7 +57,7 @@
    - By default, an expired token is reported as `expired`. Sign in again through the Antigravity application, then run `agy-auth sync`.
    - A token that the quota service rejects for missing scopes is reported as `needs-reauth`. Sign in again through Antigravity, then run `agy-auth login --oauth-source keychain` or `agy-auth sync`.
    - If you have your own OAuth client, set `AGY_OAUTH_CLIENT_ID` (and `AGY_OAUTH_CLIENT_SECRET` if your client requires one) and `agy-auth` will refresh expired tokens itself or authenticate via `agy-auth login --oauth-source browser`, storing a rotated refresh token when Google issues one.
-   - Quota refresh never writes the macOS Keychain. Only `agy-auth switch` applies stored credentials to external state.
+   - Quota refresh never writes Antigravity's token file or Apple Keychain. Only `agy-auth switch` applies stored credentials to external state.
 
 8. **Safe Export and Sanitization**:
    - `agy-auth export` generates sanitized backups with all credentials redacted by default.
@@ -73,7 +73,7 @@
 
 | Auth Type | Where It Originates | How It Is Stored |
 |---|---|---|
-| **OAuth (Antigravity CLI)** | Google Sign-in inside official Antigravity | Saved to `~/.agy-auth/registry.json` and synced to macOS Keychain |
+| **OAuth (Antigravity CLI)** | Google Sign-in inside official Antigravity | Saved to `~/.agy-auth/registry.json`; `switch` writes Antigravity's token file and, on macOS, Apple Keychain |
 | **API Key** | Google AI Studio (`GEMINI_API_KEY`) | Saved to `~/.agy-auth/registry.json` |
 | **Service Account** | Google Cloud Console IAM service account JSON | Stored in the registry; switching to the profile materializes `~/.agy-auth/accounts/<id>.json` (0600 on POSIX systems), which remains until that profile is removed |
 | **Application Default Credentials (ADC)** | `gcloud auth application-default login` | Path stored in the registry; switching a custom path copies its validated contents to the configured global ADC destination |

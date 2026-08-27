@@ -34,7 +34,7 @@ Outbound requests are limited to:
 |---|---|---|
 | `accounts.google.com` | Browser OAuth user sign-in via PKCE | `agy-auth login --oauth-source browser` |
 | `oauth2.googleapis.com` | Authorization code and refresh-token exchange | During browser OAuth login or when refreshing an expired token with `AGY_OAUTH_CLIENT_ID` |
-| `www.googleapis.com` | Verified userinfo lookup (`/oauth2/v3/userinfo`) | During Keychain session import and browser OAuth login |
+| `www.googleapis.com` | Verified userinfo lookup (`/oauth2/v3/userinfo`) | During Antigravity session import and browser OAuth login |
 | `daily-cloudcode-pa.googleapis.com`, `cloudcode-pa.googleapis.com` | Live plan and quota via the undocumented `v1internal:retrieveUserQuotaSummary`, `v1internal:loadCodeAssist`, and `v1internal:retrieveUserQuota` contracts (**experimental**) | `list`, `list --check`, `current`, `details` for OAuth profiles, unless `--offline` |
 | `generativelanguage.googleapis.com` | Official Gemini models endpoint and connectivity probe | `list --check` for API key profiles; `doctor` unless `--offline` |
 
@@ -46,5 +46,5 @@ Because the quota contracts are undocumented, they may change or be withdrawn wi
 
 - No access token or refresh token appears in a quota result, a log line, an exception message, a `--json` envelope, or any persisted diagnostic. Rotated tokens travel in a dedicated carrier whose serialization is `[redacted]`.
 - Refreshing an expired token requires user-supplied OAuth client configuration (`AGY_OAUTH_CLIENT_ID`, optionally `AGY_OAUTH_CLIENT_SECRET`). Without it, the profile is reported as `expired` and recovery is a fresh Antigravity sign-in followed by `agy-auth sync`.
-- Quota refresh never writes the macOS Keychain. Applying credentials to external state is the sole responsibility of `agy-auth switch`.
+- Quota refresh never writes Antigravity's token file or Apple Keychain. Applying credentials to external state is the sole responsibility of `agy-auth switch`.
 - A quota transport or schema failure never overwrites a credential status; only a successful reading, explicit insufficient-scope evidence, or an authentication rejection may.

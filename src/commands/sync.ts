@@ -68,7 +68,7 @@ export async function syncCommand(
         }
       } else {
         skippedItems.push(
-          'Active Antigravity Keychain token (email not specified; use `agy-auth sync --oauth-email <email>`)'
+          'Active Antigravity session token (email not specified; use `agy-auth sync --oauth-email <email>`)'
         );
       }
     }

@@ -276,19 +276,19 @@ describe('First-run and OAuth onboarding behavior', () => {
     ]);
   });
 
-  it('rejects Keychain import and offers browser OAuth on non-macOS', async () => {
+  it('offers an existing Antigravity token-file session on non-macOS', async () => {
     vi.spyOn(os, 'platform').mockReturnValue('linux');
     vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(false);
     vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
-      status: 'unsupported',
+      status: 'found',
+      source: 'file',
+      payload: {
+        auth_method: 'consumer',
+        token: { access_token: 'non-mac-session', refresh_token: '' },
+      },
       keyringStatus: 'unsupported',
-      fileStatus: 'missing',
+      fileStatus: 'found',
     });
-
-    await expect(loginCommand({ oauthSource: 'keychain' })).rejects.toThrow(CliError);
-    await expect(loginCommand({ oauthSource: 'keychain' })).rejects.toThrow(
-      /only supported on macOS/
-    );
 
     const origTTY = process.stdin.isTTY;
     process.stdin.isTTY = true;
@@ -303,7 +303,34 @@ describe('First-run and OAuth onboarding behavior', () => {
     }
 
     const values = promptMockState.selectChoices.map((c) => c.value);
-    expect(values).toEqual(['browser']);
+    expect(values).toEqual(['keychain']);
+  });
+
+  it('does not offer an unconfigured browser flow on non-macOS', async () => {
+    vi.spyOn(os, 'platform').mockReturnValue('linux');
+    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(false);
+    vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
+      status: 'unsupported',
+      keyringStatus: 'unsupported',
+      fileStatus: 'missing',
+    });
+
+    const origTTY = process.stdin.isTTY;
+    process.stdin.isTTY = true;
+    try {
+      await expect(loginCommand({})).rejects.toMatchObject({
+        code: 'no_login_source',
+        exitCode: 1,
+      });
+      await expect(loginCommand({ oauthSource: 'keychain' })).rejects.toThrow(CliError);
+      await expect(loginCommand({ oauthSource: 'keychain' })).rejects.toThrow(
+        /native OS keyring is not supported/i
+      );
+    } finally {
+      process.stdin.isTTY = origTTY;
+    }
+
+    expect(promptMockState.selectCallCount).toBe(0);
   });
 
   it('requests only public OAuth scopes in browser flow', async () => {

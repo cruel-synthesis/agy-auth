@@ -19,20 +19,20 @@ npx @cruel-synthesis/agy-auth --help
 ## 2. Adding Profiles
 
 ### Option A: Sync Existing Local Credentials
-Automatically detect existing Antigravity macOS Keychain tokens and Google Cloud ADC files:
+Automatically detect accessible Antigravity sessions and Google Cloud ADC files:
 
 ```bash
 agy-auth sync
 ```
 
 ### Option B: Google Account Login
-Add or refresh an OAuth profile from your current macOS Antigravity session, or sign in to another account through Antigravity:
+Add or refresh an OAuth profile from an accessible Antigravity session. On macOS, you can also sign in to another account through Antigravity:
 
 ```bash
 # Import the current account or open Antigravity for another Google sign-in
 agy-auth login
 
-# Explicitly import active Antigravity session from macOS Keychain
+# Explicitly import an active Antigravity session
 agy-auth login --oauth-source keychain
 
 # Or sign in with a custom Google Desktop OAuth Client ID

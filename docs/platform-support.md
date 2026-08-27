@@ -12,18 +12,19 @@
 | **Service Account JSON** | Supported | Supported | Supported |
 | **Authorized-user or service-account ADC** | Supported | Supported | Supported |
 | **External-account / Workload Identity Federation ADC** | Not supported in v0.1 | Not supported in v0.1 | Not supported in v0.1 |
-| **Browser OAuth Sign-In** | Supported (`open`) | Supported (`xdg-open`) | Supported (`explorer.exe`) |
-| **Antigravity CLI OAuth Switching (Keychain)** | Supported (macOS Keychain) | Not supported | Not supported |
+| **Browser OAuth Sign-In with a user-supplied client** | Supported (`open`) | Supported (`xdg-open`) | Supported (`explorer.exe`) |
+| **Antigravity token-file session import and switching** | Supported | Supported when Antigravity uses file-backed storage | Supported when Antigravity uses file-backed storage |
+| **Native OS keyring import and switching** | Supported (Apple Keychain) | Not supported (Secret Service) | Not supported (Credential Manager) |
 | **Atomic File Locking** | Supported (`fs.openSync('wx')`) | Supported (`fs.openSync('wx')`) | Supported (`fs.openSync('wx')`) |
 | **Secure File Permissions (0700/0600)** | Enforced | Enforced | POSIX modes unavailable; protection depends on existing Windows ACLs |
 | **Interactive Terminal TUI** | Supported | Supported | Supported (Windows Terminal / PowerShell) |
 
 ---
 
-## macOS Keychain Integration
+## Antigravity Session Stores
 
 On macOS, Google Antigravity stores OAuth tokens inside the macOS Keychain under service `gemini` / account `antigravity`.
 
-`agy-auth` integrates with the macOS Keychain to read active tokens during `agy-auth sync` and write switched tokens during `agy-auth switch`.
+`agy-auth` integrates with Apple Keychain and Antigravity's `~/.gemini/antigravity-cli/antigravity-oauth-token` file. It reads the freshest valid session during `login` or `sync` and writes the token file during `switch`; on macOS it also updates Apple Keychain.
 
-On non-macOS platforms, API-key, service-account, and supported ADC profiles can be managed without macOS Keychain integration. Browser OAuth profiles can be registered on all platforms; switching an OAuth profile into Antigravity's Keychain is macOS-specific.
+Antigravity can use native OS keyrings. Version 0.1 does not integrate with Linux Secret Service or Windows Credential Manager, so OAuth interoperability on those platforms requires Antigravity's file-backed token store. Custom browser OAuth remains available on every platform when you supply `AGY_OAUTH_CLIENT_ID`.

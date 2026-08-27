@@ -65,7 +65,9 @@ async function chooseOAuthSource(): Promise<InteractiveOAuthSource> {
   }
 
   const isMac = os.platform() === 'darwin';
-  const hasAntigravitySession = isMac && readAntigravityToken().status === 'found';
+  const tokenState = readAntigravityToken();
+  const hasAntigravitySession = tokenState.status === 'found';
+  const hasCustomOAuthClient = getOAuthClientConfig() !== null;
   const choices = [
     ...(hasAntigravitySession
       ? [
@@ -87,7 +89,7 @@ async function chooseOAuthSource(): Promise<InteractiveOAuthSource> {
           },
         ]
       : []),
-    ...(!isMac || getOAuthClientConfig()
+    ...(hasCustomOAuthClient
       ? [
           {
             name: 'Sign in with a custom OAuth client',
@@ -97,6 +99,14 @@ async function chooseOAuthSource(): Promise<InteractiveOAuthSource> {
         ]
       : []),
   ];
+
+  if (choices.length === 0) {
+    throw new CliError(
+      "No readable Antigravity session or configured browser login was found. agy-auth can import Antigravity's token file on this platform, but not its native OS keyring. Configure AGY_OAUTH_CLIENT_ID to enable custom browser sign-in.",
+      'no_login_source',
+      1
+    );
+  }
 
   try {
     return await select({
