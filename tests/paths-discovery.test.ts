@@ -82,6 +82,15 @@ describe('Paths and Discovery Subsystems', () => {
     const settings = Discovery.readAntigravitySettings();
     expect(settings?.gcp?.project).toBe('disc-proj');
     expect(settings?.model).toBe('gemini-2.5-flash');
+
+    if (process.platform !== 'win32') {
+      const realSettings = path.join(testEnv.dir, 'external-settings.json');
+      fs.writeFileSync(realSettings, JSON.stringify({ model: 'external-model' }));
+      fs.unlinkSync(Paths.antigravitySettingsFile);
+      fs.symlinkSync(realSettings, Paths.antigravitySettingsFile);
+
+      expect(Discovery.readAntigravitySettings()).toBeNull();
+    }
   });
 
   it('discovers ADC credentials for Service Account and OAuth users', () => {

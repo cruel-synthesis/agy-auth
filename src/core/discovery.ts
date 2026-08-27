@@ -62,6 +62,8 @@ export class Discovery {
     if (!fs.existsSync(settingsPath)) return null;
 
     try {
+      const stat = fs.lstatSync(settingsPath);
+      if (stat.isSymbolicLink() || !stat.isFile()) return null;
       const raw = fs.readFileSync(settingsPath, 'utf-8');
       return JSON.parse(raw) as AntigravitySettings;
     } catch {

@@ -31,6 +31,7 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 - OAuth token switch backups are classified as managed secrets, so retention and `clean` apply to them.
 - `doctor` warns when token-file fallback works but the macOS Keychain cannot be read.
 - `doctor` rejects a symlinked or non-regular Antigravity settings path.
+- OAuth profile discovery ignores a symlinked or non-regular Antigravity settings path.
 - No embedded OAuth client credentials, telemetry, or background process.
 - Local loopback OAuth callback server strictly bound to 127.0.0.1 with PKCE and state validation.
 
