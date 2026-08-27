@@ -77,7 +77,7 @@ jobs:
             fi
           else
             echo "Publishing ./${tarball} to npm with provenance..."
-            npm publish "./${tarball}" --access public --provenance
+            npm publish "./${tarball}" --access public --provenance --ignore-scripts
           fi
 
       - name: Create GitHub Release
