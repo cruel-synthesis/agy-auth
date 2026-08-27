@@ -96,4 +96,41 @@ describe('KeychainManager Subsystem', () => {
       execSpy.mockRestore();
     }
   });
+
+  it('rejects whitespace-only Keychain tokens and authentication methods', () => {
+    const supportSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+    const execSpy = vi.spyOn(KeychainManager, 'execSecurity').mockReturnValue({ stdout: '' });
+
+    try {
+      for (const accessToken of ['   ', '\t\n ']) {
+        const encoded = Buffer.from(
+          JSON.stringify({
+            auth_method: 'consumer',
+            token: { access_token: accessToken, refresh_token: '' },
+          })
+        ).toString('base64');
+        execSpy.mockReturnValue({ stdout: `go-keyring-base64:${encoded}\n` });
+
+        expect(KeychainManager.readAgyTokenState().status).toBe('error');
+        expect(
+          KeychainManager.writeAgyToken({
+            auth_method: 'consumer',
+            token: { access_token: accessToken, refresh_token: '' },
+          })
+        ).toBe(false);
+      }
+
+      for (const authMethod of ['   ', '\t\n ']) {
+        expect(
+          KeychainManager.writeAgyToken({
+            auth_method: authMethod,
+            token: { access_token: 'synthetic-access-token', refresh_token: '' },
+          })
+        ).toBe(false);
+      }
+    } finally {
+      supportSpy.mockRestore();
+      execSpy.mockRestore();
+    }
+  });
 });

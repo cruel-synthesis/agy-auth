@@ -24,6 +24,7 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 ### Security
 
 - Restricted POSIX file modes, registry locking, symlink rejection, credential-file size limits, and credential redaction in profile and status output.
+- Fail-closed schema and Keychain validation rejects empty or whitespace-only OAuth tokens and authentication methods.
 - No embedded OAuth client credentials, telemetry, or background process.
 - Local loopback OAuth callback server strictly bound to 127.0.0.1 with PKCE and state validation.
 

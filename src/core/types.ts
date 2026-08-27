@@ -81,7 +81,9 @@ export const KeychainPayloadSchema = z
     auth_method: z.string().max(64).default('consumer'),
     token: z
       .object({
-        access_token: z.string(),
+        access_token: z.string().refine((value) => value.trim().length > 0, {
+          message: 'access_token must not be empty or whitespace',
+        }),
         refresh_token: z.string().optional().default(''),
         token_type: z.string().max(64).optional(),
         expiry: z.string().max(128).optional(),
