@@ -354,4 +354,36 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
       logSpy.mockRestore();
     }
   });
+
+  it('warns when the Keychain works but the Antigravity token file cannot be read', async () => {
+    const isSupportedSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+    const readSpy = vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
+      status: 'found',
+      payload: {
+        auth_method: 'consumer',
+        token: { access_token: 'synthetic-keychain-token', refresh_token: '' },
+      },
+    });
+    fs.writeFileSync(Paths.antigravityTokenFile, '{ malformed token file');
+
+    let output = '';
+    const logSpy = vi.spyOn(console, 'log').mockImplementation((value: string) => {
+      output += value;
+    });
+    try {
+      await doctorCommand({ offline: true, json: true });
+      const result = JSON.parse(output) as { data: { checks: Array<Record<string, string>> } };
+      expect(result.data.checks).toContainEqual(
+        expect.objectContaining({
+          name: 'Antigravity Session Store',
+          status: 'warn',
+          message: expect.stringContaining('token file'),
+        })
+      );
+    } finally {
+      isSupportedSpy.mockRestore();
+      readSpy.mockRestore();
+      logSpy.mockRestore();
+    }
+  });
 });

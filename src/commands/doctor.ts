@@ -190,7 +190,13 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
       const fileExp = tokenState.fileExpiry || 'no expiry';
       const keyExp = tokenState.keyringExpiry || 'no expiry';
 
-      if (tokenState.source === 'file' && tokenState.keyringStatus === 'error') {
+      if (tokenState.source === 'keyring' && tokenState.fileStatus === 'error') {
+        checks.push({
+          name: 'Antigravity Session Store',
+          status: 'warn',
+          message: `Active Antigravity session found in system Keychain, but the token file could not be read. ${tokenState.fileMessage || tokenState.warning || 'Re-authenticate in Antigravity if the session stops working.'}`,
+        });
+      } else if (tokenState.source === 'file' && tokenState.keyringStatus === 'error') {
         checks.push({
           name: 'Antigravity Session Store',
           status: 'warn',
