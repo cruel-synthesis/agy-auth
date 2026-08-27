@@ -72,7 +72,7 @@ export function printTopLevelHelp(all = false, version = VERSION): void {
     'sync [--oauth-email <email>] [--adc-email <email>] [--yes] [--json]',
     'Import active Antigravity session or local ADC credentials'
   );
-  writeCommandSummary('add [options]', 'Add a credential profile non-interactively');
+  writeCommandSummary('add [options]', 'Add an API key, service-account, or ADC profile');
   writeCommandSummary(
     'remove [selectors...] [--all] [--yes] [--json]',
     'Remove one or more profiles'

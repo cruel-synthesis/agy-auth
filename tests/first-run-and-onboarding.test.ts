@@ -328,6 +328,8 @@ describe('First-run and OAuth onboarding behavior', () => {
       expect(textAll).toContain('import');
       expect(textAll).toContain('clean');
       expect(textAll).toContain('env');
+      expect(textAll).toContain('Add an API key, service-account, or ADC profile');
+      expect(textAll).not.toContain('Add a credential profile non-interactively');
     } finally {
       spyAll.mockRestore();
     }
