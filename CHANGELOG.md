@@ -41,6 +41,7 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 - Managed backups use no-follow descriptor validation and reject replaced source paths.
 - Account switching aborts and rolls back if Antigravity settings change after their snapshot.
 - Switch rollback rejects missing or replaced backup files instead of restoring unrelated content.
+- Data-directory permissions are applied through verified no-follow descriptors.
 - Antigravity settings discovery uses no-follow descriptor validation and ignores swapped paths.
 - `doctor` uses no-follow descriptor validation when checking Antigravity settings.
 - OAuth token switch backups are classified as managed secrets, so retention and `clean` apply to them.

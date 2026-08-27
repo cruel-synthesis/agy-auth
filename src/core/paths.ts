@@ -124,7 +124,24 @@ export class Paths {
         throw new Error(`agy-auth data path must be a directory: '${dir}'.`);
       }
       if (process.platform !== 'win32') {
-        fs.chmodSync(dir, 0o700);
+        let fd: number | null = null;
+        try {
+          fd = fs.openSync(dir, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+          const opened = fs.fstatSync(fd);
+          if (!opened.isDirectory() || opened.dev !== stat.dev || opened.ino !== stat.ino) {
+            throw new Error(`agy-auth data directory changed while it was being opened: '${dir}'.`);
+          }
+          fs.fchmodSync(fd, 0o700);
+        } catch (error: unknown) {
+          if (error && typeof error === 'object' && 'code' in error && error.code === 'ELOOP') {
+            throw new Error(`agy-auth data directory must not be a symbolic link: '${dir}'.`);
+          }
+          throw error;
+        } finally {
+          if (fd !== null) {
+            fs.closeSync(fd);
+          }
+        }
       }
     }
   }

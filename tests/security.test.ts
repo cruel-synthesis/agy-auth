@@ -102,6 +102,27 @@ describe('Security & Sanitization', () => {
     ).not.toThrow();
   });
 
+  it('does not chmod a directory reached through a replacement symlink', () => {
+    if (process.platform === 'win32') return;
+
+    const externalDir = path.join(testEnv.dir, 'external-directory');
+    fs.mkdirSync(externalDir, { mode: 0o755 });
+    fs.chmodSync(externalDir, 0o755);
+
+    const originalLstat = fs.lstatSync.bind(fs);
+    vi.spyOn(fs, 'lstatSync').mockImplementation((filePath, options) => {
+      const stat = originalLstat(filePath, options as never);
+      if (path.resolve(String(filePath)) === path.resolve(Paths.accountsDir)) {
+        fs.rmdirSync(Paths.accountsDir);
+        fs.symlinkSync(externalDir, Paths.accountsDir);
+      }
+      return stat as never;
+    });
+
+    expect(() => Paths.ensureDirectories()).toThrow(/directory.*changed|symbolic link/i);
+    expect(fs.statSync(externalDir).mode & 0o777).toBe(0o755);
+  });
+
   it('truncates Unicode and CJK strings width-safely without visual overflow', () => {
     const testCases = [
       { text: 'hello world', targetWidth: 8, maxExpectedWidth: 8 },
