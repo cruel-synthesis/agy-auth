@@ -39,6 +39,7 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 - Registry reads use no-follow descriptor validation so a path swap cannot bypass symlink rejection.
 - `doctor` uses no-follow descriptor validation when checking the registry.
 - Managed backups use no-follow descriptor validation and reject replaced source paths.
+- Account switching aborts and rolls back if Antigravity settings change after their snapshot.
 - Antigravity settings discovery uses no-follow descriptor validation and ignores swapped paths.
 - `doctor` uses no-follow descriptor validation when checking Antigravity settings.
 - OAuth token switch backups are classified as managed secrets, so retention and `clean` apply to them.

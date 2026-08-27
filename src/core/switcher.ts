@@ -16,6 +16,8 @@ interface FileSnapshot {
   readonly existed: boolean;
   readonly backupPath: string | null;
   readonly mode: number | null;
+  readonly device: number | null;
+  readonly inode: number | null;
 }
 
 const MANAGED_ENV_VARS = [
@@ -57,7 +59,14 @@ function captureFile(filePath: string, prefix: string, label: string): FileSnaps
   rejectSymlinkOrNonFile(filePath, label);
 
   if (!pathExists(filePath)) {
-    return { filePath, existed: false, backupPath: null, mode: null };
+    return {
+      filePath,
+      existed: false,
+      backupPath: null,
+      mode: null,
+      device: null,
+      inode: null,
+    };
   }
 
   const original = fs.lstatSync(filePath);
@@ -83,6 +92,8 @@ function captureFile(filePath: string, prefix: string, label: string): FileSnaps
     existed: true,
     backupPath,
     mode: original.mode & 0o7777,
+    device: original.dev,
+    inode: original.ino,
   };
 }
 
@@ -106,15 +117,44 @@ function restoreFile(snapshot: FileSnapshot): void {
   Storage.writeFileAtomic(snapshot.filePath, content, mode);
 }
 
-function readAntigravitySettings(settingsPath: string): AntigravitySettings {
-  if (!pathExists(settingsPath)) {
+function readAntigravitySettings(snapshot: FileSnapshot): AntigravitySettings {
+  if (!snapshot.existed) {
+    if (pathExists(snapshot.filePath)) {
+      throw new Error('Antigravity settings changed after its rollback snapshot was created.');
+    }
     return {};
   }
-  const raw = fs.readFileSync(settingsPath, 'utf-8');
-  if (!raw.trim()) {
-    return {};
+
+  let fd: number | null = null;
+  try {
+    const observed = fs.lstatSync(snapshot.filePath);
+    if (
+      observed.isSymbolicLink() ||
+      !observed.isFile() ||
+      observed.dev !== snapshot.device ||
+      observed.ino !== snapshot.inode
+    ) {
+      throw new Error('Antigravity settings changed after its rollback snapshot was created.');
+    }
+
+    const flags =
+      fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
+    fd = fs.openSync(snapshot.filePath, flags);
+    const opened = fs.fstatSync(fd);
+    if (!opened.isFile() || opened.dev !== snapshot.device || opened.ino !== snapshot.inode) {
+      throw new Error('Antigravity settings changed after its rollback snapshot was created.');
+    }
+
+    const raw = fs.readFileSync(fd, 'utf-8');
+    if (!raw.trim()) {
+      return {};
+    }
+    return JSON.parse(raw) as AntigravitySettings;
+  } finally {
+    if (fd !== null) {
+      fs.closeSync(fd);
+    }
   }
-  return JSON.parse(raw) as AntigravitySettings;
 }
 
 export class Switcher {
@@ -315,7 +355,7 @@ export class Switcher {
         fs.mkdirSync(settingsDir, { recursive: true, mode: 0o700 });
       }
 
-      const currentSettings = readAntigravitySettings(settingsPath);
+      const currentSettings = readAntigravitySettings(settingsSnapshot);
       const newSettings: AntigravitySettings = { ...currentSettings };
 
       if (canonical.gcpProject || canonical.gcpLocation) {

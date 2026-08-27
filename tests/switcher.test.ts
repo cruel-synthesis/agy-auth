@@ -271,6 +271,43 @@ describe('Switcher Transactional State Machine & Rollback', () => {
     }
   });
 
+  it('aborts if Antigravity settings are replaced after the rollback snapshot', () => {
+    if (process.platform === 'win32') return;
+
+    const originalSettings = { trustedWorkspaces: ['/safe/workspace'] };
+    const externalSettings = path.join(testEnv.dir, 'replacement-settings.json');
+    fs.writeFileSync(Paths.antigravitySettingsFile, JSON.stringify(originalSettings));
+    fs.writeFileSync(externalSettings, JSON.stringify({ injected: true }));
+
+    const registry = new RegistryManager();
+    const account = registry.addOrUpdateAccount({
+      email: 'settings-race@example.com',
+      authType: 'api-key',
+      credentials: { apiKey: 'synthetic-api-key' },
+      gcpProject: 'expected-project',
+    });
+
+    const createBackup = Storage.createBackup.bind(Storage);
+    let replaced = false;
+    vi.spyOn(Storage, 'createBackup').mockImplementation((sourcePath, prefix) => {
+      const backupPath = createBackup(sourcePath, prefix);
+      if (!replaced && path.resolve(sourcePath) === path.resolve(Paths.antigravitySettingsFile)) {
+        replaced = true;
+        fs.unlinkSync(Paths.antigravitySettingsFile);
+        fs.symlinkSync(externalSettings, Paths.antigravitySettingsFile);
+      }
+      return backupPath;
+    });
+
+    expect(() => Switcher.switchAccount(account)).toThrow(/settings.*changed/i);
+    expect(new RegistryManager().getActiveAccount()).toBeNull();
+    expect(fs.lstatSync(Paths.antigravitySettingsFile).isSymbolicLink()).toBe(false);
+    expect(JSON.parse(fs.readFileSync(Paths.antigravitySettingsFile, 'utf-8'))).toEqual(
+      originalSettings
+    );
+    expect(JSON.parse(fs.readFileSync(externalSettings, 'utf-8'))).toEqual({ injected: true });
+  });
+
   it('handles Keychain token backup and restoration for OAuth accounts', () => {
     const supportedSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
     const readSpy = vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
