@@ -39,11 +39,11 @@ agy-auth login --oauth-source keychain
 agy-auth login --oauth-source browser
 ```
 
-### Option C: Add via CLI Arguments
-Add a Gemini API key profile directly:
+### Option C: Add an API Key
+Add a Gemini API key through a masked prompt:
 
 ```bash
-agy-auth add --email developer@example.com --api-key AIzaSy_MOCK_GEMINI_KEY_FOR_DOCS_00000 --alias personal
+agy-auth add --api-key --email developer@example.com --alias personal
 ```
 
 ---

@@ -12,7 +12,7 @@ Overview of commands available in `agy-auth`.
 - [`details`](./details.md) (`info`): Show detailed metadata for a profile (`--offline`, `-j`)
 - [`login`](./login.md): Add or refresh a Google OAuth account
 - [`sync`](./sync.md): Import active Antigravity session or local ADC credentials (`--oauth-email`, `--adc-email`, `-y`, `-j`)
-- [`add`](./add.md): Add a credential profile non-interactively (`--api-key`, `--service-account`, `--adc`, etc.)
+- [`add`](./add.md): Add an API key, service-account, or ADC profile
 - [`remove`](./remove.md) (`rm`): Remove one or more profiles (`--all`, `-y`, `-j`)
 
 ---

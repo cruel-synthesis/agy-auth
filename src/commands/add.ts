@@ -1,6 +1,7 @@
+import { password } from '@inquirer/prompts';
 import { CredentialFiles } from '../core/credential-files.js';
 import { isEmail } from '../core/credential-validation.js';
-import { UsageError } from '../core/errors.js';
+import { CancellationError, UsageError } from '../core/errors.js';
 import { Paths } from '../core/paths.js';
 import { RegistryManager } from '../core/registry.js';
 import { AccountCredentials, AuthType, sanitizeAccount } from '../core/types.js';
@@ -10,7 +11,7 @@ import { colors } from '../ui/theme.js';
 const ALIAS_REGEX = /^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/;
 
 interface AddOptions {
-  apiKey?: string;
+  apiKey?: string | boolean;
   serviceAccount?: string;
   adc?: string | boolean;
   email?: string;
@@ -23,7 +24,7 @@ interface AddOptions {
 
 export async function addCommand(options: AddOptions): Promise<void> {
   const methodCount =
-    (options.apiKey ? 1 : 0) +
+    (options.apiKey !== undefined ? 1 : 0) +
     (options.serviceAccount ? 1 : 0) +
     (options.adc !== undefined ? 1 : 0);
 
@@ -45,9 +46,32 @@ export async function addCommand(options: AddOptions): Promise<void> {
   let credentials: AccountCredentials | undefined;
   let defaultProject = options.project?.trim();
 
-  if (options.apiKey) {
+  if (options.apiKey !== undefined) {
     authType = 'api-key';
-    const key = options.apiKey.trim();
+    let key: string;
+    if (typeof options.apiKey === 'string') {
+      key = options.apiKey.trim();
+    } else {
+      if (!process.stdin.isTTY) {
+        throw new UsageError(
+          'A value is required for --api-key in non-interactive mode. Run in a TTY for masked entry or pass --api-key <key>.'
+        );
+      }
+      try {
+        key = (
+          await password({
+            message: 'Gemini API key:',
+            mask: '*',
+            validate: (value) => (value.trim() ? true : 'API key cannot be empty.'),
+          })
+        ).trim();
+      } catch (error: unknown) {
+        if (error instanceof Error && error.name === 'ExitPromptError') {
+          throw new CancellationError();
+        }
+        throw error;
+      }
+    }
     if (!key) throw new UsageError('API key cannot be empty.');
     credentials = { apiKey: key };
 

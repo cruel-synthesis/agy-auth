@@ -7,6 +7,8 @@ const promptMockState = {
   selectChoices: [] as Array<{ name: string; value: string }>,
   selectCallCount: 0,
   inputCallCount: 0,
+  passwordCallCount: 0,
+  passwordValue: 'AIzaSyMaskedPromptKey',
   shouldCancelSelect: false,
 };
 
@@ -25,12 +27,16 @@ vi.mock('@inquirer/prompts', () => ({
     promptMockState.inputCallCount++;
     return 'default-input';
   }),
-  password: vi.fn(async () => 'default-pass'),
+  password: vi.fn(async () => {
+    promptMockState.passwordCallCount++;
+    return promptMockState.passwordValue;
+  }),
   confirm: vi.fn(async () => true),
   checkbox: vi.fn(async () => []),
 }));
 
 import { loginCommand } from '../src/commands/login.js';
+import { runCli } from '../src/cli.js';
 import * as antigravityStore from '../src/core/antigravity-store.js';
 import { CliError } from '../src/core/errors.js';
 import { KeychainManager } from '../src/core/keychain.js';
@@ -50,6 +56,8 @@ describe('First-run and OAuth onboarding behavior', () => {
     promptMockState.selectChoices = [];
     promptMockState.selectCallCount = 0;
     promptMockState.inputCallCount = 0;
+    promptMockState.passwordCallCount = 0;
+    promptMockState.passwordValue = 'AIzaSyMaskedPromptKey';
     promptMockState.shouldCancelSelect = false;
   });
 
@@ -97,6 +105,55 @@ describe('First-run and OAuth onboarding behavior', () => {
     expect(res.stdout).toContain('sync');
     expect(res.stdout).toContain('doctor');
     expect(res.stdout).toContain('agy-auth help --all');
+  });
+
+  it('adds an API key through a masked prompt when the option has no value', async () => {
+    const origTTY = process.stdin.isTTY;
+    process.stdin.isTTY = true;
+
+    try {
+      expect(
+        await runCli([
+          'node',
+          'agy-auth',
+          'add',
+          '--api-key',
+          '--email',
+          'masked-key@example.com',
+          '--alias',
+          'masked-key',
+        ])
+      ).toBe(0);
+    } finally {
+      process.stdin.isTTY = origTTY;
+    }
+
+    expect(promptMockState.passwordCallCount).toBe(1);
+    expect(new RegistryManager().findAccount('masked-key')?.credentials?.apiKey).toBe(
+      'AIzaSyMaskedPromptKey'
+    );
+  });
+
+  it('rejects value-less API-key input outside a TTY without prompting', async () => {
+    const origTTY = process.stdin.isTTY;
+    process.stdin.isTTY = false;
+
+    try {
+      expect(
+        await runCli([
+          'node',
+          'agy-auth',
+          'add',
+          '--api-key',
+          '--email',
+          'noninteractive@example.com',
+        ])
+      ).toBe(2);
+    } finally {
+      process.stdin.isTTY = origTTY;
+    }
+
+    expect(promptMockState.passwordCallCount).toBe(0);
   });
 
   it('offers OAuth login choices and imports the selected Antigravity session', async () => {

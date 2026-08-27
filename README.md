@@ -55,13 +55,13 @@ agy-auth login --oauth-source keychain
 agy-auth login --oauth-source browser
 ```
 
-Or add via command-line arguments:
+Or add an API key through a masked prompt:
 
 ```bash
-agy-auth add --email work@example.com --api-key AIzaSy_MOCK_GEMINI_KEY_FOR_DOCS_00000 --alias work
+agy-auth add --api-key --email work@example.com --alias work
 ```
 
-Command-line API keys can be retained in shell history or exposed to local process inspection. Clear the relevant history entry after use.
+For automation, `--api-key <key>` remains available, but command-line values can be retained in shell history or exposed to local process inspection.
 
 ### 3. List and Switch Profiles
 List your registered profiles and switch between them:

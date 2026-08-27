@@ -78,7 +78,7 @@
 | **Service Account** | Google Cloud Console IAM service account JSON | Stored in the registry; switching to the profile materializes `~/.agy-auth/accounts/<id>.json` (0600 on POSIX systems), which remains until that profile is removed |
 | **Application Default Credentials (ADC)** | `gcloud auth application-default login` | Path stored in the registry; switching a custom path copies its validated contents to the configured global ADC destination |
 
-For manual API-key entry, prefer the masked `agy-auth login` prompt. Supplying a key through `agy-auth add --api-key` can leave it in shell history or expose it to local process inspection.
+For manual API-key entry, use `agy-auth add --api-key` without a value to open a masked prompt. Supplying the key as `agy-auth add --api-key <key>` can leave it in shell history or expose it to local process inspection.
 
 ---
 

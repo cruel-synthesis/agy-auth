@@ -137,8 +137,8 @@ export function createCli(): Command {
   // add
   program
     .command('add')
-    .description('Add a credential profile non-interactively')
-    .option('--api-key <key>', 'Gemini API key')
+    .description('Add a credential profile')
+    .option('--api-key [key]', 'Gemini API key (omit value for masked entry)')
     .option('--service-account <path>', 'Path to Service Account JSON key file')
     .option('--adc [path]', 'Use Application Default Credentials (optional custom path)')
     .option('--email <email>', 'Account email address')
