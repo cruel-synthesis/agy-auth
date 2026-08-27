@@ -148,6 +148,22 @@ describe('Composite Antigravity Token Store Subsystem', () => {
     expect(result.payload).toBeUndefined();
   });
 
+  it('rejects an Antigravity token file larger than the credential size limit', () => {
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({ status: 'missing' });
+    const payload = JSON.stringify({
+      auth_method: 'consumer',
+      token: { access_token: 'oversized-token', refresh_token: '' },
+    });
+    fs.mkdirSync(path.dirname(Paths.antigravityTokenFile), { recursive: true });
+    fs.writeFileSync(Paths.antigravityTokenFile, `${payload}${' '.repeat(1024 * 1024)}`);
+
+    const result = readAntigravityToken();
+    expect(result.status).toBe('error');
+    expect(result.fileStatus).toBe('error');
+    expect(result.fileMessage).toContain('maximum size');
+    expect(result.payload).toBeUndefined();
+  });
+
   it('rejects token-file payloads with missing or whitespace-only authentication methods', () => {
     vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({ status: 'missing' });
     fs.mkdirSync(path.dirname(Paths.antigravityTokenFile), { recursive: true });

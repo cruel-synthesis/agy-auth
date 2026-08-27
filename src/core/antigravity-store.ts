@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { MAX_CREDENTIAL_FILE_SIZE } from './credential-files.js';
 import { KeychainManager, parseAgyKeychainPayload } from './keychain.js';
 import { Paths } from './paths.js';
 import { Storage } from './storage.js';
@@ -53,6 +54,12 @@ function readFileToken(): {
       return {
         status: 'error',
         message: 'Token path must be a regular file and not a symbolic link.',
+      };
+    }
+    if (stat.size > MAX_CREDENTIAL_FILE_SIZE) {
+      return {
+        status: 'error',
+        message: `Token file exceeds maximum size of ${MAX_CREDENTIAL_FILE_SIZE} bytes.`,
       };
     }
 
