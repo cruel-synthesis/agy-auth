@@ -52,6 +52,11 @@ export async function addCommand(options: AddOptions): Promise<void> {
     if (typeof options.apiKey === 'string') {
       key = options.apiKey.trim();
     } else {
+      if (options.json) {
+        throw new UsageError(
+          'A value is required for --api-key in JSON mode. Pass --api-key <key>.'
+        );
+      }
       if (!process.stdin.isTTY) {
         throw new UsageError(
           'A value is required for --api-key in non-interactive mode. Run in a TTY for masked entry or pass --api-key <key>.'

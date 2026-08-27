@@ -156,6 +156,29 @@ describe('First-run and OAuth onboarding behavior', () => {
     expect(promptMockState.passwordCallCount).toBe(0);
   });
 
+  it('rejects value-less API-key input in JSON mode without prompting', async () => {
+    const origTTY = process.stdin.isTTY;
+    process.stdin.isTTY = true;
+
+    try {
+      expect(
+        await runCli([
+          'node',
+          'agy-auth',
+          'add',
+          '--api-key',
+          '--email',
+          'json-mode@example.com',
+          '--json',
+        ])
+      ).toBe(2);
+    } finally {
+      process.stdin.isTTY = origTTY;
+    }
+
+    expect(promptMockState.passwordCallCount).toBe(0);
+  });
+
   it('offers OAuth login choices and imports the selected Antigravity session', async () => {
     vi.spyOn(os, 'platform').mockReturnValue('darwin');
     vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
