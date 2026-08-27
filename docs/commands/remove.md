@@ -18,4 +18,6 @@ Options:
 - `-j, --json`: Output removal result as JSON
 - `-h, --help`: Show this help
 
+Do not combine profile selectors with `--all`; the command rejects that ambiguous destructive request.
+
 Selectors are resolved before deletion to prevent indexing shifts. Removing the currently active profile clears the active profile pointer. Materialized service-account key files are cleaned up from `~/.agy-auth/accounts/`.

@@ -24,6 +24,10 @@ export async function removeCommand(
   selectors: string[] = [],
   options: RemoveOptions = {}
 ): Promise<void> {
+  if (options.all && selectors.length > 0) {
+    throw new UsageError('Do not combine profile selectors with --all.');
+  }
+
   const registry = new RegistryManager();
   const accounts = registry.getAccounts();
   const active = registry.getActiveAccount();

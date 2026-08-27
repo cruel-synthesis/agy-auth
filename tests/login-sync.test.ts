@@ -412,6 +412,27 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     }
   });
 
+  it('rejects combining profile selectors with remove --all without deleting anything', async () => {
+    const registry = new RegistryManager();
+    registry.addOrUpdateAccount({
+      email: 'remove-one@example.com',
+      alias: 'remove-one',
+      authType: 'api-key',
+      credentials: { apiKey: 'AIzaSy1' },
+    });
+    registry.addOrUpdateAccount({
+      email: 'keep-one@example.com',
+      alias: 'keep-one',
+      authType: 'api-key',
+      credentials: { apiKey: 'AIzaSy2' },
+    });
+
+    await expect(removeCommand(['remove-one'], { all: true, yes: true })).rejects.toBeInstanceOf(
+      UsageError
+    );
+    expect(new RegistryManager().getAccounts()).toHaveLength(2);
+  });
+
   it('confirms removal with interactive prompt and with --all flag', async () => {
     const registry = new RegistryManager();
     registry.addOrUpdateAccount({

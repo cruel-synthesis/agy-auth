@@ -23,6 +23,7 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 - On macOS, interactive login hands new-account sign-in to Antigravity and imports the resulting session instead of offering an unconfigured browser flow.
 - `add --api-key` supports masked TTY entry when the key value is omitted.
 - OAuth switching now aborts when the existing Keychain item cannot be snapshotted and reports failed Keychain rollback operations.
+- `remove` rejects selectors combined with `--all` instead of silently deleting every profile.
 
 ### Security
 
