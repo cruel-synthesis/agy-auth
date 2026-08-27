@@ -350,6 +350,45 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     }
   });
 
+  it('opens Antigravity sign-in and imports the resulting account', async () => {
+    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
+      status: 'found',
+      payload: {
+        auth_method: 'consumer',
+        token: {
+          access_token: 'official-antigravity-token',
+          refresh_token: '',
+          token_type: 'Bearer',
+        },
+      },
+    });
+    const openAntigravity = vi.fn(() => true);
+    const origTTY = process.stdin.isTTY;
+    process.stdin.isTTY = true;
+    mockState.selectValue = 'antigravity';
+
+    try {
+      await loginCommand(
+        {},
+        {
+          openAntigravity,
+          fetchFn: vi.fn(async () => {
+            return new Response(
+              JSON.stringify({ email: 'official-login@example.com', email_verified: true }),
+              { status: 200, headers: { 'content-type': 'application/json' } }
+            );
+          }) as unknown as typeof fetch,
+        }
+      );
+
+      expect(openAntigravity).toHaveBeenCalledOnce();
+      expect(new RegistryManager().findAccount('official-login@example.com')).toBeTruthy();
+    } finally {
+      process.stdin.isTTY = origTTY;
+    }
+  });
+
   it('cancels removal when interactive confirmation is declined in removeCommand', async () => {
     const registry = new RegistryManager();
     registry.addOrUpdateAccount({

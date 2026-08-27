@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import { input, select } from '@inquirer/prompts';
 import { readAntigravityToken } from '../core/antigravity-store.js';
@@ -5,6 +6,7 @@ import { isEmail } from '../core/credential-validation.js';
 import { CancellationError, CliError, UsageError } from '../core/errors.js';
 import { importKeychainOAuth } from '../core/keychain-import.js';
 import type { AgyKeychainPayload } from '../core/keychain.js';
+import { getOAuthClientConfig } from '../core/oauth-config.js';
 import { type AuthenticateOptions, OAuthFlow, type OAuthResult } from '../core/oauth.js';
 import { RegistryManager } from '../core/registry.js';
 import type { Account } from '../core/types.js';
@@ -14,6 +16,7 @@ import { colors } from '../ui/theme.js';
 const ALIAS_REGEX = /^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/;
 const ALLOWED_OAUTH_SOURCES = ['keychain', 'browser'] as const;
 type OAuthSource = (typeof ALLOWED_OAUTH_SOURCES)[number];
+type InteractiveOAuthSource = OAuthSource | 'antigravity';
 
 export interface LoginOptions {
   oauthSource?: string;
@@ -27,6 +30,7 @@ export interface LoginOptions {
 export interface LoginServices {
   authenticateOAuth?: (options?: AuthenticateOptions) => Promise<OAuthResult>;
   fetchFn?: typeof fetch;
+  openAntigravity?: () => boolean;
 }
 
 export function validateAliasInput(value: string): boolean | string {
@@ -47,15 +51,21 @@ function printSavedAccount(account: Account, isNew: boolean): void {
   );
 }
 
-async function chooseOAuthSource(): Promise<OAuthSource> {
+function openAntigravityApp(): boolean {
+  if (os.platform() !== 'darwin') return false;
+  const result = spawnSync('/usr/bin/open', ['-a', 'Antigravity IDE'], { stdio: 'ignore' });
+  return result.status === 0;
+}
+
+async function chooseOAuthSource(): Promise<InteractiveOAuthSource> {
   if (!process.stdin.isTTY) {
     throw new UsageError(
       'Interactive login requires a TTY. Pass `--oauth-source keychain` or `--oauth-source browser` explicitly.'
     );
   }
 
-  const hasAntigravitySession =
-    os.platform() === 'darwin' && readAntigravityToken().status === 'found';
+  const isMac = os.platform() === 'darwin';
+  const hasAntigravitySession = isMac && readAntigravityToken().status === 'found';
   const choices = [
     ...(hasAntigravitySession
       ? [
@@ -66,11 +76,26 @@ async function chooseOAuthSource(): Promise<OAuthSource> {
           },
         ]
       : []),
-    {
-      name: 'Sign in with Google in browser',
-      value: 'browser' as const,
-      description: 'Use a configured Google Desktop OAuth client',
-    },
+    ...(isMac
+      ? [
+          {
+            name: hasAntigravitySession
+              ? 'Sign in to another account through Antigravity'
+              : 'Sign in through Antigravity',
+            value: 'antigravity' as const,
+            description: 'Open Antigravity, complete Google sign-in, then import the session',
+          },
+        ]
+      : []),
+    ...(!isMac || getOAuthClientConfig()
+      ? [
+          {
+            name: 'Sign in with a custom OAuth client',
+            value: 'browser' as const,
+            description: 'Use AGY_OAUTH_CLIENT_ID for a direct browser login',
+          },
+        ]
+      : []),
   ];
 
   try {
@@ -84,6 +109,30 @@ async function chooseOAuthSource(): Promise<OAuthSource> {
     }
     throw error;
   }
+}
+
+async function signInThroughAntigravity(
+  options: LoginOptions,
+  services: LoginServices | undefined,
+  registry: RegistryManager
+): Promise<void> {
+  const opened = (services?.openAntigravity || openAntigravityApp)();
+  if (opened) {
+    console.log('\n  Complete Google sign-in in Antigravity, then return here.');
+  } else {
+    console.log('\n  Open Antigravity IDE and complete Google sign-in, then return here.');
+  }
+
+  try {
+    await input({ message: 'Press Enter after Antigravity sign-in is complete:' });
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'ExitPromptError') {
+      throw new CancellationError();
+    }
+    throw error;
+  }
+
+  await importCurrentAntigravityAccount(options, services, registry);
 }
 
 async function importCurrentAntigravityAccount(
@@ -212,6 +261,11 @@ export async function loginCommand(
 
   if (source === 'keychain') {
     await importCurrentAntigravityAccount(options, services, registry);
+    return;
+  }
+
+  if (source === 'antigravity') {
+    await signInThroughAntigravity(options, services, registry);
     return;
   }
 

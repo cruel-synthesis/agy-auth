@@ -45,7 +45,7 @@ agy-auth sync
 Add or refresh a Google OAuth account:
 
 ```bash
-# Choose current Antigravity session import or browser OAuth
+# Import the current Antigravity account or sign in through Antigravity
 agy-auth login
 
 # Import active Antigravity session from macOS Keychain (default on macOS, no client ID required)
@@ -105,6 +105,8 @@ This feature is **experimental** because it depends on undocumented upstream con
 
 - **macOS Keychain Session Import (Out-of-the-box)**:
   On macOS, running `agy-auth login` (or `agy-auth sync`) imports active Antigravity session tokens directly from the macOS Keychain. This flow verifies your identity via Google's `userinfo` endpoint using the access token and **does not require setting an OAuth client ID**.
+- **Another Google Account (Out-of-the-box on macOS)**:
+  Interactive `agy-auth login` can open Antigravity for Google sign-in and then import the resulting Keychain session. The sign-in itself is handled by Antigravity; `agy-auth` does not ship or impersonate an OAuth client.
 - **Custom Browser Sign-In**:
   To perform custom browser OAuth login (`agy-auth login --oauth-source browser`), you must configure your own Google Cloud Desktop OAuth Client ID:
 

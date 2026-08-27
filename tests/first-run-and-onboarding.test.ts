@@ -55,6 +55,7 @@ describe('First-run and OAuth onboarding behavior', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     testEnv.cleanup();
   });
 
@@ -133,7 +134,7 @@ describe('First-run and OAuth onboarding behavior', () => {
     expect(promptMockState.selectCallCount).toBe(1);
     expect(promptMockState.selectChoices.map((choice) => choice.value)).toEqual([
       'keychain',
-      'browser',
+      'antigravity',
     ]);
     expect(promptMockState.inputCallCount).toBe(0);
 
@@ -143,7 +144,7 @@ describe('First-run and OAuth onboarding behavior', () => {
     expect(accounts[0].email).toBe('auto-imported-user@example.com');
   });
 
-  it('offers browser OAuth when no Antigravity session is available', async () => {
+  it('offers official Antigravity sign-in when no session or custom OAuth client is available', async () => {
     vi.spyOn(os, 'platform').mockReturnValue('darwin');
     vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
       status: 'missing',
@@ -165,7 +166,34 @@ describe('First-run and OAuth onboarding behavior', () => {
 
     expect(promptMockState.selectCallCount).toBe(1);
     const values = promptMockState.selectChoices.map((c) => c.value);
-    expect(values).toEqual(['browser']);
+    expect(values).toEqual(['antigravity']);
+  });
+
+  it('offers custom browser OAuth only when a client ID is configured on macOS', async () => {
+    vi.spyOn(os, 'platform').mockReturnValue('darwin');
+    vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
+      status: 'missing',
+      keyringStatus: 'missing',
+      fileStatus: 'missing',
+    });
+    vi.stubEnv('AGY_OAUTH_CLIENT_ID', 'custom-client.apps.googleusercontent.com');
+
+    const origTTY = process.stdin.isTTY;
+    process.stdin.isTTY = true;
+    promptMockState.shouldCancelSelect = true;
+
+    try {
+      await loginCommand({});
+    } catch {
+      // Expected abort
+    } finally {
+      process.stdin.isTTY = origTTY;
+    }
+
+    expect(promptMockState.selectChoices.map((choice) => choice.value)).toEqual([
+      'antigravity',
+      'browser',
+    ]);
   });
 
   it('rejects Keychain import and offers browser OAuth on non-macOS', async () => {

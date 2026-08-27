@@ -33,7 +33,7 @@
 
    | Command | Default behaviour |
    |---|---|
-   | `agy-auth login` | Contacts Google userinfo when importing the current Antigravity session, or Google OAuth and token endpoints with `--oauth-source browser`. |
+   | `agy-auth login` | Contacts Google userinfo when importing an Antigravity session. Interactive macOS onboarding may open Antigravity, which performs its own Google sign-in. `--oauth-source browser` contacts Google OAuth and token endpoints. |
    | `agy-auth switch` | **Never** makes a network request. Renders cached plan and quota only. |
    | `agy-auth list` | Refreshes live plan and quota for the **active OAuth profile**. |
    | `agy-auth list --check` | Verifies selected profiles (API keys use Google's official models endpoint) and refreshes live plan and quota for **every selected OAuth profile** (at most 4 concurrent requests). |

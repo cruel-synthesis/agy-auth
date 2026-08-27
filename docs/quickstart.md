@@ -26,10 +26,10 @@ agy-auth sync
 ```
 
 ### Option B: Google Account Login
-Add or refresh an OAuth profile from your current macOS Antigravity session or a configured browser OAuth client:
+Add or refresh an OAuth profile from your current macOS Antigravity session, or sign in to another account through Antigravity:
 
 ```bash
-# Choose current Antigravity session import or browser OAuth
+# Import the current account or open Antigravity for another Google sign-in
 agy-auth login
 
 # Explicitly import active Antigravity session from macOS Keychain

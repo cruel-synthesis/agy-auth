@@ -20,6 +20,7 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 - Explicit `login --oauth-source keychain|browser` now enters the requested OAuth flow directly.
 - Login errors now reference only supported command-line options.
 - Interactive `login` is limited to Google OAuth; non-OAuth credentials remain under `add`.
+- On macOS, interactive login hands new-account sign-in to Antigravity and imports the resulting session instead of offering an unconfigured browser flow.
 
 ### Security
 
