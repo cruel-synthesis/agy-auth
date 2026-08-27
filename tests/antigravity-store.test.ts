@@ -347,7 +347,7 @@ describe('Composite Antigravity Token Store Subsystem', () => {
     // Mock setActiveAccount to fail to trigger rollback
     const setActiveSpy = vi
       .spyOn(RegistryManager.prototype, 'setActiveAccount')
-      .mockReturnValue(false);
+      .mockReturnValue(null);
 
     try {
       expect(() => Switcher.switchAccount(targetAccount)).toThrow(/rolled back/);

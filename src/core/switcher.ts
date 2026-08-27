@@ -454,7 +454,8 @@ export class Switcher {
         adcUpdated = true;
       }
 
-      if (!registry.setActiveAccount(canonical.id, canonical.updatedAt)) {
+      const activated = registry.setActiveAccount(canonical.id, canonical.updatedAt);
+      if (!activated) {
         throw new Error(
           `Profile '${canonical.email}' changed or was removed during the switch; external changes were rolled back.`
         );
@@ -462,7 +463,7 @@ export class Switcher {
 
       return {
         previousAccount: previous ? sanitizeAccount(previous) : null,
-        currentAccount: sanitizeAccount(canonical),
+        currentAccount: sanitizeAccount(activated),
         antigravityUpdated,
         adcUpdated,
         requiresShellUpdate: true,

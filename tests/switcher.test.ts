@@ -97,6 +97,22 @@ describe('Switcher Transactional State Machine & Rollback', () => {
     expect(cleanedSettings.model).toBeUndefined();
   });
 
+  it('returns the post-activation registry state in SwitchResult', () => {
+    const registry = new RegistryManager();
+    const account = registry.addOrUpdateAccount({
+      email: 'result-state@example.com',
+      authType: 'api-key',
+      credentials: { apiKey: 'synthetic-api-key' },
+    });
+
+    const result = Switcher.switchAccount(account);
+    const persisted = new RegistryManager().getActiveAccount();
+
+    expect(persisted).not.toBeNull();
+    expect(result.currentAccount.updatedAt).toBe(persisted?.updatedAt);
+    expect(result.currentAccount.lastUsedAt).toBe(persisted?.lastUsedAt);
+  });
+
   it('fails preflight and performs no external mutations if credential payload is invalid or file missing', () => {
     const registry = new RegistryManager();
 
@@ -258,7 +274,7 @@ describe('Switcher Transactional State Machine & Rollback', () => {
     // Simulate failure during setActiveAccount
     const setActiveSpy = vi
       .spyOn(RegistryManager.prototype, 'setActiveAccount')
-      .mockReturnValue(false);
+      .mockReturnValue(null);
 
     try {
       expect(() => Switcher.switchAccount(acc2)).toThrow(/external changes were rolled back/);
@@ -384,7 +400,7 @@ describe('Switcher Transactional State Machine & Rollback', () => {
       },
     });
     vi.spyOn(KeychainManager, 'writeAgyToken').mockReturnValueOnce(true).mockReturnValueOnce(false);
-    vi.spyOn(RegistryManager.prototype, 'setActiveAccount').mockReturnValue(false);
+    vi.spyOn(RegistryManager.prototype, 'setActiveAccount').mockReturnValue(null);
 
     const registry = new RegistryManager();
     const account = registry.addOrUpdateAccount({
@@ -437,7 +453,7 @@ describe('Switcher Transactional State Machine & Rollback', () => {
       if (!settingsBackup) throw new Error('Settings backup was not captured.');
       fs.unlinkSync(settingsBackup);
       fs.symlinkSync(externalFile, settingsBackup);
-      return false;
+      return null;
     });
 
     expect(() => Switcher.switchAccount(target)).toThrow(/Rollback also failed:.*backup.*changed/i);
@@ -491,7 +507,7 @@ describe('Switcher Transactional State Machine & Rollback', () => {
     // Mock setActiveAccount to fail and unlinkSync in rollback to fail only for settings
     const setActiveSpy = vi
       .spyOn(RegistryManager.prototype, 'setActiveAccount')
-      .mockReturnValue(false);
+      .mockReturnValue(null);
     const originalUnlink = fs.unlinkSync.bind(fs);
     const unlinkSpy = vi.spyOn(fs, 'unlinkSync').mockImplementation((targetPath: fs.PathLike) => {
       if (typeof targetPath === 'string' && targetPath.includes('settings.json')) {

@@ -371,15 +371,15 @@ export class RegistryManager {
   /**
    * Set the active account ID with history tracking and optimistic concurrency verification.
    */
-  public setActiveAccount(id: string, expectedUpdatedAt?: number): boolean {
+  public setActiveAccount(id: string, expectedUpdatedAt?: number): Account | null {
     return this.syncMutate((draft) => {
       const acc = draft.accounts.find((a) => a.id === id);
-      if (!acc) return false;
+      if (!acc) return null;
       if (expectedUpdatedAt !== undefined && acc.updatedAt !== expectedUpdatedAt) {
-        return false;
+        return null;
       }
 
-      if (draft.activeAccountId === id) return true;
+      if (draft.activeAccountId === id) return clone(acc);
 
       const previous = draft.activeAccountId;
       draft.activeAccountId = id;
@@ -387,7 +387,7 @@ export class RegistryManager {
 
       acc.lastUsedAt = Date.now();
       acc.updatedAt = nextTimestamp(acc.updatedAt);
-      return true;
+      return clone(acc);
     });
   }
 
