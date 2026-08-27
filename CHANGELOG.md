@@ -37,6 +37,7 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 - Antigravity token-file reads use no-follow descriptor validation so a path swap cannot bypass symlink rejection.
 - Antigravity token-file reads reject files larger than the 1 MiB credential limit.
 - Registry reads use no-follow descriptor validation so a path swap cannot bypass symlink rejection.
+- `doctor` uses no-follow descriptor validation when checking the registry.
 - Antigravity settings discovery uses no-follow descriptor validation and ignores swapped paths.
 - `doctor` uses no-follow descriptor validation when checking Antigravity settings.
 - OAuth token switch backups are classified as managed secrets, so retention and `clean` apply to them.

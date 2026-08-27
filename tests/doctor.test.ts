@@ -223,6 +223,48 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
     await expect(doctorCommand({ offline: true, json: true })).rejects.toThrow(CliError);
   });
 
+  it('fails if registry.json is replaced by a symbolic link during diagnostics', async () => {
+    if (process.platform === 'win32') return;
+
+    const registryFile = Paths.registryFile;
+    const externalRegistry = path.join(testEnv.dir, 'doctor-race-registry.json');
+    const emptyRegistry = {
+      schemaVersion: 2,
+      activeAccountId: null,
+      previousAccountId: null,
+      accounts: [],
+      settings: { defaultLocation: 'global' },
+    };
+    fs.writeFileSync(registryFile, JSON.stringify(emptyRegistry));
+    fs.writeFileSync(externalRegistry, JSON.stringify(emptyRegistry));
+
+    const originalLstat = fs.lstatSync.bind(fs);
+    const lstatSpy = vi.spyOn(fs, 'lstatSync').mockImplementation((filePath, options) => {
+      const stat = originalLstat(filePath, options as never);
+      if (path.resolve(String(filePath)) === path.resolve(registryFile)) {
+        fs.unlinkSync(registryFile);
+        fs.symlinkSync(externalRegistry, registryFile);
+      }
+      return stat as never;
+    });
+
+    try {
+      await expect(doctorCommand({ offline: true, json: true })).rejects.toMatchObject({
+        code: 'doctor_failed',
+        details: {
+          checks: expect.arrayContaining([
+            expect.objectContaining({
+              name: 'Registry Schema & Integrity',
+              status: 'fail',
+            }),
+          ]),
+        },
+      });
+    } finally {
+      lstatSpy.mockRestore();
+    }
+  });
+
   it('evaluates Keychain, Antigravity settings, ADC, and network reachability', async () => {
     // 1. Keychain found & settings valid & ADC valid & Network success
     const isSupportedSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);

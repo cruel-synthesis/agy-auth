@@ -80,6 +80,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
   }
 
   // 2. Check registry file and schema (strictly read-only)
+  let registryFd: number | null = null;
   try {
     const legacyPath = path.join(Paths.authHome, 'accounts.json');
     if (!fs.existsSync(Paths.registryFile)) {
@@ -118,7 +119,15 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
           });
         }
 
-        const raw = fs.readFileSync(Paths.registryFile, 'utf-8');
+        const flags =
+          fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
+        registryFd = fs.openSync(Paths.registryFile, flags);
+        const openedStat = fs.fstatSync(registryFd);
+        if (!openedStat.isFile() || openedStat.dev !== stat.dev || openedStat.ino !== stat.ino) {
+          throw new Error('registry.json changed while it was being opened.');
+        }
+
+        const raw = fs.readFileSync(registryFd, 'utf-8');
         let parsed: unknown;
         try {
           parsed = JSON.parse(raw);
@@ -181,6 +190,10 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
       status: 'fail',
       message: err instanceof Error ? err.message : String(err),
     });
+  } finally {
+    if (registryFd !== null) {
+      fs.closeSync(registryFd);
+    }
   }
 
   // 3. Check Antigravity session token storage (composite store)
