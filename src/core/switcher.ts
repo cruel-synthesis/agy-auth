@@ -18,6 +18,8 @@ interface FileSnapshot {
   readonly mode: number | null;
   readonly device: number | null;
   readonly inode: number | null;
+  readonly backupDevice: number | null;
+  readonly backupInode: number | null;
 }
 
 const MANAGED_ENV_VARS = [
@@ -66,6 +68,8 @@ function captureFile(filePath: string, prefix: string, label: string): FileSnaps
       mode: null,
       device: null,
       inode: null,
+      backupDevice: null,
+      backupInode: null,
     };
   }
 
@@ -80,8 +84,18 @@ function captureFile(filePath: string, prefix: string, label: string): FileSnaps
     throw new Error(`Backup for ${label} '${filePath}' is not a regular file. Switch aborted.`);
   }
 
-  const backupFd = fs.openSync(backupPath, 'r');
+  const backupFlags =
+    fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
+  const backupFd = fs.openSync(backupPath, backupFlags);
   try {
+    const openedBackup = fs.fstatSync(backupFd);
+    if (
+      !openedBackup.isFile() ||
+      openedBackup.dev !== backup.dev ||
+      openedBackup.ino !== backup.ino
+    ) {
+      throw new Error(`Backup for ${label} '${filePath}' changed while it was being opened.`);
+    }
     fs.fsyncSync(backupFd);
   } finally {
     fs.closeSync(backupFd);
@@ -94,6 +108,8 @@ function captureFile(filePath: string, prefix: string, label: string): FileSnaps
     mode: original.mode & 0o7777,
     device: original.dev,
     inode: original.ino,
+    backupDevice: backup.dev,
+    backupInode: backup.ino,
   };
 }
 
@@ -108,12 +124,46 @@ function restoreFile(snapshot: FileSnapshot): void {
     return;
   }
 
-  if (!snapshot.backupPath || !pathExists(snapshot.backupPath)) {
+  if (
+    !snapshot.backupPath ||
+    snapshot.backupDevice === null ||
+    snapshot.backupInode === null ||
+    !pathExists(snapshot.backupPath)
+  ) {
     throw new Error(`Rollback backup is missing for '${snapshot.filePath}'.`);
   }
 
   const mode = snapshot.mode !== null ? snapshot.mode : 0o600;
-  const content = fs.readFileSync(snapshot.backupPath);
+  const observedBackup = fs.lstatSync(snapshot.backupPath);
+  if (
+    observedBackup.isSymbolicLink() ||
+    !observedBackup.isFile() ||
+    observedBackup.dev !== snapshot.backupDevice ||
+    observedBackup.ino !== snapshot.backupInode
+  ) {
+    throw new Error(`Rollback backup changed for '${snapshot.filePath}'.`);
+  }
+
+  let backupFd: number | null = null;
+  let content: Buffer;
+  try {
+    const flags =
+      fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
+    backupFd = fs.openSync(snapshot.backupPath, flags);
+    const openedBackup = fs.fstatSync(backupFd);
+    if (
+      !openedBackup.isFile() ||
+      openedBackup.dev !== snapshot.backupDevice ||
+      openedBackup.ino !== snapshot.backupInode
+    ) {
+      throw new Error(`Rollback backup changed for '${snapshot.filePath}'.`);
+    }
+    content = fs.readFileSync(backupFd);
+  } finally {
+    if (backupFd !== null) {
+      fs.closeSync(backupFd);
+    }
+  }
   Storage.writeFileAtomic(snapshot.filePath, content, mode);
 }
 

@@ -403,6 +403,50 @@ describe('Switcher Transactional State Machine & Rollback', () => {
     );
   });
 
+  it('rejects a replaced rollback backup instead of restoring unrelated content', () => {
+    if (process.platform === 'win32') return;
+
+    const registry = new RegistryManager();
+    const initial = registry.addOrUpdateAccount({
+      email: 'rollback-initial@example.com',
+      authType: 'api-key',
+      credentials: { apiKey: 'initial-api-key' },
+      gcpProject: 'initial-project',
+    });
+    Switcher.switchAccount(initial);
+
+    const target = registry.addOrUpdateAccount({
+      email: 'rollback-target@example.com',
+      authType: 'api-key',
+      credentials: { apiKey: 'target-api-key' },
+      gcpProject: 'target-project',
+    });
+    const externalFile = path.join(testEnv.dir, 'replacement-backup.json');
+    fs.writeFileSync(externalFile, JSON.stringify({ injected: true }));
+
+    const createBackup = Storage.createBackup.bind(Storage);
+    let settingsBackup: string | null = null;
+    vi.spyOn(Storage, 'createBackup').mockImplementation((sourcePath, prefix) => {
+      const backupPath = createBackup(sourcePath, prefix);
+      if (path.resolve(sourcePath) === path.resolve(Paths.antigravitySettingsFile)) {
+        settingsBackup = backupPath;
+      }
+      return backupPath;
+    });
+    vi.spyOn(RegistryManager.prototype, 'setActiveAccount').mockImplementation(() => {
+      if (!settingsBackup) throw new Error('Settings backup was not captured.');
+      fs.unlinkSync(settingsBackup);
+      fs.symlinkSync(externalFile, settingsBackup);
+      return false;
+    });
+
+    expect(() => Switcher.switchAccount(target)).toThrow(/Rollback also failed:.*backup.*changed/i);
+    expect(JSON.parse(fs.readFileSync(Paths.antigravitySettingsFile, 'utf-8'))).toEqual({
+      gcp: { project: 'target-project' },
+    });
+    expect(JSON.parse(fs.readFileSync(externalFile, 'utf-8'))).toEqual({ injected: true });
+  });
+
   it('handles switching to default ADC path and preserving custom settings fields', () => {
     const registry = new RegistryManager();
     // Default ADC file
