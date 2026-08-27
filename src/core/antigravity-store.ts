@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { KeychainManager } from './keychain.js';
+import { KeychainManager, parseAgyKeychainPayload } from './keychain.js';
 import { Paths } from './paths.js';
 import { Storage } from './storage.js';
-import { type KeychainPayload, KeychainPayloadSchema } from './types.js';
+import type { KeychainPayload } from './types.js';
 
 export type TokenStoreSource = 'keyring' | 'file';
 
@@ -54,15 +54,14 @@ function readFileToken(): {
     }
 
     const json: unknown = JSON.parse(content);
-    const parseResult = KeychainPayloadSchema.safeParse(json);
-    if (!parseResult.success) {
+    const payload = parseAgyKeychainPayload(json);
+    if (!payload) {
       return {
         status: 'error',
         message: 'Token file contains invalid or corrupted payload structure.',
       };
     }
 
-    const payload = parseResult.data;
     return {
       status: 'found',
       payload,

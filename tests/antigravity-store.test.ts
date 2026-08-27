@@ -126,6 +126,23 @@ describe('Composite Antigravity Token Store Subsystem', () => {
     expect(result.payload?.token.access_token).toBe('fallback-file-token');
   });
 
+  it('rejects token-file payloads with missing or whitespace-only authentication methods', () => {
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({ status: 'missing' });
+    fs.mkdirSync(path.dirname(Paths.antigravityTokenFile), { recursive: true });
+
+    for (const authMethod of [undefined, '   ', '\t\n ']) {
+      const payload = {
+        ...(authMethod === undefined ? {} : { auth_method: authMethod }),
+        token: { access_token: 'synthetic-file-token', refresh_token: '' },
+      };
+      fs.writeFileSync(Paths.antigravityTokenFile, JSON.stringify(payload));
+
+      const result = readAntigravityToken();
+      expect(result.status).toBe('error');
+      expect(result.fileStatus).toBe('error');
+    }
+  });
+
   it('uses available half and surfaces warning when the other half is unparseable', () => {
     vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
     vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
