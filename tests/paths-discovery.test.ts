@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Discovery } from '../src/core/discovery.js';
 import { Paths } from '../src/core/paths.js';
 import { generateSyntheticPrivateKey, setupTestEnvironment, TestEnv } from './test-utils.js';
@@ -13,6 +13,7 @@ describe('Paths and Discovery Subsystems', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     testEnv.cleanup();
   });
 
@@ -91,6 +92,27 @@ describe('Paths and Discovery Subsystems', () => {
 
       expect(Discovery.readAntigravitySettings()).toBeNull();
     }
+  });
+
+  it('rejects settings replaced by a symbolic link between validation and read', () => {
+    if (process.platform === 'win32') return;
+
+    const settingsFile = Paths.antigravitySettingsFile;
+    const externalSettings = path.join(testEnv.dir, 'race-settings.json');
+    fs.writeFileSync(settingsFile, JSON.stringify({ model: 'original-model' }));
+    fs.writeFileSync(externalSettings, JSON.stringify({ model: 'linked-model' }));
+
+    const originalLstat = fs.lstatSync.bind(fs);
+    vi.spyOn(fs, 'lstatSync').mockImplementation((filePath, options) => {
+      const stat = originalLstat(filePath, options as never);
+      if (path.resolve(String(filePath)) === path.resolve(settingsFile)) {
+        fs.unlinkSync(settingsFile);
+        fs.symlinkSync(externalSettings, settingsFile);
+      }
+      return stat as never;
+    });
+
+    expect(Discovery.readAntigravitySettings()).toBeNull();
   });
 
   it('discovers ADC credentials for Service Account and OAuth users', () => {

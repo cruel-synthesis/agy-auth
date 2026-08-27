@@ -61,13 +61,25 @@ export class Discovery {
     const settingsPath = Paths.antigravitySettingsFile;
     if (!fs.existsSync(settingsPath)) return null;
 
+    let fd: number | null = null;
     try {
       const stat = fs.lstatSync(settingsPath);
       if (stat.isSymbolicLink() || !stat.isFile()) return null;
-      const raw = fs.readFileSync(settingsPath, 'utf-8');
+      const flags =
+        fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
+      fd = fs.openSync(settingsPath, flags);
+      const openedStat = fs.fstatSync(fd);
+      if (!openedStat.isFile() || openedStat.dev !== stat.dev || openedStat.ino !== stat.ino) {
+        return null;
+      }
+      const raw = fs.readFileSync(fd, 'utf-8');
       return JSON.parse(raw) as AntigravitySettings;
     } catch {
       return null;
+    } finally {
+      if (fd !== null) {
+        fs.closeSync(fd);
+      }
     }
   }
 }
