@@ -108,7 +108,7 @@ export async function loginCommand(
       } else {
         if (os.platform() !== 'darwin') {
           throw new CliError(
-            'Antigravity OAuth is only supported on macOS. On this platform, use API key, service account, or ADC profiles (`--method api-key`, `--method service-account`, or `--method adc`).',
+            'Antigravity Keychain import is only supported on macOS. Use `--oauth-source browser` for browser OAuth or `agy-auth add` for non-OAuth credentials.',
             'unsupported_platform',
             1
           );
@@ -151,7 +151,7 @@ export async function loginCommand(
 
     if (!process.stdin.isTTY) {
       throw new UsageError(
-        'Interactive login is only supported in a TTY environment. Use `agy-auth add` for scripts and automation or specify `--method`.'
+        'Interactive login requires a TTY. Pass `--oauth-source keychain` or `--oauth-source browser` explicitly.'
       );
     }
 

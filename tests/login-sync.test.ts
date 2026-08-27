@@ -113,7 +113,9 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     const origTTY = process.stdin.isTTY;
     process.stdin.isTTY = false;
     try {
-      await expect(loginCommand()).rejects.toThrow(UsageError);
+      await expect(loginCommand()).rejects.toThrow(
+        'Pass `--oauth-source keychain` or `--oauth-source browser` explicitly.'
+      );
     } finally {
       process.stdin.isTTY = origTTY;
     }

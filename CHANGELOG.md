@@ -18,6 +18,7 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 ### Fixed
 
 - Explicit `login --oauth-source keychain|browser` now enters the requested OAuth flow directly.
+- Login errors now reference only supported command-line options.
 
 ### Security
 
