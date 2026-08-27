@@ -182,7 +182,6 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     try {
       await loginCommand(
         {
-          method: 'oauth',
           oauthSource: 'browser',
           alias: 'browser-oauth',
           project: 'oauth-project',

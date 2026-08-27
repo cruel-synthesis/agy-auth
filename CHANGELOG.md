@@ -15,6 +15,10 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 - Versioned JSON output and exit codes for automation.
 - Export, import, migration, diagnostics, and profile configuration commands.
 
+### Fixed
+
+- Explicit `login --oauth-source keychain|browser` now enters the requested OAuth flow directly.
+
 ### Security
 
 - Restricted POSIX file modes, registry locking, symlink rejection, credential-file size limits, and credential redaction in profile and status output.

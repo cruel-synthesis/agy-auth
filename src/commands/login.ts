@@ -96,7 +96,10 @@ export async function loginCommand(
   let chosenMethod: AuthMethod | undefined;
   let chosenOAuthSource: OAuthSource | undefined;
 
-  if (options.method) {
+  if (!options.method && options.oauthSource) {
+    chosenMethod = 'oauth';
+    chosenOAuthSource = options.oauthSource.toLowerCase() as OAuthSource;
+  } else if (options.method) {
     const normMethod = options.method.toLowerCase() as AuthMethod;
     if (normMethod === 'oauth') {
       chosenMethod = 'oauth';
