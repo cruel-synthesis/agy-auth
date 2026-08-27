@@ -260,6 +260,37 @@ describe('OAuthFlow', () => {
     expect(result.email).toBe('user@example.com');
   });
 
+  it('processes only one valid callback when duplicate requests arrive together', async () => {
+    let tokenExchangeCount = 0;
+    const fetchFn = vi.fn(async (input: string | URL | Request) => {
+      if (String(input) === 'https://oauth2.googleapis.com/token') {
+        tokenExchangeCount += 1;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        return new Response(JSON.stringify({ access_token: 'synthetic-token' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ email: 'user@example.com', email_verified: true }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+
+    await OAuthFlow.authenticate({
+      env: { AGY_OAUTH_CLIENT_ID: 'test-client' },
+      fetchFn: fetchFn as unknown as typeof fetch,
+      timeoutMs: 2_000,
+      openBrowserFn: (url) => {
+        visitCallback(url);
+        visitCallback(url);
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(tokenExchangeCount).toBe(1);
+  });
+
   it('defaultOpenBrowser does not throw on invalid system commands', () => {
     expect(() => defaultOpenBrowser('https://example.com')).not.toThrow();
   });

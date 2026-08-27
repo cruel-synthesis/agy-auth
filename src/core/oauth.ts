@@ -118,6 +118,7 @@ export class OAuthFlow {
       const state = crypto.randomBytes(16).toString('hex');
 
       let isFinished = false;
+      let callbackInProgress = false;
 
       const finish = (callback: () => void) => {
         if (isFinished) return;
@@ -148,6 +149,18 @@ export class OAuthFlow {
               'X-Content-Type-Options': 'nosniff',
             });
             res.end('Not found');
+            return;
+          }
+
+          if (isFinished || callbackInProgress) {
+            res.writeHead(409, SECURITY_HEADERS);
+            res.end(
+              renderHtml(
+                'Authentication In Progress',
+                'OAuth Callback Already Received',
+                'Return to your terminal to complete sign-in.'
+              )
+            );
             return;
           }
 
@@ -202,6 +215,8 @@ export class OAuthFlow {
             finish(() => reject(new CliError('Missing OAuth authorization code.')));
             return;
           }
+
+          callbackInProgress = true;
 
           const port = (server.address() as import('node:net').AddressInfo)?.port;
           const redirectUri = `http://127.0.0.1:${port}/auth/callback`;

@@ -27,6 +27,7 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 - The machine-readable interface documentation now includes `sync --json`.
 - Composite Antigravity session failures use the accurate `session_store_error` code and wording.
 - Interactive login detects file-backed Antigravity sessions on every platform and never offers an unconfigured browser flow.
+- Browser OAuth processes only one valid loopback callback and ignores concurrent duplicates.
 
 ### Security
 
