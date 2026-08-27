@@ -47,6 +47,18 @@ jobs:
             exit 1
           fi
 
+          if ! git show-ref --verify --quiet "refs/tags/${input_tag}"; then
+            echo "ERROR: '${input_tag}' is not an exact Git tag."
+            exit 1
+          fi
+
+          head_commit="$(git rev-parse HEAD)"
+          tag_commit="$(git rev-parse "refs/tags/${input_tag}^{commit}")"
+          if [ "${head_commit}" != "${tag_commit}" ]; then
+            echo "ERROR: Checked-out commit '${head_commit}' does not match tag '${input_tag}' (${tag_commit})."
+            exit 1
+          fi
+
       - name: Run verification checks
         run: npm run check
 
