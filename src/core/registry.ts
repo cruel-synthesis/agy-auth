@@ -135,7 +135,32 @@ export class RegistryManager {
       );
     }
 
-    const raw = fs.readFileSync(registryFile, 'utf-8');
+    let registryFd: number | null = null;
+    let raw: string;
+    try {
+      const flags =
+        fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
+      registryFd = fs.openSync(registryFile, flags);
+      const openedStat = fs.fstatSync(registryFd);
+      if (
+        !openedStat.isFile() ||
+        openedStat.dev !== registryStat.dev ||
+        openedStat.ino !== registryStat.ino
+      ) {
+        throw new Error('Registry file changed while it was being opened.');
+      }
+      raw = fs.readFileSync(registryFd, 'utf-8');
+    } catch (err: unknown) {
+      const cause =
+        err && typeof err === 'object' && 'code' in err && err.code === 'ELOOP'
+          ? new Error('Registry path must be a regular file and must not be a symbolic link.')
+          : err;
+      throw new CorruptedRegistryError(registryFile, null, cause);
+    } finally {
+      if (registryFd !== null) {
+        fs.closeSync(registryFd);
+      }
+    }
     if (!raw.trim()) {
       const backupPath = Storage.createBackup(registryFile, 'corrupt_registry_emergency');
       throw new CorruptedRegistryError(

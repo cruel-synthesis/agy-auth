@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import stringWidth from 'string-width';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { escapePosix } from '../src/commands/env.js';
 import { CredentialFiles } from '../src/core/credential-files.js';
 import { Paths } from '../src/core/paths.js';
@@ -19,6 +19,7 @@ describe('Security & Sanitization', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     testEnv.cleanup();
   });
 
@@ -129,5 +130,33 @@ describe('Security & Sanitization', () => {
 
     // Verify damaged file was not wiped
     expect(fs.readFileSync(regFile, 'utf-8')).toBe('{ corrupt json !!!');
+  });
+
+  it('rejects registry replacement by a symbolic link between validation and read', () => {
+    if (process.platform === 'win32') return;
+
+    const registryFile = Paths.registryFile;
+    const externalRegistry = path.join(testEnv.dir, 'external-registry.json');
+    const emptyRegistry = {
+      schemaVersion: 2,
+      activeAccountId: null,
+      previousAccountId: null,
+      accounts: [],
+      settings: { defaultLocation: 'global' },
+    };
+    fs.writeFileSync(registryFile, JSON.stringify(emptyRegistry));
+    fs.writeFileSync(externalRegistry, JSON.stringify(emptyRegistry));
+
+    const originalLstat = fs.lstatSync.bind(fs);
+    vi.spyOn(fs, 'lstatSync').mockImplementation((filePath, options) => {
+      const stat = originalLstat(filePath, options as never);
+      if (path.resolve(String(filePath)) === path.resolve(registryFile)) {
+        fs.unlinkSync(registryFile);
+        fs.symlinkSync(externalRegistry, registryFile);
+      }
+      return stat as never;
+    });
+
+    expect(() => new RegistryManager()).toThrow(CorruptedRegistryError);
   });
 });
