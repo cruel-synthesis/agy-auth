@@ -159,4 +159,22 @@ describe('Storage and Concurrency Subsystem', () => {
     // createBackup on non-existent source
     expect(Storage.createBackup(path.join(testEnv.dir, 'missing-source.json'), 'pfx')).toBeNull();
   });
+
+  it('classifies and rotates OAuth token switch backups as managed secrets', () => {
+    expect(
+      isManagedBackupFileName('switch_token_token.json_2026-01-01T00-00-00-000Z_deadbeef')
+    ).toBe(true);
+
+    const tokenFile = path.join(testEnv.dir, 'token.json');
+    fs.writeFileSync(tokenFile, JSON.stringify({ access_token: 'synthetic-token' }));
+
+    for (let i = 0; i < 15; i++) {
+      expect(Storage.createBackup(tokenFile, 'switch_token')).toBeTruthy();
+    }
+
+    const tokenBackups = fs
+      .readdirSync(Paths.backupsDir)
+      .filter((name) => name.startsWith('switch_token_'));
+    expect(tokenBackups.length).toBeLessThanOrEqual(10);
+  });
 });

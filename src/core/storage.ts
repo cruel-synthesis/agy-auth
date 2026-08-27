@@ -8,6 +8,7 @@ export const MAX_BACKUP_RETENTION = 10;
 export const MANAGED_BACKUP_PREFIXES = [
   'schema_1_migration',
   'corrupt_registry_emergency',
+  'switch_token',
   'switch_settings',
   'switch_adc',
   'switch_sa',
