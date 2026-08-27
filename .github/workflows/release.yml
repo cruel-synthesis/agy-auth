@@ -31,7 +31,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Use an npm CLI with trusted-publishing support
-        run: npm install --global npm@11.5.1
+        run: npm install --global npm@11.19.1
 
       - name: Install Dependencies
         run: npm ci
