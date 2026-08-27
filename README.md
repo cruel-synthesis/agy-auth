@@ -41,11 +41,11 @@ Discover credentials already configured in your macOS Keychain or Google Cloud A
 agy-auth sync
 ```
 
-### 2. Add or Refresh Profiles Interactively
-Add credentials via the interactive terminal prompt or CLI options:
+### 2. Add or Refresh Profiles
+Add or refresh a Google OAuth account:
 
 ```bash
-# Interactive onboarding (Antigravity Keychain OAuth, Custom Browser OAuth, API Key, Service Account, or ADC)
+# Choose current Antigravity session import or browser OAuth
 agy-auth login
 
 # Import active Antigravity session from macOS Keychain (default on macOS, no client ID required)
@@ -58,10 +58,10 @@ agy-auth login --oauth-source browser
 Or add via command-line arguments:
 
 ```bash
-agy-auth add --email work@example.com --api-key <gemini-api-key> --alias work
+agy-auth add --email work@example.com --api-key AIzaSy_MOCK_GEMINI_KEY_FOR_DOCS_00000 --alias work
 ```
 
-For a real API key, prefer the masked `agy-auth login` prompt. Command-line arguments can be retained in shell history or exposed to local process inspection.
+Command-line API keys can be retained in shell history or exposed to local process inspection. Clear the relevant history entry after use.
 
 ### 3. List and Switch Profiles
 List your registered profiles and switch between them:
@@ -139,7 +139,7 @@ Invoke-Expression (agy-auth env --shell powershell)
 | `agy-auth -` | Switch to the previously active profile |
 | `agy-auth current` | Display details for the currently active profile (`--offline`, `--json`); refreshes live quota by default |
 | `agy-auth details [selector]` | Display in-depth profile, model, project, plan, and quota configuration (`--offline`, `--json`) |
-| `agy-auth login` | Interactively register credentials via terminal prompt |
+| `agy-auth login` | Add or refresh a Google OAuth account |
 | `agy-auth add [options]` | Add a credential profile via command-line flags |
 | `agy-auth sync` | Sync and discover local Keychain and ADC credentials |
 | `agy-auth remove [selector...]` | Remove profiles (`--all`, `--yes`, `--json`) |

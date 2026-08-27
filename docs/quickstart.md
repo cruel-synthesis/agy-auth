@@ -25,11 +25,11 @@ Automatically detect existing Antigravity macOS Keychain tokens and Google Cloud
 agy-auth sync
 ```
 
-### Option B: Interactive Login or Session Import
-Add or refresh profiles, automatically import your macOS Antigravity session, or sign in via custom browser OAuth:
+### Option B: Google Account Login
+Add or refresh an OAuth profile from your current macOS Antigravity session or a configured browser OAuth client:
 
 ```bash
-# On macOS with an active Antigravity session, imports it directly without prompts; otherwise opens interactive menu
+# Choose current Antigravity session import or browser OAuth
 agy-auth login
 
 # Explicitly import active Antigravity session from macOS Keychain
@@ -43,7 +43,7 @@ agy-auth login --oauth-source browser
 Add a Gemini API key profile directly:
 
 ```bash
-agy-auth add --email developer@example.com --api-key <gemini-api-key> --alias personal
+agy-auth add --email developer@example.com --api-key AIzaSy_MOCK_GEMINI_KEY_FOR_DOCS_00000 --alias personal
 ```
 
 ---

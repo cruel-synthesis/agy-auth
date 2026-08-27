@@ -98,7 +98,7 @@ describe('First-run and OAuth onboarding behavior', () => {
     expect(res.stdout).toContain('agy-auth help --all');
   });
 
-  it('automatically imports session on macOS with zero prompts when importable session exists', async () => {
+  it('offers OAuth login choices and imports the selected Antigravity session', async () => {
     vi.spyOn(os, 'platform').mockReturnValue('darwin');
     vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
     vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
@@ -122,9 +122,19 @@ describe('First-run and OAuth onboarding behavior', () => {
       );
     });
 
-    await loginCommand({}, { fetchFn: fetchFn as unknown as typeof fetch });
+    const origTTY = process.stdin.isTTY;
+    process.stdin.isTTY = true;
+    try {
+      await loginCommand({}, { fetchFn: fetchFn as unknown as typeof fetch });
+    } finally {
+      process.stdin.isTTY = origTTY;
+    }
 
-    expect(promptMockState.selectCallCount).toBe(0);
+    expect(promptMockState.selectCallCount).toBe(1);
+    expect(promptMockState.selectChoices.map((choice) => choice.value)).toEqual([
+      'keychain',
+      'browser',
+    ]);
     expect(promptMockState.inputCallCount).toBe(0);
 
     const registry = new RegistryManager();
@@ -133,7 +143,7 @@ describe('First-run and OAuth onboarding behavior', () => {
     expect(accounts[0].email).toBe('auto-imported-user@example.com');
   });
 
-  it('shows interactive menu without custom browser OAuth when import is unavailable', async () => {
+  it('offers browser OAuth when no Antigravity session is available', async () => {
     vi.spyOn(os, 'platform').mockReturnValue('darwin');
     vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
       status: 'missing',
@@ -155,17 +165,10 @@ describe('First-run and OAuth onboarding behavior', () => {
 
     expect(promptMockState.selectCallCount).toBe(1);
     const values = promptMockState.selectChoices.map((c) => c.value);
-    expect(values).toContain('oauth-keychain');
-    expect(values).toContain('api-key');
-    expect(values).toContain('service-account');
-    expect(values).toContain('adc');
-
-    expect(values).not.toContain('oauth-browser');
-    const names = promptMockState.selectChoices.map((c) => c.name);
-    expect(names.some((n) => n.toLowerCase().includes('custom'))).toBe(false);
+    expect(values).toEqual(['browser']);
   });
 
-  it('provides honest message on non-macOS and rejects OAuth method', async () => {
+  it('rejects Keychain import and offers browser OAuth on non-macOS', async () => {
     vi.spyOn(os, 'platform').mockReturnValue('linux');
     vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(false);
     vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
@@ -174,8 +177,10 @@ describe('First-run and OAuth onboarding behavior', () => {
       fileStatus: 'missing',
     });
 
-    await expect(loginCommand({ method: 'oauth' })).rejects.toThrow(CliError);
-    await expect(loginCommand({ method: 'oauth' })).rejects.toThrow(/only supported on macOS/);
+    await expect(loginCommand({ oauthSource: 'keychain' })).rejects.toThrow(CliError);
+    await expect(loginCommand({ oauthSource: 'keychain' })).rejects.toThrow(
+      /only supported on macOS/
+    );
 
     const origTTY = process.stdin.isTTY;
     process.stdin.isTTY = true;
@@ -190,9 +195,7 @@ describe('First-run and OAuth onboarding behavior', () => {
     }
 
     const values = promptMockState.selectChoices.map((c) => c.value);
-    expect(values).not.toContain('oauth-keychain');
-    expect(values).not.toContain('oauth-browser');
-    expect(values).toEqual(['api-key', 'service-account', 'adc']);
+    expect(values).toEqual(['browser']);
   });
 
   it('requests only public OAuth scopes in browser flow', async () => {

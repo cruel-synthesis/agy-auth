@@ -56,20 +56,13 @@ vi.mock('@inquirer/prompts', () => ({
 }));
 
 import { exportCommand } from '../src/commands/export.js';
-import {
-  loginCommand,
-  validateAliasInput,
-  validateApiKeyInput,
-  validateEmailOrAlias,
-  validateServiceAccountPath,
-} from '../src/commands/login.js';
+import { loginCommand, validateAliasInput } from '../src/commands/login.js';
 import { removeCommand } from '../src/commands/remove.js';
 import { syncCommand, validateSyncEmail } from '../src/commands/sync.js';
 import { CancellationError, CliError, UsageError } from '../src/core/errors.js';
 import { KeychainManager } from '../src/core/keychain.js';
-import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
-import { generateSyntheticPrivateKey, setupTestEnvironment, TestEnv } from './test-utils.js';
+import { setupTestEnvironment, TestEnv } from './test-utils.js';
 
 describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () => {
   let testEnv: TestEnv;
@@ -88,25 +81,13 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     testEnv.cleanup();
   });
 
-  it('validates interactive input helper functions accurately', () => {
-    expect(validateEmailOrAlias('test@example.com')).toBe(true);
-    expect(validateEmailOrAlias('my_alias')).toBe(true);
-    expect(typeof validateEmailOrAlias('')).toBe('string');
-
+  it('validates login aliases and sync emails', () => {
     expect(validateAliasInput('valid-alias')).toBe(true);
     expect(validateAliasInput('')).toBe(true);
     expect(typeof validateAliasInput('invalid spaces')).toBe('string');
 
-    expect(validateApiKeyInput('key')).toBe(true);
-    expect(typeof validateApiKeyInput('')).toBe('string');
-
     expect(validateSyncEmail('valid@example.com')).toBe(true);
     expect(typeof validateSyncEmail('invalid')).toBe('string');
-
-    expect(typeof validateServiceAccountPath('')).toBe('string');
-    expect(typeof validateServiceAccountPath(path.join(testEnv.dir, 'missing-sa.json'))).toBe(
-      'string'
-    );
   });
 
   it('fails loginCommand in non-TTY mode with UsageError', async () => {
@@ -142,7 +123,7 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     try {
       await loginCommand(
         {
-          method: 'oauth',
+          oauthSource: 'keychain',
           alias: 'kc-profile',
           project: 'kc-project',
           location: 'us-central1',
@@ -252,7 +233,7 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     process.stdin.isTTY = true;
     try {
       await loginCommand(
-        { method: 'oauth', oauthSource: 'browser' },
+        { oauthSource: 'browser' },
         {
           authenticateOAuth: async () => ({
             email: 'RETURNING@example.com',
@@ -288,14 +269,9 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     }
   });
 
-  it('rejects invalid login method, invalid OAuth source, or invalid alias with UsageError', async () => {
-    await expect(loginCommand({ method: 'invalid-method' })).rejects.toThrow(UsageError);
-    await expect(loginCommand({ method: 'oauth', oauthSource: 'invalid-source' })).rejects.toThrow(
-      UsageError
-    );
-    await expect(
-      loginCommand({ method: 'oauth', alias: 'invalid alias with spaces' })
-    ).rejects.toThrow(UsageError);
+  it('rejects an invalid OAuth source or alias with UsageError', async () => {
+    await expect(loginCommand({ oauthSource: 'invalid-source' })).rejects.toThrow(UsageError);
+    await expect(loginCommand({ alias: 'invalid alias with spaces' })).rejects.toThrow(UsageError);
   });
 
   it('interactively adds an Antigravity Keychain OAuth account when selected from menu', async () => {
@@ -314,7 +290,7 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
 
     const origTTY = process.stdin.isTTY;
     process.stdin.isTTY = true;
-    mockState.selectValue = 'oauth-keychain';
+    mockState.selectValue = 'keychain';
 
     try {
       await loginCommand(
@@ -340,13 +316,13 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     }
   });
 
-  it('adds a custom browser OAuth account via --method oauth --oauth-source browser', async () => {
+  it('adds a custom browser OAuth account via --oauth-source browser', async () => {
     const origTTY = process.stdin.isTTY;
     process.stdin.isTTY = true;
 
     try {
       await loginCommand(
-        { method: 'oauth', oauthSource: 'browser' },
+        { oauthSource: 'browser' },
         {
           authenticateOAuth: async () => ({
             email: 'interactive-browser@example.com',
@@ -369,107 +345,6 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
       expect(account).toBeTruthy();
       expect(account?.authType).toBe('oauth');
       expect(account?.status).toBe('valid');
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
-  });
-
-  it('interactively adds an API Key account using alias-only in loginCommand', async () => {
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = true;
-
-    mockState.selectValue = 'api-key';
-    mockState.passwordValue = 'AIzaSyAliasKey';
-    mockState.inputResponses = ['alias-only-profile'];
-
-    try {
-      await loginCommand();
-      const registry = new RegistryManager();
-      const acc = registry.findAccount('alias-only-profile');
-      expect(acc).toBeTruthy();
-      expect(acc?.email).toBe('alias-only-profile@local.invalid');
-      expect(acc?.credentials?.apiKey).toBe('AIzaSyAliasKey');
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
-  });
-
-  it('interactively adds an API Key account via loginCommand', async () => {
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = true;
-
-    mockState.selectValue = 'api-key';
-    mockState.passwordValue = 'AIzaSyInteractiveKey';
-    mockState.inputResponses = ['interactive@example.com', 'interactive-alias'];
-
-    try {
-      await loginCommand();
-      const registry = new RegistryManager();
-      const acc = registry.findAccount('interactive-alias');
-      expect(acc).toBeTruthy();
-      expect(acc?.email).toBe('interactive@example.com');
-      expect(acc?.credentials?.apiKey).toBe('AIzaSyInteractiveKey');
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
-  });
-
-  it('interactively adds a Service Account via loginCommand', async () => {
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = true;
-
-    const pem = generateSyntheticPrivateKey();
-    const saFilePath = path.join(testEnv.dir, 'interactive-sa.json');
-    fs.writeFileSync(
-      saFilePath,
-      JSON.stringify({
-        type: 'service_account',
-        project_id: 'sa-interactive-proj',
-        client_email: 'sa-interactive@proj.iam.gserviceaccount.com',
-        private_key: pem,
-      })
-    );
-
-    mockState.selectValue = 'service-account';
-    mockState.inputResponses = [saFilePath, 'sa-interactive-alias'];
-
-    try {
-      await loginCommand();
-      const registry = new RegistryManager();
-      const acc = registry.findAccount('sa-interactive-alias');
-      expect(acc).toBeTruthy();
-      expect(acc?.email).toBe('sa-interactive@proj.iam.gserviceaccount.com');
-      expect(acc?.authType).toBe('service-account');
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
-  });
-
-  it('interactively adds an ADC profile via loginCommand', async () => {
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = true;
-
-    mockState.selectValue = 'adc';
-    mockState.inputResponses = ['', 'adc-inter@example.com', 'adc-alias'];
-
-    // Materialize global ADC file
-    fs.writeFileSync(
-      Paths.gcloudAdcFile,
-      JSON.stringify({
-        type: 'authorized_user',
-        client_id: 'cid',
-        client_secret: 'cs',
-        refresh_token: 'r',
-      })
-    );
-
-    try {
-      await loginCommand();
-      const registry = new RegistryManager();
-      const acc = registry.findAccount('adc-alias');
-      expect(acc).toBeTruthy();
-      expect(acc?.email).toBe('adc-inter@example.com');
-      expect(acc?.authType).toBe('adc');
     } finally {
       process.stdin.isTTY = origTTY;
     }
