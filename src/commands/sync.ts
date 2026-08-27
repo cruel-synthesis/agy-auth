@@ -36,8 +36,8 @@ export async function syncCommand(
   const tokenState = readAntigravityToken();
   if (tokenState.status === 'error') {
     throw new CliError(
-      `Antigravity Keychain read error: ${tokenState.warning || 'Failed to read token payload.'}`,
-      'keychain_error',
+      `Antigravity session store read error: ${tokenState.warning || 'Failed to read token payload.'}`,
+      'session_store_error',
       1
     );
   }

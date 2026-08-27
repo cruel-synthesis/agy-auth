@@ -1,7 +1,9 @@
+import fs from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CliError, UsageError } from '../src/core/errors.js';
 import { fetchVerifiedGoogleEmail, importKeychainOAuth } from '../src/core/keychain-import.js';
 import { KeychainManager } from '../src/core/keychain.js';
+import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
 import { Switcher } from '../src/core/switcher.js';
 import { setupTestEnvironment, type TestEnv } from './test-utils.js';
@@ -25,6 +27,16 @@ describe('Keychain OAuth Import Module', () => {
     await expect(importKeychainOAuth()).rejects.toThrow(/only supported on macOS/);
   });
 
+  it('reports composite session-store errors without mislabeling token-file failures', async () => {
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({ status: 'missing' });
+    fs.writeFileSync(Paths.antigravityTokenFile, '{ malformed token file');
+
+    await expect(importKeychainOAuth()).rejects.toMatchObject({
+      code: 'session_store_error',
+      message: expect.stringMatching(/session store read error/i),
+    });
+  });
+
   it('fails when Keychain returns an error', async () => {
     vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
     vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
@@ -32,7 +44,7 @@ describe('Keychain OAuth Import Module', () => {
       message: 'The user denied access to the Keychain item.',
     });
 
-    await expect(importKeychainOAuth()).rejects.toThrow(/Keychain read error/);
+    await expect(importKeychainOAuth()).rejects.toThrow(/session store read error/i);
   });
 
   it('fails when no active Antigravity session exists in Keychain', async () => {

@@ -38,6 +38,8 @@ Command errors in JSON mode output a top-level JSON error object to `stdout` wit
 }
 ```
 
+An unreadable or corrupted Antigravity Keychain/token-file pair uses the `session_store_error` code.
+
 ---
 
 ## Standard Exit Codes

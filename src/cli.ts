@@ -125,8 +125,8 @@ export function createCli(): Command {
   // sync
   program
     .command('sync')
-    .description('Import active Antigravity macOS Keychain or local ADC credentials')
-    .option('--oauth-email <email>', 'Google account email for Keychain token')
+    .description('Import an active Antigravity session or local ADC credentials')
+    .option('--oauth-email <email>', 'Google account email for Antigravity session')
     .option('--adc-email <email>', 'Email for local ADC credentials')
     .option('-y, --yes', 'Do not prompt; skip discoveries that require an email', false)
     .option('-j, --json', 'Output as JSON')

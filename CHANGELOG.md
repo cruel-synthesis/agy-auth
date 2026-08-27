@@ -25,6 +25,7 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 - OAuth switching now aborts when the existing Keychain item cannot be snapshotted and reports failed Keychain rollback operations.
 - `remove` rejects selectors combined with `--all` instead of silently deleting every profile.
 - The machine-readable interface documentation now includes `sync --json`.
+- Composite Antigravity session failures use the accurate `session_store_error` code and wording.
 
 ### Security
 

@@ -82,8 +82,8 @@ export async function importKeychainOAuth(
   }
   if (tokenState.status === 'error' || !tokenState.payload) {
     throw new CliError(
-      `Antigravity Keychain read error: ${tokenState.warning || 'Failed to read token payload.'}`,
-      'keychain_error',
+      `Antigravity session store read error: ${tokenState.warning || 'Failed to read token payload.'}`,
+      'session_store_error',
       1
     );
   }

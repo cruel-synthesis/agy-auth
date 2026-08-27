@@ -1,6 +1,6 @@
 # sync
 
-Import active Antigravity macOS Keychain tokens or local Google Cloud ADC credentials.
+Import an active Antigravity session or local Google Cloud ADC credentials.
 
 ```shell
 agy-auth sync [options]
@@ -8,7 +8,7 @@ agy-auth sync [options]
 
 Options:
 
-- `--oauth-email <email>`: Google account email for Keychain token
+- `--oauth-email <email>`: Google account email for the Antigravity session
 - `--adc-email <email>`: Email for local ADC credentials
 - `-y, --yes`: Do not prompt; skip discoveries that require an email (default: false)
 - `-j, --json`: Output discovered and imported profiles as JSON

@@ -514,7 +514,7 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     }
   });
 
-  it('throws CliError on Keychain error during sync', async () => {
+  it('throws CliError on session-store error during sync', async () => {
     const supportedSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
     const readSpy = vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
       status: 'error',
@@ -522,7 +522,7 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     });
 
     try {
-      await expect(syncCommand({})).rejects.toThrow(/Keychain read error/);
+      await expect(syncCommand({})).rejects.toMatchObject({ code: 'session_store_error' });
     } finally {
       supportedSpy.mockRestore();
       readSpy.mockRestore();
