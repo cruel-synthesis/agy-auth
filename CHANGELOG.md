@@ -28,6 +28,7 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 
 - Restricted POSIX file modes, registry locking, symlink rejection, credential-file size limits, and credential redaction in profile and status output.
 - Fail-closed validation rejects malformed OAuth payloads from both Keychain and the Antigravity token file.
+- Antigravity token-file reads reject symlinked and non-regular paths.
 - OAuth token switch backups are classified as managed secrets, so retention and `clean` apply to them.
 - `doctor` warns when token-file fallback works but the macOS Keychain cannot be read.
 - `doctor` rejects a symlinked or non-regular Antigravity settings path.

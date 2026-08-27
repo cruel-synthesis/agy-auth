@@ -126,6 +126,28 @@ describe('Composite Antigravity Token Store Subsystem', () => {
     expect(result.payload?.token.access_token).toBe('fallback-file-token');
   });
 
+  it('rejects a symbolic link in place of the Antigravity token file', () => {
+    if (process.platform === 'win32') return;
+
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({ status: 'missing' });
+    const externalToken = path.join(testEnv.dir, 'external-token.json');
+    fs.writeFileSync(
+      externalToken,
+      JSON.stringify({
+        auth_method: 'consumer',
+        token: { access_token: 'external-token', refresh_token: 'external-refresh' },
+      })
+    );
+    fs.mkdirSync(path.dirname(Paths.antigravityTokenFile), { recursive: true });
+    fs.symlinkSync(externalToken, Paths.antigravityTokenFile);
+
+    const result = readAntigravityToken();
+    expect(result.status).toBe('error');
+    expect(result.fileStatus).toBe('error');
+    expect(result.fileMessage).toContain('must be a regular file');
+    expect(result.payload).toBeUndefined();
+  });
+
   it('rejects token-file payloads with missing or whitespace-only authentication methods', () => {
     vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({ status: 'missing' });
     fs.mkdirSync(path.dirname(Paths.antigravityTokenFile), { recursive: true });

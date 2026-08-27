@@ -48,6 +48,14 @@ function readFileToken(): {
       return { status: 'missing' };
     }
 
+    const stat = fs.lstatSync(tokenFile);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      return {
+        status: 'error',
+        message: 'Token path must be a regular file and not a symbolic link.',
+      };
+    }
+
     const content = fs.readFileSync(tokenFile, 'utf-8');
     if (!content.trim()) {
       return { status: 'missing' };
