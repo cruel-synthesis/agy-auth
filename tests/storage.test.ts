@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Paths } from '../src/core/paths.js';
 import { Storage, isManagedBackupFileName } from '../src/core/storage.js';
 import { setupTestEnvironment, TestEnv } from './test-utils.js';
@@ -158,6 +158,28 @@ describe('Storage and Concurrency Subsystem', () => {
 
     // createBackup on non-existent source
     expect(Storage.createBackup(path.join(testEnv.dir, 'missing-source.json'), 'pfx')).toBeNull();
+  });
+
+  it('does not follow a source symlink introduced while creating a backup', () => {
+    if (process.platform === 'win32') return;
+
+    const sourceFile = path.join(testEnv.dir, 'backup-source.json');
+    const externalFile = path.join(testEnv.dir, 'external-source.json');
+    fs.writeFileSync(sourceFile, JSON.stringify({ source: true }));
+    fs.writeFileSync(externalFile, JSON.stringify({ secret: 'must-not-be-backed-up' }));
+
+    const ensureDirectories = Paths.ensureDirectories.bind(Paths);
+    const ensureSpy = vi.spyOn(Paths, 'ensureDirectories').mockImplementation(() => {
+      ensureDirectories();
+      fs.unlinkSync(sourceFile);
+      fs.symlinkSync(externalFile, sourceFile);
+    });
+
+    try {
+      expect(Storage.createBackup(sourceFile, 'backup')).toBeNull();
+    } finally {
+      ensureSpy.mockRestore();
+    }
   });
 
   it('classifies and rotates OAuth token switch backups as managed secrets', () => {

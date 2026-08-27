@@ -353,9 +353,14 @@ export class Storage {
    * Create an emergency backup before dangerous mutations or on corruption
    */
   static createBackup(sourcePath: string, prefix = 'backup'): string | null {
-    if (!fs.existsSync(sourcePath)) {
+    let observedStat: fs.Stats;
+    try {
+      observedStat = fs.lstatSync(sourcePath);
+    } catch {
       return null;
     }
+    if (observedStat.isSymbolicLink() || !observedStat.isFile()) return null;
+
     Paths.ensureDirectories();
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -364,19 +369,30 @@ export class Storage {
     const backupName = `${prefix}_${baseName}_${timestamp}_${suffix}`;
     const backupPath = path.join(Paths.backupsDir, backupName);
 
+    let sourceFd: number | null = null;
     try {
-      fs.copyFileSync(sourcePath, backupPath);
-      fs.chmodSync(backupPath, 0o600);
-      const fd = fs.openSync(backupPath, 'r');
-      try {
-        fs.fsyncSync(fd);
-      } finally {
-        fs.closeSync(fd);
+      const flags =
+        fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
+      sourceFd = fs.openSync(sourcePath, flags);
+      const openedStat = fs.fstatSync(sourceFd);
+      if (
+        !openedStat.isFile() ||
+        openedStat.dev !== observedStat.dev ||
+        openedStat.ino !== observedStat.ino
+      ) {
+        return null;
       }
+
+      const content = fs.readFileSync(sourceFd);
+      this.writeFileAtomic(backupPath, content);
       this.rotateBackups(Paths.backupsDir, MAX_BACKUP_RETENTION, backupPath);
       return backupPath;
     } catch {
       return null;
+    } finally {
+      if (sourceFd !== null) {
+        fs.closeSync(sourceFd);
+      }
     }
   }
 
