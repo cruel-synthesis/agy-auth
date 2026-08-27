@@ -32,9 +32,9 @@ Outbound requests are limited to:
 
 | Host | Purpose | When |
 |---|---|---|
-| `accounts.google.com` | Browser OAuth user sign-in via PKCE | `agy-auth login --method oauth` |
+| `accounts.google.com` | Browser OAuth user sign-in via PKCE | `agy-auth login --oauth-source browser` |
 | `oauth2.googleapis.com` | Authorization code and refresh-token exchange | During browser OAuth login or when refreshing an expired token with `AGY_OAUTH_CLIENT_ID` |
-| `www.googleapis.com` | Verified userinfo lookup (`/oauth2/v3/userinfo`) | During browser OAuth login |
+| `www.googleapis.com` | Verified userinfo lookup (`/oauth2/v3/userinfo`) | During Keychain session import and browser OAuth login |
 | `daily-cloudcode-pa.googleapis.com`, `cloudcode-pa.googleapis.com` | Live plan and quota via the undocumented `v1internal:retrieveUserQuotaSummary`, `v1internal:loadCodeAssist`, and `v1internal:retrieveUserQuota` contracts (**experimental**) | `list`, `list --check`, `current`, `details` for OAuth profiles, unless `--offline` |
 | `generativelanguage.googleapis.com` | Official Gemini models endpoint and connectivity probe | `list --check` for API key profiles; `doctor` unless `--offline` |
 

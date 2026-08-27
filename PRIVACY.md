@@ -22,7 +22,7 @@
    - Hosts contacted: `daily-cloudcode-pa.googleapis.com` and `cloudcode-pa.googleapis.com`.
    - Contracts used: `v1internal:retrieveUserQuotaSummary`, `v1internal:loadCodeAssist`, `v1internal:retrieveUserQuota`.
    - What is sent: your OAuth access token as a `Bearer` header, an `agy-auth/<version>` user agent, and, for `retrieveUserQuota`, the GCP project ID associated with the profile. These requests do not include local filenames, hostnames, or registry contents.
-   - Token refresh and browser OAuth login, when configured via `AGY_OAUTH_CLIENT_ID`, contact `accounts.google.com`, `oauth2.googleapis.com`, and `www.googleapis.com`.
+   - Token refresh and browser OAuth login, when configured via `AGY_OAUTH_CLIENT_ID`, contact `accounts.google.com`, `oauth2.googleapis.com`, and `www.googleapis.com`. Keychain session import contacts `www.googleapis.com` to verify the account email.
 
    `agy-auth` does not embed an OAuth client secret and does not bundle an unverified third-party OAuth client ID.
 
@@ -33,7 +33,7 @@
 
    | Command | Default behaviour |
    |---|---|
-   | `agy-auth login` | Contacts Google OAuth and token endpoints when using `--method oauth`. |
+   | `agy-auth login` | Contacts Google userinfo when importing the current Antigravity session, or Google OAuth and token endpoints with `--oauth-source browser`. |
    | `agy-auth switch` | **Never** makes a network request. Renders cached plan and quota only. |
    | `agy-auth list` | Refreshes live plan and quota for the **active OAuth profile**. |
    | `agy-auth list --check` | Verifies selected profiles (API keys use Google's official models endpoint) and refreshes live plan and quota for **every selected OAuth profile** (at most 4 concurrent requests). |
@@ -55,8 +55,8 @@
    `agy-auth` ships no OAuth client ID and no client secret, so it cannot mint a new access token on its own without user-supplied client configuration.
 
    - By default, an expired token is reported as `expired`. Sign in again through the Antigravity application, then run `agy-auth sync`.
-   - A token that the quota service rejects for missing scopes is reported as `needs-reauth`, recovered the same way or by re-running `agy-auth login --method oauth`.
-   - If you have your own OAuth client, set `AGY_OAUTH_CLIENT_ID` (and `AGY_OAUTH_CLIENT_SECRET` if your client requires one) and `agy-auth` will refresh expired tokens itself or authenticate via `agy-auth login --method oauth`, storing a rotated refresh token when Google issues one.
+   - A token that the quota service rejects for missing scopes is reported as `needs-reauth`. Sign in again through Antigravity, then run `agy-auth login --oauth-source keychain` or `agy-auth sync`.
+   - If you have your own OAuth client, set `AGY_OAUTH_CLIENT_ID` (and `AGY_OAUTH_CLIENT_SECRET` if your client requires one) and `agy-auth` will refresh expired tokens itself or authenticate via `agy-auth login --oauth-source browser`, storing a rotated refresh token when Google issues one.
    - Quota refresh never writes the macOS Keychain. Only `agy-auth switch` applies stored credentials to external state.
 
 8. **Safe Export and Sanitization**:
