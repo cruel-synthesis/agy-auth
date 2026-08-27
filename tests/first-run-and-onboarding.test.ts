@@ -249,6 +249,39 @@ describe('First-run and OAuth onboarding behavior', () => {
     expect(values).toEqual(['antigravity']);
   });
 
+  it('does not offer an expired Antigravity session as an import source', async () => {
+    vi.spyOn(os, 'platform').mockReturnValue('darwin');
+    vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
+      status: 'found',
+      source: 'file',
+      payload: {
+        auth_method: 'consumer',
+        token: {
+          access_token: 'expired-session-token',
+          refresh_token: '',
+          expiry: new Date(Date.now() - 60_000).toISOString(),
+        },
+      },
+      keyringStatus: 'missing',
+      fileStatus: 'found',
+    });
+
+    const origTTY = process.stdin.isTTY;
+    process.stdin.isTTY = true;
+    promptMockState.shouldCancelSelect = true;
+
+    try {
+      await loginCommand({});
+    } catch {
+      // Expected abort
+    } finally {
+      process.stdin.isTTY = origTTY;
+    }
+
+    expect(promptMockState.selectChoices.map((choice) => choice.value)).toEqual(['antigravity']);
+    expect(promptMockState.selectChoices[0]?.name).toBe('Sign in through Antigravity');
+  });
+
   it('offers custom browser OAuth only when a client ID is configured on macOS', async () => {
     vi.spyOn(os, 'platform').mockReturnValue('darwin');
     vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({

@@ -66,7 +66,12 @@ async function chooseOAuthSource(): Promise<InteractiveOAuthSource> {
 
   const isMac = os.platform() === 'darwin';
   const tokenState = readAntigravityToken();
-  const hasAntigravitySession = tokenState.status === 'found';
+  const sessionExpiry =
+    tokenState.status === 'found' ? tokenState.payload?.token.expiry : undefined;
+  const sessionExpiryMs = sessionExpiry ? Date.parse(sessionExpiry) : Number.NaN;
+  const hasAntigravitySession =
+    tokenState.status === 'found' &&
+    (!Number.isFinite(sessionExpiryMs) || sessionExpiryMs > Date.now());
   const hasCustomOAuthClient = getOAuthClientConfig() !== null;
   const choices = [
     ...(hasAntigravitySession
