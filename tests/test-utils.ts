@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { vi } from 'vitest';
 import { KeychainManager } from '../src/core/keychain.js';
 import { Paths } from '../src/core/paths.js';
@@ -159,4 +160,13 @@ export function installNativeStoreDouble(
       for (const spy of spies) spy.mockRestore();
     },
   };
+}
+
+/**
+ * Node arguments that hold a spawned process to the same hermetic rules as the
+ * runner. Every subprocess the suite launches must go through this.
+ */
+export function guardedNodeArgs(...args: string[]): string[] {
+  const guard = fileURLToPath(new URL('./subprocess-guard.mjs', import.meta.url));
+  return ['--import', guard, ...args];
 }

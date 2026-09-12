@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RegistryManager } from '../src/core/registry.js';
 import { VERSION } from '../src/version.js';
-import { TestEnv, setupTestEnvironment } from './test-utils.js';
+import { guardedNodeArgs, TestEnv, setupTestEnvironment } from './test-utils.js';
 
 describe('Built CLI Integration and Concurrency', () => {
   let testEnv: TestEnv;
@@ -27,7 +27,7 @@ describe('Built CLI Integration and Concurrency', () => {
     status: number;
   } {
     try {
-      const stdout = execFileSync('node', [cliPath, ...args], {
+      const stdout = execFileSync('node', guardedNodeArgs(cliPath, ...args), {
         encoding: 'utf-8',
         env: {
           ...testEnv.createSubprocessEnv(),
@@ -46,6 +46,32 @@ describe('Built CLI Integration and Concurrency', () => {
       };
     }
   }
+
+  it('blocks network and native access in processes the suite spawns', () => {
+    const probePath = path.join(testEnv.dir, 'transport-probe.mjs');
+    fs.writeFileSync(
+      probePath,
+      [
+        'try {',
+        "  await fetch('https://127.0.0.1:1/');",
+        "  console.log('REACHED_NETWORK');",
+        '} catch (err) {',
+        "  console.log('FETCH_ERROR:' + err.message);",
+        '}',
+        "console.log('NO_NATIVE:' + process.env.AGY_AUTH_NO_NATIVE);",
+      ].join('\n')
+    );
+
+    const stdout = execFileSync('node', guardedNodeArgs(probePath), {
+      encoding: 'utf-8',
+      env: testEnv.createSubprocessEnv(),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    expect(stdout).not.toContain('REACHED_NETWORK');
+    expect(stdout).toContain('FETCH_ERROR:Tests must not perform real network requests');
+    expect(stdout).toContain('NO_NATIVE:1');
+  });
 
   it('reports the correct version and help', () => {
     const res = runCli(['--version']);
@@ -160,7 +186,7 @@ describe('Built CLI Integration and Concurrency', () => {
       const p = new Promise<number>((resolve) => {
         const child = spawn(
           'node',
-          [cliPath, 'add', '--email', email, '--api-key', `key-${i}`, '--json'],
+          guardedNodeArgs(cliPath, 'add', '--email', email, '--api-key', `key-${i}`, '--json'),
           {
             env: subEnv,
             stdio: 'ignore',
