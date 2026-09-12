@@ -62,7 +62,7 @@ import { syncCommand, validateSyncEmail } from '../src/commands/sync.js';
 import { CancellationError, CliError, UsageError } from '../src/core/errors.js';
 import { KeychainManager } from '../src/core/keychain.js';
 import { RegistryManager } from '../src/core/registry.js';
-import { setupTestEnvironment, TestEnv } from './test-utils.js';
+import { futureExpiry, pastExpiry, setupTestEnvironment, TestEnv } from './test-utils.js';
 
 describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () => {
   let testEnv: TestEnv;
@@ -112,7 +112,7 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
           access_token: 'default-kc-token',
           refresh_token: 'default-kc-refresh',
           token_type: 'Bearer',
-          expiry: '2030-01-01T00:00:00.000Z',
+          expiry: futureExpiry(),
         },
       },
     });
@@ -180,7 +180,7 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
                 access_token: 'synthetic-access-token',
                 refresh_token: 'synthetic-refresh-token',
                 token_type: 'Bearer',
-                expiry: '2030-01-01T00:00:00.000Z',
+                expiry: futureExpiry(),
               },
             },
           }),
@@ -219,7 +219,7 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
             access_token: 'old-access-token',
             refresh_token: 'durable-refresh-token',
             token_type: 'Bearer',
-            expiry: '2025-01-01T00:00:00.000Z',
+            expiry: pastExpiry(),
           },
         },
       },
@@ -243,7 +243,7 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
                 access_token: 'new-access-token',
                 refresh_token: '',
                 token_type: 'Bearer',
-                expiry: '2030-01-01T00:00:00.000Z',
+                expiry: futureExpiry(),
               },
             },
           }),
@@ -332,7 +332,7 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
                 access_token: 'inter-access-token',
                 refresh_token: 'inter-refresh-token',
                 token_type: 'Bearer',
-                expiry: '2030-01-01T00:00:00.000Z',
+                expiry: futureExpiry(),
               },
             },
           }),

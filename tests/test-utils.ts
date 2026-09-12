@@ -170,3 +170,27 @@ export function guardedNodeArgs(...args: string[]): string[] {
   const guard = fileURLToPath(new URL('./subprocess-guard.mjs', import.meta.url));
   return ['--import', guard, ...args];
 }
+
+/** One hour in milliseconds, for readable expiry fixtures. */
+export const HOUR_MS = 3_600_000;
+
+/**
+ * An ISO timestamp offset from the current clock.
+ *
+ * Absolute fixtures such as `2030-01-01` silently encode "not yet expired".
+ * They pass until the wall clock overtakes them and then invert the meaning of
+ * every test that uses them, so expiry fixtures are always derived from now.
+ */
+export function isoFromNow(offsetMs: number): string {
+  return new Date(Date.now() + offsetMs).toISOString();
+}
+
+/** An expiry comfortably in the future. */
+export function futureExpiry(offsetMs: number = 24 * HOUR_MS): string {
+  return isoFromNow(offsetMs);
+}
+
+/** An expiry already in the past. */
+export function pastExpiry(offsetMs: number = 24 * HOUR_MS): string {
+  return isoFromNow(-offsetMs);
+}

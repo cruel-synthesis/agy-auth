@@ -45,7 +45,7 @@ import { RegistryManager } from '../src/core/registry.js';
 import type { Account } from '../src/core/types.js';
 import { printTopLevelHelp } from '../src/ui/help.js';
 import { renderAccountsTable } from '../src/ui/table.js';
-import { type TestEnv, setupTestEnvironment } from './test-utils.js';
+import { futureExpiry, setupTestEnvironment, type TestEnv } from './test-utils.js';
 
 describe('First-run and OAuth onboarding behavior', () => {
   let testEnv: TestEnv;
@@ -189,7 +189,7 @@ describe('First-run and OAuth onboarding behavior', () => {
         token: {
           access_token: 'auto-import-token',
           refresh_token: '',
-          expiry: '2030-01-01T00:00:00.000Z',
+          expiry: futureExpiry(),
         },
       },
       keyringStatus: 'found',

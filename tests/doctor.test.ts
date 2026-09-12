@@ -7,6 +7,7 @@ import { KeychainManager } from '../src/core/keychain.js';
 import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
 import {
+  futureExpiry,
   generateSyntheticPrivateKey,
   installNativeStoreDouble,
   type NativeStoreDouble,
@@ -431,7 +432,7 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
         token: {
           access_token: 'synthetic-file-token',
           refresh_token: '',
-          expiry: '2030-01-01T00:00:00.000Z',
+          expiry: futureExpiry(),
         },
       })
     );

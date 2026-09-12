@@ -6,7 +6,7 @@ import { KeychainManager } from '../src/core/keychain.js';
 import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
 import { Switcher } from '../src/core/switcher.js';
-import { setupTestEnvironment, type TestEnv } from './test-utils.js';
+import { futureExpiry, pastExpiry, setupTestEnvironment, type TestEnv } from './test-utils.js';
 
 describe('Keychain OAuth Import Module', () => {
   let testEnv: TestEnv;
@@ -66,7 +66,7 @@ describe('Keychain OAuth Import Module', () => {
           access_token: 'synthetic-access-token',
           refresh_token: 'synthetic-refresh-token',
           token_type: 'Bearer',
-          expiry: '2030-01-01T00:00:00.000Z',
+          expiry: futureExpiry(),
         },
       },
     });
@@ -306,7 +306,7 @@ describe('Keychain OAuth Import Module', () => {
             access_token: 'old-access-token',
             refresh_token: 'precious-refresh-token',
             token_type: 'Bearer',
-            expiry: '2025-01-01T00:00:00.000Z',
+            expiry: pastExpiry(),
           },
         },
       },
@@ -328,7 +328,7 @@ describe('Keychain OAuth Import Module', () => {
           refresh_token: '',
           // Omitted refresh token in newly imported Keychain payload
           token_type: 'Bearer',
-          expiry: '2030-01-01T00:00:00.000Z',
+          expiry: futureExpiry(),
         },
       },
     });

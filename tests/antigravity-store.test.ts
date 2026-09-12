@@ -9,7 +9,7 @@ import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
 import { Switcher } from '../src/core/switcher.js';
 import type { KeychainPayload } from '../src/core/types.js';
-import { type TestEnv, setupTestEnvironment } from './test-utils.js';
+import { futureExpiry, HOUR_MS, setupTestEnvironment, type TestEnv } from './test-utils.js';
 
 describe('Composite Antigravity Token Store Subsystem', () => {
   let testEnv: TestEnv;
@@ -369,7 +369,7 @@ describe('Composite Antigravity Token Store Subsystem', () => {
         token: {
           access_token: 'stale-keyring',
           refresh_token: 'stale-ref',
-          expiry: '2030-08-23T11:00:00.000Z',
+          expiry: futureExpiry(HOUR_MS),
         },
       },
     });
@@ -379,7 +379,7 @@ describe('Composite Antigravity Token Store Subsystem', () => {
       token: {
         access_token: 'fresh-file',
         refresh_token: 'fresh-ref',
-        expiry: '2030-08-24T18:00:00.000Z',
+        expiry: futureExpiry(2 * HOUR_MS),
       },
     };
     fs.mkdirSync(path.dirname(Paths.antigravityTokenFile), { recursive: true });
