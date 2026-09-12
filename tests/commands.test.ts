@@ -27,7 +27,12 @@ import { KeychainManager } from '../src/core/keychain.js';
 import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
 import { Storage } from '../src/core/storage.js';
-import { generateSyntheticPrivateKey, setupTestEnvironment, TestEnv } from './test-utils.js';
+import {
+  generateSyntheticPrivateKey,
+  installNativeStoreDouble,
+  setupTestEnvironment,
+  TestEnv,
+} from './test-utils.js';
 
 describe('Command Modules Behavioral & Regression Suite', () => {
   let testEnv: TestEnv;
@@ -533,6 +538,7 @@ describe('Command Modules Behavioral & Regression Suite', () => {
   });
 
   it('executes doctorCommand in read-only mode and reports fail with exit code 1', async () => {
+    const nativeStore = installNativeStoreDouble({ supported: false });
     // 1. Doctor on empty environment (should pass without creating files)
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     try {
@@ -548,6 +554,7 @@ describe('Command Modules Behavioral & Regression Suite', () => {
     await expect(doctorCommand({ offline: true, json: true })).rejects.toThrow(
       /One or more diagnostics checks failed/
     );
+    nativeStore.restore();
   });
 
   it('executes cleanCommand with --dry-run, --all, and prunes backups', async () => {

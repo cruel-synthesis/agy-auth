@@ -6,6 +6,7 @@ import { isEmail } from '../core/credential-validation.js';
 import { CancellationError, CliError, UsageError } from '../core/errors.js';
 import { importKeychainOAuth } from '../core/keychain-import.js';
 import type { AgyKeychainPayload } from '../core/keychain.js';
+import { assertNativeAllowed } from '../core/native-guard.js';
 import { getOAuthClientConfig } from '../core/oauth-config.js';
 import { type AuthenticateOptions, OAuthFlow, type OAuthResult } from '../core/oauth.js';
 import { RegistryManager } from '../core/registry.js';
@@ -53,6 +54,8 @@ function printSavedAccount(account: Account, isNew: boolean): void {
 
 function openAntigravityApp(): boolean {
   if (os.platform() !== 'darwin') return false;
+  assertNativeAllowed('Antigravity application launch');
+
   const result = spawnSync('/usr/bin/open', ['-a', 'Antigravity IDE'], { stdio: 'ignore' });
   return result.status === 0;
 }

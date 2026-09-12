@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
+import { assertNativeAllowed } from './native-guard.js';
 import { type KeychainPayload, KeychainPayloadSchema } from './types.js';
 
 export type AgyKeychainPayload = KeychainPayload;
@@ -38,6 +39,8 @@ export class KeychainManager {
     status?: number;
     error?: unknown;
   } {
+    assertNativeAllowed('macOS Keychain access');
+
     try {
       const stdout = execFileSync('security', args, {
         encoding: 'utf-8',
@@ -105,6 +108,8 @@ export class KeychainManager {
     const parsed = parseAgyKeychainPayload(payload);
     if (!parsed) return false;
     if (!this.isSupported()) return false;
+    // Raised before the catch below so isolation breaches stay visible.
+    assertNativeAllowed('macOS Keychain access');
 
     try {
       const jsonStr = JSON.stringify(parsed);

@@ -2,7 +2,10 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { vi } from 'vitest';
+import { KeychainManager } from '../src/core/keychain.js';
 import { Paths } from '../src/core/paths.js';
+import type { KeychainPayload } from '../src/core/types.js';
 
 export interface TestEnv {
   dir: string;
@@ -39,6 +42,8 @@ export function setupTestEnvironment(): TestEnv {
   process.env.AGY_SETTINGS_FILE = settingsFile;
   process.env.AGY_TOKEN_FILE = tokenFile;
   process.env.AGY_GCLOUD_ADC_FILE = adcFile;
+  // Native stores and application launchers ignore HOME; block them explicitly.
+  process.env.AGY_AUTH_NO_NATIVE = '1';
 
   // Initialize paths and ensure directories
   fs.mkdirSync(cliDir, { recursive: true });
@@ -65,7 +70,9 @@ export function setupTestEnvironment(): TestEnv {
       AGY_AUTH_HOME: authHome,
       AGY_CLI_DIR: cliDir,
       AGY_SETTINGS_FILE: settingsFile,
+      AGY_TOKEN_FILE: tokenFile,
       AGY_GCLOUD_ADC_FILE: adcFile,
+      AGY_AUTH_NO_NATIVE: '1',
     };
   };
 
@@ -104,5 +111,52 @@ export function setupTestEnvironment(): TestEnv {
     cleanup,
     createSubprocessEnv,
     assertPathInsideTestDir,
+  };
+}
+
+export interface NativeStoreDouble {
+  /** Payload the double currently holds, as production code would observe it. */
+  readonly stored: KeychainPayload | null;
+  restore: () => void;
+}
+
+/**
+ * Installs an in-memory stand-in for the native credential store.
+ *
+ * `setupTestEnvironment` blocks real native access outright, so any test that
+ * legitimately exercises a Keychain-backed path installs this instead. Reads and
+ * writes then stay inside the test process and can be asserted on directly.
+ */
+export function installNativeStoreDouble(
+  options: { supported?: boolean; initial?: KeychainPayload | null } = {}
+): NativeStoreDouble {
+  const supported = options.supported ?? true;
+  let stored: KeychainPayload | null = options.initial ?? null;
+
+  const spies = [
+    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(supported),
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockImplementation(() => {
+      if (!supported) return { status: 'unsupported' };
+      return stored ? { status: 'found', payload: stored } : { status: 'missing' };
+    }),
+    vi.spyOn(KeychainManager, 'writeAgyToken').mockImplementation((payload) => {
+      if (!supported) return false;
+      stored = payload;
+      return true;
+    }),
+    vi.spyOn(KeychainManager, 'deleteAgyToken').mockImplementation(() => {
+      if (!supported) return false;
+      stored = null;
+      return true;
+    }),
+  ];
+
+  return {
+    get stored() {
+      return stored;
+    },
+    restore: () => {
+      for (const spy of spies) spy.mockRestore();
+    },
   };
 }

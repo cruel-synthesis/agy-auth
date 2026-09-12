@@ -6,18 +6,33 @@ import { CliError } from '../src/core/errors.js';
 import { KeychainManager } from '../src/core/keychain.js';
 import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
-import { generateSyntheticPrivateKey, setupTestEnvironment, TestEnv } from './test-utils.js';
+import {
+  generateSyntheticPrivateKey,
+  installNativeStoreDouble,
+  type NativeStoreDouble,
+  setupTestEnvironment,
+  TestEnv,
+} from './test-utils.js';
 
 describe('Doctor Diagnostic Command Comprehensive Suite', () => {
   let testEnv: TestEnv;
+  let nativeStore: NativeStoreDouble | null = null;
 
   beforeEach(() => {
     testEnv = setupTestEnvironment();
+    nativeStore = null;
   });
 
   afterEach(() => {
+    nativeStore?.restore();
+    nativeStore = null;
     testEnv.cleanup();
   });
+
+  /** Diagnostics always inspect the native store; give it a controlled stand-in. */
+  const useEmptyNativeStore = (): void => {
+    nativeStore = installNativeStoreDouble({ supported: false });
+  };
 
   it('reports pass when storage and files are pristine or uninitialized', async () => {
     const isSupportedSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
@@ -84,6 +99,7 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
   });
 
   it('fails if registry has invalid Schema v2 structure, invalid credentials, or incompatible legacy schema', async () => {
+    useEmptyNativeStore();
     // 1. Incompatible legacy schema (accounts is not array)
     fs.writeFileSync(
       Paths.registryFile,
@@ -150,6 +166,7 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
   });
 
   it('reports warning for non-0700 storage permissions on POSIX', async () => {
+    useEmptyNativeStore();
     if (process.platform === 'win32') return;
 
     fs.mkdirSync(Paths.authHome, { recursive: true, mode: 0o755 });
@@ -165,6 +182,7 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
   });
 
   it('reports insecure registry permissions on POSIX', async () => {
+    useEmptyNativeStore();
     if (process.platform === 'win32') return;
 
     const registry = new RegistryManager();
@@ -194,6 +212,7 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
   });
 
   it('fails if authHome is a symlink or not a directory', async () => {
+    useEmptyNativeStore();
     if (process.platform === 'win32') return;
 
     const realDir = path.join(testEnv.dir, 'real-home');
@@ -209,6 +228,7 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
   });
 
   it('fails if registry is a symlink or invalid JSON', async () => {
+    useEmptyNativeStore();
     fs.mkdirSync(Paths.authHome, { recursive: true });
 
     if (process.platform !== 'win32') {
@@ -224,6 +244,7 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
   });
 
   it('fails if registry.json is replaced by a symbolic link during diagnostics', async () => {
+    useEmptyNativeStore();
     if (process.platform === 'win32') return;
 
     const registryFile = Paths.registryFile;
@@ -308,6 +329,7 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
     }
 
     // 2. Network error in online mode reports warning without failing
+    useEmptyNativeStore();
     const fetchErrSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockRejectedValue(new Error('Network offline'));
@@ -337,6 +359,7 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
   });
 
   it('fails if Antigravity settings.json is a symbolic link', async () => {
+    useEmptyNativeStore();
     if (process.platform === 'win32') return;
 
     const realSettings = path.join(testEnv.dir, 'real-settings.json');
@@ -359,6 +382,7 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
   });
 
   it('fails if settings.json is replaced by a symbolic link during diagnostics', async () => {
+    useEmptyNativeStore();
     if (process.platform === 'win32') return;
 
     const settingsFile = Paths.antigravitySettingsFile;

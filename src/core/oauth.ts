@@ -3,6 +3,7 @@ import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { isEmail } from './credential-validation.js';
 import { CliError } from './errors.js';
+import { assertNativeAllowed } from './native-guard.js';
 import type { AgyKeychainPayload } from './keychain.js';
 import { getOAuthClientConfig, OAUTH_TOKEN_ENDPOINT } from './oauth-config.js';
 
@@ -78,6 +79,8 @@ function renderHtml(title: string, heading: string, bodyText: string, isError = 
 }
 
 export function defaultOpenBrowser(url: string): void {
+  assertNativeAllowed('browser launch');
+
   const platform = process.platform;
   const command =
     platform === 'darwin' ? 'open' : platform === 'win32' ? 'explorer.exe' : 'xdg-open';

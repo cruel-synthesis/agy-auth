@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCli, runCli } from '../src/cli.js';
 import { CancellationError, CliError } from '../src/core/errors.js';
 import { RegistryManager } from '../src/core/registry.js';
-import { generateSyntheticPrivateKey, setupTestEnvironment, TestEnv } from './test-utils.js';
+import {
+  generateSyntheticPrivateKey,
+  installNativeStoreDouble,
+  setupTestEnvironment,
+  TestEnv,
+} from './test-utils.js';
 
 describe('CLI unit tests and option dispatch', () => {
   let testEnv: TestEnv;
@@ -42,6 +47,7 @@ describe('CLI unit tests and option dispatch', () => {
   });
 
   it('runs add, list, current, details, doctor, clean, env commands via runCli returning exit code 0', async () => {
+    const nativeStore = installNativeStoreDouble({ supported: false });
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     try {
       // Add
@@ -82,6 +88,7 @@ describe('CLI unit tests and option dispatch', () => {
       expect(await runCli(['node', 'agy-auth', 'doctor', '--offline', '--json'])).toBe(0);
     } finally {
       consoleSpy.mockRestore();
+      nativeStore.restore();
     }
   });
 

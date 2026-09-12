@@ -12,7 +12,7 @@ import { QuotaOptions } from '../src/core/quota.js';
 import { RegistryManager } from '../src/core/registry.js';
 import { Account, Registry } from '../src/core/types.js';
 import { getTableComponents, renderAccountsTable, renderSelectMenu } from '../src/ui/table.js';
-import { TestEnv, setupTestEnvironment } from './test-utils.js';
+import { installNativeStoreDouble, TestEnv, setupTestEnvironment } from './test-utils.js';
 
 const FUTURE_RESET = 4_102_444_800;
 
@@ -303,14 +303,18 @@ describe('Plan and quota command behaviour', () => {
     const second = oauthAccount({ id: 'oauth2', email: 'other@example.com', alias: 'second' });
     seed([account, second], 'oauth2');
 
-    const writeSpy = vi.spyOn(KeychainManager, 'writeAgyToken').mockReturnValue(true);
-    await switchCommand('primary', { json: true });
+    const nativeStore = installNativeStoreDouble();
+    try {
+      await switchCommand('primary', { json: true });
 
-    const stored = new RegistryManager().getAccounts().find((a) => a.id === 'oauth1');
-    expect(stored?.plan).toBe('Google AI Ultra');
-    expect(stored?.quotaCheckedAt).toBe(1_700_000_000_000);
-    // Switching applies stored credentials to external state; quota refresh does not.
-    expect(writeSpy).toHaveBeenCalled();
+      const stored = new RegistryManager().getAccounts().find((a) => a.id === 'oauth1');
+      expect(stored?.plan).toBe('Google AI Ultra');
+      expect(stored?.quotaCheckedAt).toBe(1_700_000_000_000);
+      // Switching applies stored credentials to external state; quota refresh does not.
+      expect(nativeStore.stored).not.toBeNull();
+    } finally {
+      nativeStore.restore();
+    }
   });
 
   it('does not touch the Keychain during a quota refresh that rotates a token', async () => {
