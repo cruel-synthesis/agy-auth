@@ -16,6 +16,23 @@ export interface TestEnv {
   assertPathInsideTestDir: (targetPath: string) => void;
 }
 
+/**
+ * Every filesystem location `Paths` can resolve.
+ *
+ * Enumerated rather than listed by hand so a path added later cannot quietly
+ * escape the test environment.
+ */
+export function allResolvedPaths(): string[] {
+  const descriptors = Object.getOwnPropertyDescriptors(Paths);
+  const resolved: string[] = [];
+  for (const [name, descriptor] of Object.entries(descriptors)) {
+    if (typeof descriptor.get !== 'function') continue;
+    const value = (Paths as unknown as Record<string, unknown>)[name];
+    if (typeof value === 'string') resolved.push(value);
+  }
+  return resolved;
+}
+
 export function generateSyntheticPrivateKey(): string {
   const { privateKey } = crypto.generateKeyPairSync('rsa', {
     modulusLength: 2048,
@@ -78,13 +95,10 @@ export function setupTestEnvironment(): TestEnv {
   };
 
   const cleanup = () => {
-    // Assert all writable paths remain inside tempDir
-    assertPathInsideTestDir(Paths.authHome);
-    assertPathInsideTestDir(Paths.registryFile);
-    assertPathInsideTestDir(Paths.backupsDir);
-    assertPathInsideTestDir(Paths.accountsDir);
-    assertPathInsideTestDir(Paths.gcloudAdcFile);
-    assertPathInsideTestDir(Paths.antigravitySettingsFile);
+    // Assert every path the application can read or write stayed inside tempDir.
+    for (const resolved of allResolvedPaths()) {
+      assertPathInsideTestDir(resolved);
+    }
 
     // Restore environment
     for (const key of Object.keys(process.env)) {

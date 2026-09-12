@@ -3,7 +3,12 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Discovery } from '../src/core/discovery.js';
 import { Paths } from '../src/core/paths.js';
-import { generateSyntheticPrivateKey, setupTestEnvironment, TestEnv } from './test-utils.js';
+import {
+  allResolvedPaths,
+  generateSyntheticPrivateKey,
+  setupTestEnvironment,
+  TestEnv,
+} from './test-utils.js';
 
 describe('Paths and Discovery Subsystems', () => {
   let testEnv: TestEnv;
@@ -15,6 +20,16 @@ describe('Paths and Discovery Subsystems', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     testEnv.cleanup();
+  });
+
+  it('keeps every resolvable path inside the test environment', () => {
+    const resolved = allResolvedPaths();
+
+    // Guards against a path accessor added later without a redirect override.
+    expect(resolved.length).toBeGreaterThanOrEqual(11);
+    for (const target of resolved) {
+      expect(() => testEnv.assertPathInsideTestDir(target)).not.toThrow();
+    }
   });
 
   it('resolves default and overridden paths correctly', () => {
