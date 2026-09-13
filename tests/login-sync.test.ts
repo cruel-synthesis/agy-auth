@@ -514,6 +514,74 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     }
   });
 
+  it('reports an unverifiable session as skipped and still syncs other sources', async () => {
+    const registry = new RegistryManager();
+    registry.addOrUpdateAccount({
+      email: 'existing@example.com',
+      authType: 'oauth',
+      status: 'valid',
+      verification: { checkedAt: 1700000000000, source: 'userinfo' },
+      credentials: {
+        keychainPayload: {
+          auth_method: 'consumer',
+          token: {
+            access_token: 'saved-access',
+            refresh_token: 'saved-refresh',
+            token_type: 'Bearer',
+          },
+        },
+      },
+    });
+
+    const supportedSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+    const readSpy = vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
+      status: 'found',
+      payload: {
+        auth_method: 'consumer',
+        token: {
+          access_token: 'unattributable-access',
+          refresh_token: '',
+          token_type: 'Bearer',
+          expiry: futureExpiry(),
+        },
+      },
+    });
+
+    const offlineFetch = vi.fn(async () => {
+      throw new Error('Network unavailable');
+    });
+
+    let output = '';
+    const logSpy = vi.spyOn(console, 'log').mockImplementation((value: string) => {
+      output += value;
+    });
+
+    try {
+      // The OAuth source cannot be attributed, but that must not abort the run.
+      await syncCommand(
+        { oauthEmail: 'existing@example.com', json: true, yes: true },
+        { fetchFn: offlineFetch as unknown as typeof fetch }
+      );
+
+      const parsed = JSON.parse(output) as {
+        ok: boolean;
+        data: { skipped: string[]; synced: unknown[] };
+      };
+      expect(parsed.ok).toBe(true);
+      expect(parsed.data.synced).toHaveLength(0);
+      expect(parsed.data.skipped.join(' ')).toMatch(/could not confirm/i);
+
+      // Nothing was written over the saved profile.
+      const stored = new RegistryManager().getAccounts()[0];
+      expect(stored.credentials?.keychainPayload?.token.access_token).toBe('saved-access');
+      expect(stored.status).toBe('valid');
+    } finally {
+      logSpy.mockRestore();
+      supportedSpy.mockRestore();
+      readSpy.mockRestore();
+    }
+  });
+
   it('throws CliError on session-store error during sync', async () => {
     const supportedSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
     const readSpy = vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({

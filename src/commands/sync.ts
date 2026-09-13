@@ -3,7 +3,10 @@ import { readAntigravityToken } from '../core/antigravity-store.js';
 import { isEmail } from '../core/credential-validation.js';
 import { Discovery } from '../core/discovery.js';
 import { CancellationError, CliError, UsageError } from '../core/errors.js';
-import { importKeychainOAuth } from '../core/keychain-import.js';
+import {
+  importKeychainOAuth,
+  type ImportKeychainOAuthResult,
+} from '../core/keychain-import.js';
 import { RegistryManager } from '../core/registry.js';
 import { type Account, sanitizeAccount } from '../core/types.js';
 import { formatAccountShort } from '../ui/format.js';
@@ -42,24 +45,37 @@ export async function syncCommand(
     );
   }
   if (tokenState.status === 'found') {
-    let importResult = await importKeychainOAuth({
-      email: options.oauthEmail,
-      fetchFn: services?.fetchFn,
-      registry,
-    });
+    /**
+     * Refusing to attribute a session is a result for this source, not a reason
+     * to abandon the run, so it is reported alongside anything else that synced.
+     */
+    const importSession = async (
+      email?: string
+    ): Promise<ImportKeychainOAuthResult | 'skipped'> => {
+      try {
+        return await importKeychainOAuth({ email, fetchFn: services?.fetchFn, registry });
+      } catch (err) {
+        if (
+          err instanceof CliError &&
+          (err.code === 'verification_required' || err.code === 'session_rejected')
+        ) {
+          skippedItems.push(err.message);
+          return 'skipped';
+        }
+        throw err;
+      }
+    };
 
-    if (importResult.status === 'needs_email') {
+    let importResult = await importSession(options.oauthEmail);
+
+    if (importResult !== 'skipped' && importResult.status === 'needs_email') {
       if (process.stdin.isTTY && !options.yes && !options.json) {
         try {
           const promptEmail = await input({
             message: 'Enter the Google account email signed in to Antigravity:',
             validate: validateSyncEmail,
           });
-          importResult = await importKeychainOAuth({
-            email: promptEmail.trim(),
-            fetchFn: services?.fetchFn,
-            registry,
-          });
+          importResult = await importSession(promptEmail.trim());
         } catch (err) {
           if (err instanceof Error && err.name === 'ExitPromptError') {
             throw new CancellationError();
@@ -73,7 +89,7 @@ export async function syncCommand(
       }
     }
 
-    if (importResult.status === 'success') {
+    if (importResult !== 'skipped' && importResult.status === 'success') {
       syncedAccounts.push(importResult.account);
     }
   }

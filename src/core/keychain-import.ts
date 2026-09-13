@@ -205,10 +205,43 @@ export async function importKeychainOAuth(
     },
   };
 
-  const status = isVerified ? 'valid' : existing?.status || 'unverified';
-  const verification = isVerified
-    ? { checkedAt: Date.now(), source: 'userinfo' }
-    : existing?.verification;
+  if (existing && !isVerified) {
+    const stored = existing.credentials?.keychainPayload;
+    const unchanged =
+      stored?.token?.access_token === mergedPayload.token.access_token &&
+      stored?.token?.refresh_token === mergedPayload.token.refresh_token &&
+      stored?.token?.expiry === mergedPayload.token.expiry;
+
+    // Re-importing the very same session changes nothing, so let it through.
+    // Anything else would file an unattributable session under this profile and
+    // leave the account's earlier 'valid' verdict standing over new credentials.
+    if (!unchanged) {
+      const cause =
+        identity.kind === 'unavailable'
+          ? `identity check unavailable: ${identity.reason}`
+          : 'Google reports the address as unverified';
+
+      throw new CliError(
+        `Could not confirm that the active Antigravity session belongs to ${finalEmail}, ` +
+          `so the saved profile was left unchanged (${cause}). ` +
+          'Retry when the identity can be checked.',
+        'verification_required',
+        1,
+        { email: finalEmail, reason: identity.kind }
+      );
+    }
+
+    return {
+      status: 'success',
+      account: existing,
+      isNew: false,
+      derivedEmail: isDerived,
+      verifiedEmail: false,
+    };
+  }
+
+  const status = isVerified ? 'valid' : 'unverified';
+  const verification = isVerified ? { checkedAt: Date.now(), source: 'userinfo' } : undefined;
 
   const account = registry.addOrUpdateAccount({
     email: finalEmail,

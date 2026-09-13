@@ -189,17 +189,14 @@ describe('Keychain OAuth Import Module', () => {
     }
   });
 
-  it('preserves valid status and verification record on existing account when userinfo is unavailable', async () => {
+  it('refuses to replace an existing profile with a session it could not verify', async () => {
     const registry = new RegistryManager();
-    const existing = registry.addOrUpdateAccount({
+    registry.addOrUpdateAccount({
       email: 'valid-user@example.com',
       alias: 'valid-alias',
       authType: 'oauth',
       status: 'valid',
-      verification: {
-        checkedAt: 1700000000000,
-        source: 'userinfo',
-      },
+      verification: { checkedAt: 1700000000000, source: 'userinfo' },
       credentials: {
         keychainPayload: {
           auth_method: 'consumer',
@@ -229,6 +226,53 @@ describe('Keychain OAuth Import Module', () => {
       throw new Error('Network unavailable');
     });
 
+    await expect(
+      importKeychainOAuth({
+        email: 'valid-user@example.com',
+        fetchFn: fetchFail as unknown as typeof fetch,
+        registry,
+      })
+    ).rejects.toMatchObject({ code: 'verification_required' });
+
+    // The saved profile keeps its own credentials and its verification record,
+    // rather than adopting an unattributable session under a stale 'valid'.
+    const stored = new RegistryManager().getAccounts()[0];
+    expect(stored.status).toBe('valid');
+    expect(stored.verification).toEqual({ checkedAt: 1700000000000, source: 'userinfo' });
+    expect(stored.credentials?.keychainPayload?.token.access_token).toBe('existing-access-token');
+    expect(stored.credentials?.keychainPayload?.token.refresh_token).toBe('existing-refresh-token');
+  });
+
+  it('treats an unverifiable re-import of identical credentials as a no-op', async () => {
+    const payload = {
+      auth_method: 'consumer' as const,
+      token: {
+        access_token: 'unchanged-access-token',
+        refresh_token: 'unchanged-refresh-token',
+        token_type: 'Bearer',
+      },
+    };
+
+    const registry = new RegistryManager();
+    registry.addOrUpdateAccount({
+      email: 'valid-user@example.com',
+      alias: 'valid-alias',
+      authType: 'oauth',
+      status: 'valid',
+      verification: { checkedAt: 1700000000000, source: 'userinfo' },
+      credentials: { keychainPayload: payload },
+    });
+
+    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
+      status: 'found',
+      payload,
+    });
+
+    const fetchFail = vi.fn(async () => {
+      throw new Error('Network unavailable');
+    });
+
     const result = await importKeychainOAuth({
       email: 'valid-user@example.com',
       fetchFn: fetchFail as unknown as typeof fetch,
@@ -240,13 +284,7 @@ describe('Keychain OAuth Import Module', () => {
       expect(result.isNew).toBe(false);
       expect(result.verifiedEmail).toBe(false);
       expect(result.account.status).toBe('valid');
-      expect(result.account.verification).toEqual({
-        checkedAt: 1700000000000,
-        source: 'userinfo',
-      });
-      expect(result.account.credentials?.keychainPayload?.token.refresh_token).toBe(
-        'existing-refresh-token'
-      );
+      expect(result.account.verification).toEqual({ checkedAt: 1700000000000, source: 'userinfo' });
     }
   });
 
