@@ -5,6 +5,8 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     testTimeout: 15_000,
+    // The live lane runs real accounts against real endpoints; never here.
+    exclude: ['**/node_modules/**', '**/dist/**', 'tests/**/*.live.test.ts'],
     globalSetup: ['./tests/global-setup.ts'],
     setupFiles: ['./tests/setup-no-network.ts'],
     coverage: {

@@ -24,6 +24,7 @@
     "pretest:coverage": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:live": "vitest run --config vitest.live.config.ts",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "format": "biome format --write .",
