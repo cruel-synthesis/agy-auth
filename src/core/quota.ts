@@ -548,7 +548,21 @@ export class QuotaClient {
     }
   }
 
+  /** The token can no longer be used at all. */
   private static isTokenExpired(expiry: string | undefined, nowMs: number): boolean {
+    if (!expiry) return false;
+    const expiryMs = Date.parse(expiry);
+    if (!Number.isFinite(expiryMs)) return false;
+    return nowMs >= expiryMs;
+  }
+
+  /**
+   * The token is close enough to expiry to be worth replacing before use.
+   *
+   * This is an opportunity, not a verdict: a token inside the window is still
+   * valid, so failing to replace it early is not the same as it having expired.
+   */
+  private static isRefreshDue(expiry: string | undefined, nowMs: number): boolean {
     if (!expiry) return false;
     const expiryMs = Date.parse(expiry);
     if (!Number.isFinite(expiryMs)) return false;
@@ -586,15 +600,18 @@ export class QuotaClient {
     let accessToken = stored.access_token;
     let tokenUpdate: TokenUpdate | undefined;
 
-    if (this.isTokenExpired(stored.expiry, now())) {
+    if (this.isRefreshDue(stored.expiry, now())) {
       const refreshed = await this.refreshAccessToken(stored, ctx, options.env ?? process.env);
-      if (!refreshed) {
+      if (refreshed) {
+        accessToken = refreshed.access_token;
+        tokenUpdate = new TokenUpdate(refreshed);
+      } else if (this.isTokenExpired(stored.expiry, now())) {
+        // Nothing left to try: the token is spent and could not be replaced.
         return {
           result: { ...base, ok: false, reason: 'token-expired', status: 'expired' },
         };
       }
-      accessToken = refreshed.access_token;
-      tokenUpdate = new TokenUpdate(refreshed);
+      // Otherwise the stored token still has life in it; carry on with it.
     }
 
     // Contract A first: it needs no project and answers in one round trip.

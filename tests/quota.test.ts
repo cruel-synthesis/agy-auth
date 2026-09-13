@@ -562,6 +562,55 @@ describe('Environment-gated OAuth refresh', () => {
       },
     });
 
+  /** Still valid, but inside the five-minute early-refresh window. */
+  const nearlyExpiredAccount = () =>
+    oauthAccount({
+      credentials: {
+        keychainPayload: {
+          auth_method: 'consumer',
+          token: {
+            access_token: 'still-valid-access-token',
+            refresh_token: 'synthetic-refresh-token',
+            token_type: 'Bearer',
+            expiry: new Date(Date.now() + 120_000).toISOString(),
+          },
+        },
+      },
+    });
+
+  it('keeps using a token that is near expiry but cannot be refreshed early', async () => {
+    const { fetchFn, calls } = mockFetch({
+      retrieveUserQuotaSummary: () => jsonResponse(SUMMARY_OK),
+      loadCodeAssist: () => jsonResponse(CODE_ASSIST_OK),
+    });
+
+    // No client id, so the early refresh cannot happen. The token has two
+    // minutes of life left, which is not the same as being expired.
+    const { result } = await QuotaClient.refreshAccountQuota(nearlyExpiredAccount(), {
+      fetchFn,
+      env: {},
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.status).toBe('valid');
+    expect(result.reason).toBeUndefined();
+    expect(calls.some((url) => url.includes('retrieveUserQuotaSummary'))).toBe(true);
+    // The early refresh was attempted and declined locally, not sent to Google.
+    expect(calls.some((url) => url.includes('oauth2.googleapis.com'))).toBe(false);
+  });
+
+  it('still reports a genuinely expired token as expired', async () => {
+    const { fetchFn } = mockFetch({});
+    const { result } = await QuotaClient.refreshAccountQuota(expiredAccount(), {
+      fetchFn,
+      env: {},
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe('token-expired');
+    expect(result.status).toBe('expired');
+  });
+
   it('ships no OAuth client id or secret fallback', () => {
     expect(getOAuthClientConfig({})).toBeNull();
     expect(getOAuthClientConfig({ AGY_OAUTH_CLIENT_SECRET: 'only-a-secret' })).toBeNull();
