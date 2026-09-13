@@ -1,6 +1,6 @@
 import stringWidth from 'string-width';
 import { Account } from '../core/types.js';
-import { formatPlan, formatQuotaCell, formatTimeAgo } from './format.js';
+import { blockingStatusLabel, formatPlan, formatQuotaCell, formatTimeAgo } from './format.js';
 import { colors } from './theme.js';
 
 export function pad(str: string, targetWidth: number): string {
@@ -164,12 +164,17 @@ export function getTableComponents(
     const num = String(idx + 1).padStart(idxWidth, '0');
     const accountCell = acc.alias ? `${acc.alias} (${acc.email})` : acc.email;
 
+    // A status that blocks the reading belongs in one cell, not in all four
+    // quota columns. It takes the plan slot because a token agy-auth cannot use
+    // is the more actionable fact, and an unusable account rarely has a plan.
+    const blocked = blockingStatusLabel(acc.status);
+
     const cells: Record<ColumnKey, Cell> = {
-      plan: { text: formatPlan(acc), isError: false },
-      gemini5h: formatQuotaCell(quotaWindow(acc, 'gemini5h'), acc.status, nowMs),
-      geminiWk: formatQuotaCell(quotaWindow(acc, 'geminiWk'), acc.status, nowMs),
-      claude5h: formatQuotaCell(quotaWindow(acc, 'claude5h'), acc.status, nowMs),
-      claudeWk: formatQuotaCell(quotaWindow(acc, 'claudeWk'), acc.status, nowMs),
+      plan: blocked ? { text: blocked, isError: true } : { text: formatPlan(acc), isError: false },
+      gemini5h: formatQuotaCell(quotaWindow(acc, 'gemini5h'), nowMs),
+      geminiWk: formatQuotaCell(quotaWindow(acc, 'geminiWk'), nowMs),
+      claude5h: formatQuotaCell(quotaWindow(acc, 'claude5h'), nowMs),
+      claudeWk: formatQuotaCell(quotaWindow(acc, 'claudeWk'), nowMs),
       last: { text: formatTimeAgo(acc.lastUsedAt), isError: false },
     };
 

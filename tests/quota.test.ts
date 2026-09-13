@@ -15,7 +15,8 @@ import {
 import { RegistryManager } from '../src/core/registry.js';
 import { Account, Registry } from '../src/core/types.js';
 import { VerificationResult, Verifier } from '../src/core/verifier.js';
-import { formatQuotaCell, quotaSummaryLines } from '../src/ui/format.js';
+import { blockingStatusLabel, formatQuotaCell, quotaSummaryLines } from '../src/ui/format.js';
+import { renderAccountsTable } from '../src/ui/table.js';
 import { TestEnv, setupTestEnvironment } from './test-utils.js';
 
 const FUTURE_RESET = 4_102_444_800; // 2100-01-01T00:00:00Z
@@ -1249,14 +1250,27 @@ describe('Quota rendering', () => {
     expect(empty.isError).toBe(true);
   });
 
-  it('replaces the quota reading with concise account error text', () => {
+  it('names a blocking account status once instead of per quota column', () => {
+    expect(blockingStatusLabel('expired')).toBe('expired');
+    expect(blockingStatusLabel('rate-limited')).toBe('limited');
+    expect(blockingStatusLabel('needs-reauth')).toBe('reauth');
+    expect(blockingStatusLabel('invalid')).toBe('invalid');
+    expect(blockingStatusLabel('valid')).toBeUndefined();
+    expect(blockingStatusLabel('unverified')).toBeUndefined();
+  });
+
+  it('reports absent quota as absent whatever the account status', () => {
+    // An expired token used to print 'expired' into all four quota columns, so
+    // one account-level fact was repeated four times and read as four separate
+    // expiries. The quota cell now answers only the question it is asked.
     const window = { usedPercent: 10, windowMinutes: 300, resetsAt: FUTURE_RESET };
-    expect(formatQuotaCell(window, 'expired').text).toBe('expired');
-    expect(formatQuotaCell(window, 'rate-limited').text).toBe('limited');
-    expect(formatQuotaCell(window, 'needs-reauth').text).toBe('reauth');
-    expect(formatQuotaCell(window, 'invalid').text).toBe('invalid');
-    expect(formatQuotaCell(window, 'expired').isError).toBe(true);
-    expect(formatQuotaCell(window, 'rate-limited').isError).toBe(true);
+    expect(formatQuotaCell(window).text).toContain('90%');
+    expect(formatQuotaCell(undefined).text).toBe('-');
+
+    const expired = oauthAccount({ status: 'expired', rateLimit: undefined });
+    const table = renderAccountsTable([expired], expired.id, 160);
+    expect(table).toContain('expired');
+    expect(table.match(/expired/g)).toHaveLength(1);
   });
 
   it('renders a shared plan and quota block for detailed views', () => {

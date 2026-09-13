@@ -93,8 +93,13 @@ export function formatPlan(account: Account): string {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-/** Statuses that replace the quota reading with the reason it cannot be read. */
-function quotaStatusLabel(status: AccountStatus | undefined): string | undefined {
+/**
+ * Statuses that stop a quota reading from existing at all, and the compact word
+ * for each. The caller shows this once beside the account; stamping it into
+ * every quota column repeats one account-level fact four times and reads as
+ * four separate expiries.
+ */
+export function blockingStatusLabel(status: AccountStatus | undefined): string | undefined {
   switch (status) {
     case 'rate-limited':
       return 'limited';
@@ -113,7 +118,7 @@ export interface QuotaCell {
   /** Compact form for a table cell. */
   text: string;
   isError: boolean;
-  state: 'unknown' | 'error' | 'stale' | 'value';
+  state: 'unknown' | 'stale' | 'value';
   /** Remaining percentage, e.g. `35%`, present only when state is `value`. */
   percentText?: string;
   /** Local reset instant, e.g. `14:30` or `1 Jan`, when the window reports one. */
@@ -129,11 +134,8 @@ export interface QuotaCell {
  */
 export function formatQuotaCell(
   window: RateLimitWindow | undefined,
-  status?: AccountStatus,
   nowMs: number = Date.now()
 ): QuotaCell {
-  const statusLabel = quotaStatusLabel(status);
-  if (statusLabel) return { text: statusLabel, isError: true, state: 'error' };
   if (!window) return { text: '-', isError: false, state: 'unknown' };
 
   const remaining = Math.max(0, Math.min(100, Math.round(100 - window.usedPercent)));
@@ -192,7 +194,7 @@ export function quotaSummaryLines(account: Account, nowMs: number = Date.now()):
   ];
 
   for (const [label, window] of windows) {
-    const cell = formatQuotaCell(window, account.status, nowMs);
+    const cell = formatQuotaCell(window, nowMs);
     let value: string;
     switch (cell.state) {
       case 'unknown':
@@ -200,9 +202,6 @@ export function quotaSummaryLines(account: Account, nowMs: number = Date.now()):
         break;
       case 'stale':
         value = 'stale (window elapsed; refresh to update)';
-        break;
-      case 'error':
-        value = cell.text;
         break;
       default:
         value = cell.resetText
