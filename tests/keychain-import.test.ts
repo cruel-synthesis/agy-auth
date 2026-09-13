@@ -367,6 +367,63 @@ describe('Keychain OAuth Import Module', () => {
     expect(registry.getActiveAccount()?.id).toBe(existing.id);
   });
 
+  it('rejects an explicit email that disagrees with the verified Google identity', async () => {
+    const registry = new RegistryManager();
+    registry.addOrUpdateAccount({
+      email: 'claimed@example.com',
+      alias: 'claimed-alias',
+      authType: 'oauth',
+      status: 'valid',
+      credentials: {
+        keychainPayload: {
+          auth_method: 'consumer',
+          token: {
+            access_token: 'claimed-access',
+            refresh_token: 'claimed-refresh',
+            token_type: 'Bearer',
+          },
+        },
+      },
+    });
+
+    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
+      status: 'found',
+      payload: {
+        auth_method: 'consumer',
+        token: {
+          access_token: 'session-of-someone-else',
+          refresh_token: 'other-refresh',
+          token_type: 'Bearer',
+          expiry: futureExpiry(),
+        },
+      },
+    });
+
+    const fetchFn = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ email: 'actual@example.com', email_verified: true }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+    );
+
+    await expect(
+      importKeychainOAuth({
+        email: 'claimed@example.com',
+        fetchFn: fetchFn as unknown as typeof fetch,
+        registry,
+      })
+    ).rejects.toMatchObject({ code: 'identity_mismatch' });
+
+    // The mismatch must be caught before anything is written.
+    const stored = new RegistryManager().getAccounts();
+    expect(stored).toHaveLength(1);
+    expect(stored[0].email).toBe('claimed@example.com');
+    expect(stored[0].credentials?.keychainPayload?.token.access_token).toBe('claimed-access');
+    expect(stored[0].credentials?.keychainPayload?.token.refresh_token).toBe('claimed-refresh');
+  });
+
   it('rejects invalid email address with UsageError', async () => {
     vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
     vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({

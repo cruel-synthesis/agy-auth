@@ -112,12 +112,20 @@ export async function importKeychainOAuth(
     if (!isEmail(trimmed)) {
       throw new UsageError(`Invalid OAuth email address '${options.email}'.`);
     }
-    finalEmail = trimmed;
-    if (liveEmail && liveEmail.toLowerCase() === trimmed.toLowerCase() && emailVerified) {
-      isVerified = true;
-    } else {
-      isVerified = false;
+    // Google's answer is authoritative. A supplied email that contradicts it
+    // would file this session under the wrong profile, so stop before any write.
+    if (liveEmail && liveEmail.toLowerCase() !== trimmed.toLowerCase()) {
+      throw new CliError(
+        `The active Antigravity session belongs to ${liveEmail}, not ${trimmed}. ` +
+          'Rerun without --email to save the signed-in account, or sign in as ' +
+          `${trimmed} in Antigravity first.`,
+        'identity_mismatch',
+        1,
+        { supplied: trimmed, verified: liveEmail }
+      );
     }
+    finalEmail = trimmed;
+    isVerified = Boolean(liveEmail) && emailVerified;
   } else if (liveEmail && emailVerified) {
     finalEmail = liveEmail;
     isDerived = true;
