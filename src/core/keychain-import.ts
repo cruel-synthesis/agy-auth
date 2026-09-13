@@ -99,7 +99,7 @@ export async function importKeychainOAuth(
   const tokenState = readAntigravityToken();
   if (tokenState.status === 'unsupported') {
     throw new CliError(
-      "No Antigravity token-file session was found. This platform's native OS keyring is not supported by agy-auth; configure AGY_OAUTH_CLIENT_ID and use `--oauth-source browser` instead.",
+      "No Antigravity token-file session was found. This platform's native OS keyring is not supported by agy-auth; configure AGY_OAUTH_CLIENT_ID and run `agy-auth login` instead.",
       'unsupported_platform',
       1
     );

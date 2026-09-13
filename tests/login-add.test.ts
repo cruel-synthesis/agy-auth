@@ -90,82 +90,13 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     expect(typeof validateEmailInput('invalid')).toBe('string');
   });
 
-  it('fails loginCommand in non-TTY mode with UsageError', async () => {
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = false;
-    try {
-      await expect(loginCommand()).rejects.toThrow(
-        'Pass `--oauth-source keychain` or `--oauth-source browser` explicitly.'
-      );
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
-  });
-
-  it('adds an OAuth profile using default macOS Keychain import without client ID', async () => {
-    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
-    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
-      status: 'found',
-      payload: {
-        auth_method: 'consumer',
-        token: {
-          access_token: 'default-kc-token',
-          refresh_token: 'default-kc-refresh',
-          token_type: 'Bearer',
-          expiry: futureExpiry(),
-        },
-      },
-    });
-
+  it('adds a browser OAuth profile', async () => {
     const origTTY = process.stdin.isTTY;
     process.stdin.isTTY = true;
 
     try {
       await loginCommand(
         {
-          oauthSource: 'keychain',
-          alias: 'kc-profile',
-          project: 'kc-project',
-          location: 'us-central1',
-          model: 'gemini-2.5-pro',
-        },
-        {
-          fetchFn: vi.fn(async () => {
-            return new Response(
-              JSON.stringify({ email: 'keychain-user@example.com', email_verified: true }),
-              { status: 200, headers: { 'content-type': 'application/json' } }
-            );
-          }) as unknown as typeof fetch,
-        }
-      );
-
-      const account = new RegistryManager().findAccount('kc-profile');
-      expect(account).toMatchObject({
-        email: 'keychain-user@example.com',
-        alias: 'kc-profile',
-        authType: 'oauth',
-        status: 'valid',
-        gcpProject: 'kc-project',
-        gcpLocation: 'us-central1',
-        model: 'gemini-2.5-pro',
-      });
-      expect(account?.credentials?.keychainPayload?.token).toMatchObject({
-        access_token: 'default-kc-token',
-        refresh_token: 'default-kc-refresh',
-      });
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
-  });
-
-  it('adds a browser OAuth profile when explicitly requested via --oauth-source browser', async () => {
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = true;
-
-    try {
-      await loginCommand(
-        {
-          oauthSource: 'browser',
           alias: 'browser-oauth',
           project: 'oauth-project',
           location: 'us-central1',
@@ -235,7 +166,7 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     process.stdin.isTTY = true;
     try {
       await loginCommand(
-        { oauthSource: 'browser' },
+        {},
         {
           authenticateOAuth: async () => ({
             email: 'RETURNING@example.com',
@@ -271,124 +202,8 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     }
   });
 
-  it('rejects an invalid OAuth source or alias with UsageError', async () => {
-    await expect(loginCommand({ oauthSource: 'invalid-source' })).rejects.toThrow(UsageError);
+  it('rejects an invalid alias with UsageError', async () => {
     await expect(loginCommand({ alias: 'invalid alias with spaces' })).rejects.toThrow(UsageError);
-  });
-
-  it('interactively adds an Antigravity Keychain OAuth account when selected from menu', async () => {
-    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
-    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
-      status: 'found',
-      payload: {
-        auth_method: 'consumer',
-        token: {
-          access_token: 'inter-kc-token',
-          refresh_token: '',
-          token_type: 'Bearer',
-        },
-      },
-    });
-
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = true;
-    mockState.selectValue = 'keychain';
-
-    try {
-      await loginCommand(
-        {},
-        {
-          fetchFn: vi.fn(async () => {
-            return new Response(
-              JSON.stringify({ email: 'interactive-kc@example.com', email_verified: true }),
-              { status: 200, headers: { 'content-type': 'application/json' } }
-            );
-          }) as unknown as typeof fetch,
-        }
-      );
-
-      const account = new RegistryManager()
-        .getAccounts()
-        .find((a) => a.email === 'interactive-kc@example.com');
-      expect(account).toBeTruthy();
-      expect(account?.authType).toBe('oauth');
-      expect(account?.status).toBe('valid');
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
-  });
-
-  it('adds a custom browser OAuth account via --oauth-source browser', async () => {
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = true;
-
-    try {
-      await loginCommand(
-        { oauthSource: 'browser' },
-        {
-          authenticateOAuth: async () => ({
-            email: 'interactive-browser@example.com',
-            payload: {
-              auth_method: 'consumer',
-              token: {
-                access_token: 'inter-access-token',
-                refresh_token: 'inter-refresh-token',
-                token_type: 'Bearer',
-                expiry: futureExpiry(),
-              },
-            },
-          }),
-        }
-      );
-
-      const account = new RegistryManager()
-        .getAccounts()
-        .find((a) => a.email === 'interactive-browser@example.com');
-      expect(account).toBeTruthy();
-      expect(account?.authType).toBe('oauth');
-      expect(account?.status).toBe('valid');
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
-  });
-
-  it('opens Antigravity sign-in and imports the resulting account', async () => {
-    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
-    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
-      status: 'found',
-      payload: {
-        auth_method: 'consumer',
-        token: {
-          access_token: 'official-antigravity-token',
-          refresh_token: '',
-          token_type: 'Bearer',
-        },
-      },
-    });
-    const openAntigravity = vi.fn(() => true);
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = true;
-    mockState.selectValue = 'antigravity';
-
-    try {
-      await loginCommand(
-        {},
-        {
-          openAntigravity,
-          fetchFn: vi.fn(async () => {
-            return new Response(
-              JSON.stringify({ email: 'official-login@example.com', email_verified: true }),
-              { status: 200, headers: { 'content-type': 'application/json' } }
-            );
-          }) as unknown as typeof fetch,
-        }
-      );
-
-      expect(openAntigravity).toHaveBeenCalledOnce();
-      expect(new RegistryManager().findAccount('official-login@example.com')).toBeTruthy();
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
   });
 
   it('cancels removal when interactive confirmation is declined in removeCommand', async () => {

@@ -10,7 +10,7 @@ Overview of commands available in `agy-auth`.
 - [`switch`](./switch.md) (`sw`): Switch active credential profile (`-j`)
 - [`current`](./current.md) (`whoami`): Show active credential profile (`--offline`, `-j`)
 - [`details`](./details.md) (`info`): Show detailed metadata for a profile (`--offline`, `-j`)
-- [`login`](./login.md): Add or refresh a Google OAuth account
+- [`login`](./login.md): Sign in to a Google account in the browser
 - [`add`](./add.md): Add the account signed in to Antigravity, or another credential (`--api-key`, `--service-account`, `--adc`, `-y`, `-j`)
 - [`remove`](./remove.md) (`rm`): Remove one or more profiles (`--all`, `-y`, `-j`)
 

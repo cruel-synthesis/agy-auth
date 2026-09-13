@@ -1,5 +1,4 @@
 import { execFileSync } from 'node:child_process';
-import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { guardedNodeArgs } from './test-utils.js';
@@ -37,16 +36,12 @@ vi.mock('@inquirer/prompts', () => ({
 }));
 
 import { runCli } from '../src/cli.js';
-import { loginCommand } from '../src/commands/login.js';
-import * as antigravityStore from '../src/core/antigravity-store.js';
-import { CliError } from '../src/core/errors.js';
-import { KeychainManager } from '../src/core/keychain.js';
 import { OAUTH_SCOPES, OAuthFlow } from '../src/core/oauth.js';
 import { RegistryManager } from '../src/core/registry.js';
 import type { Account } from '../src/core/types.js';
 import { printTopLevelHelp } from '../src/ui/help.js';
 import { renderAccountsTable } from '../src/ui/table.js';
-import { type TestEnv, futureExpiry, setupTestEnvironment } from './test-utils.js';
+import { type TestEnv, setupTestEnvironment } from './test-utils.js';
 
 describe('First-run and OAuth onboarding behavior', () => {
   let testEnv: TestEnv;
@@ -178,193 +173,6 @@ describe('First-run and OAuth onboarding behavior', () => {
     }
 
     expect(promptMockState.passwordCallCount).toBe(0);
-  });
-
-  it('offers OAuth login choices and imports the selected Antigravity session', async () => {
-    vi.spyOn(os, 'platform').mockReturnValue('darwin');
-    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
-    vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
-      status: 'found',
-      payload: {
-        auth_method: 'consumer',
-        token: {
-          access_token: 'auto-import-token',
-          refresh_token: '',
-          expiry: futureExpiry(),
-        },
-      },
-      keyringStatus: 'found',
-      fileStatus: 'missing',
-    });
-
-    const fetchFn = vi.fn(async () => {
-      return new Response(
-        JSON.stringify({ email: 'auto-imported-user@example.com', email_verified: true }),
-        { status: 200, headers: { 'content-type': 'application/json' } }
-      );
-    });
-
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = true;
-    try {
-      await loginCommand({}, { fetchFn: fetchFn as unknown as typeof fetch });
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
-
-    expect(promptMockState.selectCallCount).toBe(1);
-    expect(promptMockState.selectChoices.map((choice) => choice.value)).toEqual([
-      'keychain',
-      'antigravity',
-    ]);
-    expect(promptMockState.inputCallCount).toBe(0);
-
-    const registry = new RegistryManager();
-    const accounts = registry.getAccounts();
-    expect(accounts.length).toBe(1);
-    expect(accounts[0].email).toBe('auto-imported-user@example.com');
-  });
-
-  it('offers official Antigravity sign-in when no session or custom OAuth client is available', async () => {
-    vi.spyOn(os, 'platform').mockReturnValue('darwin');
-    vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
-      status: 'missing',
-      keyringStatus: 'missing',
-      fileStatus: 'missing',
-    });
-
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = true;
-    promptMockState.shouldCancelSelect = true;
-
-    try {
-      await loginCommand({});
-    } catch {
-      // Expected abort
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
-
-    expect(promptMockState.selectCallCount).toBe(1);
-    const values = promptMockState.selectChoices.map((c) => c.value);
-    expect(values).toEqual(['antigravity']);
-  });
-
-  it('does not offer an expired Antigravity session as an import source', async () => {
-    vi.spyOn(os, 'platform').mockReturnValue('darwin');
-    vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
-      status: 'found',
-      source: 'file',
-      payload: {
-        auth_method: 'consumer',
-        token: {
-          access_token: 'expired-session-token',
-          refresh_token: '',
-          expiry: new Date(Date.now() - 60_000).toISOString(),
-        },
-      },
-      keyringStatus: 'missing',
-      fileStatus: 'found',
-    });
-
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = true;
-    promptMockState.shouldCancelSelect = true;
-
-    try {
-      await loginCommand({});
-    } catch {
-      // Expected abort
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
-
-    expect(promptMockState.selectChoices.map((choice) => choice.value)).toEqual(['antigravity']);
-    expect(promptMockState.selectChoices[0]?.name).toBe('Sign in through Antigravity');
-  });
-
-  it('offers custom browser OAuth only when a client ID is configured on macOS', async () => {
-    vi.spyOn(os, 'platform').mockReturnValue('darwin');
-    vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
-      status: 'missing',
-      keyringStatus: 'missing',
-      fileStatus: 'missing',
-    });
-    vi.stubEnv('AGY_OAUTH_CLIENT_ID', 'custom-client.apps.googleusercontent.com');
-
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = true;
-    promptMockState.shouldCancelSelect = true;
-
-    try {
-      await loginCommand({});
-    } catch {
-      // Expected abort
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
-
-    expect(promptMockState.selectChoices.map((choice) => choice.value)).toEqual([
-      'antigravity',
-      'browser',
-    ]);
-  });
-
-  it('offers an existing Antigravity token-file session on non-macOS', async () => {
-    vi.spyOn(os, 'platform').mockReturnValue('linux');
-    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(false);
-    vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
-      status: 'found',
-      source: 'file',
-      payload: {
-        auth_method: 'consumer',
-        token: { access_token: 'non-mac-session', refresh_token: '' },
-      },
-      keyringStatus: 'unsupported',
-      fileStatus: 'found',
-    });
-
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = true;
-    promptMockState.shouldCancelSelect = true;
-
-    try {
-      await loginCommand({});
-    } catch {
-      // Expected abort
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
-
-    const values = promptMockState.selectChoices.map((c) => c.value);
-    expect(values).toEqual(['keychain']);
-  });
-
-  it('does not offer an unconfigured browser flow on non-macOS', async () => {
-    vi.spyOn(os, 'platform').mockReturnValue('linux');
-    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(false);
-    vi.spyOn(antigravityStore, 'readAntigravityToken').mockReturnValue({
-      status: 'unsupported',
-      keyringStatus: 'unsupported',
-      fileStatus: 'missing',
-    });
-
-    const origTTY = process.stdin.isTTY;
-    process.stdin.isTTY = true;
-    try {
-      await expect(loginCommand({})).rejects.toMatchObject({
-        code: 'no_login_source',
-        exitCode: 1,
-      });
-      await expect(loginCommand({ oauthSource: 'keychain' })).rejects.toThrow(CliError);
-      await expect(loginCommand({ oauthSource: 'keychain' })).rejects.toThrow(
-        /native OS keyring is not supported/i
-      );
-    } finally {
-      process.stdin.isTTY = origTTY;
-    }
-
-    expect(promptMockState.selectCallCount).toBe(0);
   });
 
   it('requests only public OAuth scopes in browser flow', async () => {

@@ -43,17 +43,10 @@ agy-auth add
 ```
 
 ### 2. Add Another Account
-Sign in to a different Google account:
+Sign in to a different Google account in the browser. This requires your own Google Desktop OAuth Client ID in `AGY_OAUTH_CLIENT_ID`:
 
 ```bash
-# Import the current Antigravity account or sign in through Antigravity
 agy-auth login
-
-# Import an active Antigravity session from Apple Keychain or the token file
-agy-auth login --oauth-source keychain
-
-# Or sign in with a custom Google Desktop OAuth Client ID (requires AGY_OAUTH_CLIENT_ID)
-agy-auth login --oauth-source browser
 ```
 
 Or add an API key through a masked prompt:
@@ -105,11 +98,9 @@ This feature is **experimental** because it depends on undocumented upstream con
 `agy-auth` ships **no OAuth client ID and no client secret**.
 
 - **Existing Antigravity Session (Out-of-the-box)**:
-  `agy-auth login` and `agy-auth add` can import an active Antigravity session from Apple Keychain on macOS or from Antigravity's token file on any platform. This flow verifies your identity via Google's `userinfo` endpoint using the access token and **does not require setting an OAuth client ID**. The `keychain` source name is retained for command-line compatibility and reads this composite session store.
-- **Another Google Account (Out-of-the-box on macOS)**:
-  Interactive `agy-auth login` can open Antigravity for Google sign-in and then import the resulting session. The sign-in itself is handled by Antigravity; `agy-auth` does not ship or impersonate an OAuth client.
-- **Custom Browser Sign-In**:
-  To perform custom browser OAuth login (`agy-auth login --oauth-source browser`) on any platform, you must configure your own Google Cloud Desktop OAuth Client ID. Interactive login offers this choice only when the client ID is configured:
+  `agy-auth add` imports an active Antigravity session from Apple Keychain on macOS or from Antigravity's token file on any platform. This flow verifies your identity via Google's `userinfo` endpoint using the access token and **does not require setting an OAuth client ID**.
+- **Browser Sign-In**:
+  `agy-auth login` performs a PKCE loopback sign-in on any platform, and requires your own Google Cloud Desktop OAuth Client ID:
 
 ```bash
 export AGY_OAUTH_CLIENT_ID='your-client-id.apps.googleusercontent.com'

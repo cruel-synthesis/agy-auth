@@ -24,7 +24,7 @@ describe('Keychain OAuth Import Module', () => {
     vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(false);
 
     await expect(importKeychainOAuth()).rejects.toThrow(CliError);
-    await expect(importKeychainOAuth()).rejects.toThrow(/use `--oauth-source browser` instead/);
+    await expect(importKeychainOAuth()).rejects.toThrow(/run `agy-auth login` instead/);
   });
 
   it('reports composite session-store errors without mislabeling token-file failures', async () => {

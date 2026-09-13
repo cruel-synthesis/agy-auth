@@ -2,7 +2,7 @@
 
 Non-interactive commands in `agy-auth` support the `--json` flag, providing structured, deterministic machine output for scripting, CI/CD pipelines, and editor extensions.
 
-Supported commands: `list`, `current`, `details`, `switch`, `add`, `remove`, `alias`, `project`, `model`, `env`, `export`, `import`, `add`, `clean`, `doctor`. (Interactive terminal onboarding via `login` is terminal-only.)
+Supported commands: `list`, `current`, `details`, `switch`, `add`, `remove`, `alias`, `project`, `model`, `env`, `export`, `import`, `clean`, `doctor`. (Interactive terminal onboarding via `login` is terminal-only.)
 
 ---
 

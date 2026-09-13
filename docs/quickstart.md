@@ -26,17 +26,10 @@ agy-auth add
 ```
 
 ### Option B: Google Account Login
-Add or refresh an OAuth profile from an accessible Antigravity session. On macOS, you can also sign in to another account through Antigravity:
+Sign in to another Google account in the browser. This needs your own Google Desktop OAuth Client ID in `AGY_OAUTH_CLIENT_ID`:
 
 ```bash
-# Import the current account or open Antigravity for another Google sign-in
 agy-auth login
-
-# Explicitly import an active Antigravity session
-agy-auth login --oauth-source keychain
-
-# Or sign in with a custom Google Desktop OAuth Client ID
-agy-auth login --oauth-source browser
 ```
 
 ### Option C: Add an API Key
