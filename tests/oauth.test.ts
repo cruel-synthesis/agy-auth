@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defaultOpenBrowser, OAuthFlow, OAUTH_SCOPES } from '../src/core/oauth.js';
+import { NativeOperationBlockedError } from '../src/core/native-guard.js';
 
 function visitCallback(
   authorizationUrl: string,
@@ -289,6 +290,27 @@ describe('OAuthFlow', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     expect(tokenExchangeCount).toBe(1);
+  });
+
+  it('rejects rather than hanging when the real launcher is blocked by isolation', async () => {
+    // No openBrowserFn, so the flow reaches the real launcher and the suite
+    // guard stops it. Swallowing that left the callback server listening until
+    // the timeout, which read as a slow sign-in rather than a blocked one.
+    const fetchFn = vi.fn(() => {
+      throw new Error('no request should be made');
+    });
+
+    await expect(
+      OAuthFlow.authenticate({
+        env: { AGY_OAUTH_CLIENT_ID: 'synthetic-client' },
+        fetchFn: fetchFn as unknown as typeof fetch,
+        // Far beyond the per-test limit, so a timeout cannot pass for a
+        // rejection: hanging fails the test instead of satisfying it.
+        timeoutMs: 600_000,
+      })
+    ).rejects.toBeInstanceOf(NativeOperationBlockedError);
+
+    expect(fetchFn).not.toHaveBeenCalled();
   });
 
   // Exercises the injected launcher only. The suite guard stays on; that the

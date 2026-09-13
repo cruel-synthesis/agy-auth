@@ -16,8 +16,16 @@
  */
 export class NativeOperationBlockedError extends Error {}
 
+/**
+ * Latched once the variable has been seen set, so blocking is one-way within a
+ * process: code that later changes or deletes the variable cannot reopen native
+ * access for the rest of the run.
+ */
+let blocked = false;
+
 export function assertNativeAllowed(operation: string): void {
-  if (process.env.AGY_AUTH_NO_NATIVE !== '1') return;
+  blocked ||= process.env.AGY_AUTH_NO_NATIVE === '1';
+  if (!blocked) return;
 
   throw new NativeOperationBlockedError(
     `Blocked native operation '${operation}' in an isolated environment. ` +

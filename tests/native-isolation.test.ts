@@ -11,7 +11,14 @@ const SRC_ROOT = fileURLToPath(new URL('../src', import.meta.url));
 /** The one file allowed to execute a credential-store binary. */
 const CREDENTIAL_STORE_BOUNDARY = 'core/keychain.ts';
 
-/** A child-process call whose executable is a credential-store binary. */
+/**
+ * A child-process call whose executable is written inline as a string literal.
+ *
+ * This is a text match, not static analysis: a command held in a variable,
+ * built by concatenation, or reached through an indirection is invisible to it.
+ * It catches the shape of the change that caused the incident, and nothing is
+ * proven about the paths it cannot see.
+ */
 const CREDENTIAL_STORE_EXEC =
   /\b(?:exec|execSync|execFile|execFileSync|spawn|spawnSync)\s*\(\s*['"`](?:\/usr\/bin\/)?(?:security|secret-tool|cmdkey|keyring)\b/g;
 
@@ -36,10 +43,17 @@ describe('Native Operation Isolation', () => {
   });
 
   afterEach(() => {
+    // Several cases here mock isSupported() to reach a platform-specific path.
+    // Restoring centrally keeps a platform mock from leaking into a later test.
+    vi.restoreAllMocks();
     testEnv.cleanup();
   });
 
   it('fails immediately when the native credential store is read without a test double', () => {
+    // Mocked so the case tests the guard everywhere, rather than passing on
+    // Linux and Windows because readAgyTokenState() returns early there.
+    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+
     expect(() => KeychainManager.readAgyTokenState()).toThrow(/native operation/i);
   });
 
@@ -99,10 +113,10 @@ describe('Native Operation Isolation', () => {
     }
   });
 
-  it('runs a credential-store binary from one guarded place only', () => {
+  it('has no second literal credential-store call beside the guarded one', () => {
     // The Keychain overwrite happened because a second execution path was added
-    // beside the guarded one and the tests doubling the first never saw it. A
-    // new path added anywhere else in src/ fails here rather than at runtime.
+    // beside the guarded one and the tests doubling the first never saw it.
+    // Written the same way, that change fails here rather than at runtime.
     const offenders: string[] = [];
 
     for (const file of sourceFiles()) {
@@ -119,7 +133,7 @@ describe('Native Operation Isolation', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('guards that one place with the isolation check', () => {
+  it('keeps exactly one isolation check in that boundary file', () => {
     const boundary = fs.readFileSync(path.join(SRC_ROOT, CREDENTIAL_STORE_BOUNDARY), 'utf-8');
     expect(boundary.match(/assertNativeAllowed\(/g)).toHaveLength(1);
   });

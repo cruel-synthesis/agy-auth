@@ -399,8 +399,13 @@ export class OAuthFlow {
 
         try {
           openBrowserFn(authUrl);
-        } catch {
-          // Failure to open browser is recoverable via terminal URL
+        } catch (error: unknown) {
+          // Failure to open browser is recoverable via terminal URL. An
+          // isolation breach is not, and swallowing it here would hang until
+          // the timeout rather than report it, so it settles the flow instead.
+          if (error instanceof NativeOperationBlockedError) {
+            finish(() => reject(error));
+          }
         }
       });
 
