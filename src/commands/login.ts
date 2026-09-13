@@ -55,8 +55,6 @@ export async function loginCommand(
     }
   }
 
-  console.log(`\n${colors.cyan('agy-auth')} - Google Account Login\n`);
-
   const registry = new RegistryManager();
   const authenticate = services?.authenticateOAuth || OAuthFlow.authenticate;
   const result = await authenticate({ fetchFn: services?.fetchFn });

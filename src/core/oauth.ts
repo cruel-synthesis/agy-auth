@@ -121,7 +121,7 @@ export class OAuthFlow {
 
     if (!clientConfig) {
       throw new CliError(
-        'No OAuth client configured. Set the AGY_OAUTH_CLIENT_ID environment variable (and optionally AGY_OAUTH_CLIENT_SECRET) to a Google Cloud Desktop OAuth Client ID with loopback redirect support. To add the account already signed in to Antigravity, run `agy-auth add` instead.'
+        'Browser sign-in needs your own Google OAuth client in AGY_OAUTH_CLIENT_ID. To add the account signed in to Antigravity instead, run `agy-auth add`.'
       );
     }
 
