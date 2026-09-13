@@ -9,7 +9,7 @@ import {
 import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
 import { Storage } from '../src/core/storage.js';
-import { generateSyntheticPrivateKey, setupTestEnvironment, TestEnv } from './test-utils.js';
+import { TestEnv, generateSyntheticPrivateKey, setupTestEnvironment } from './test-utils.js';
 
 describe('Schema Migration and Timestamp Monotonicity', () => {
   let testEnv: TestEnv;

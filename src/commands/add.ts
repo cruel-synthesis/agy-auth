@@ -1,7 +1,10 @@
-import { password } from '@inquirer/prompts';
+import { input, password } from '@inquirer/prompts';
+import { readAntigravityToken } from '../core/antigravity-store.js';
 import { CredentialFiles } from '../core/credential-files.js';
 import { isEmail } from '../core/credential-validation.js';
-import { CancellationError, UsageError } from '../core/errors.js';
+import { Discovery } from '../core/discovery.js';
+import { CancellationError, CliError, UsageError } from '../core/errors.js';
+import { type ImportKeychainOAuthResult, importKeychainOAuth } from '../core/keychain-import.js';
 import { Paths } from '../core/paths.js';
 import { RegistryManager } from '../core/registry.js';
 import { AccountCredentials, AuthType, sanitizeAccount } from '../core/types.js';
@@ -19,19 +22,36 @@ interface AddOptions {
   project?: string;
   location?: string;
   model?: string;
+  yes?: boolean;
   json?: boolean;
 }
 
-export async function addCommand(options: AddOptions): Promise<void> {
+export interface AddServices {
+  fetchFn?: typeof fetch;
+}
+
+export function validateEmailInput(value: string): boolean | string {
+  return isEmail(value.trim()) ? true : 'Please enter a valid email address.';
+}
+
+export async function addCommand(options: AddOptions, services?: AddServices): Promise<void> {
   const methodCount =
     (options.apiKey !== undefined ? 1 : 0) +
     (options.serviceAccount ? 1 : 0) +
     (options.adc !== undefined ? 1 : 0);
 
-  if (methodCount !== 1) {
+  if (methodCount > 1) {
     throw new UsageError(
-      'Specify exactly one authentication method (--api-key <key>, --service-account <path>, or --adc [path]).'
+      'Specify at most one credential type (--api-key <key>, --service-account <path>, or --adc [path]).'
     );
+  }
+
+  // Plain `add` means the account the user is already signed into, which is the
+  // only one most people ever need. The flags below cover credential types that
+  // Antigravity does not hold.
+  if (methodCount === 0) {
+    await addAntigravityAccount(options, services);
+    return;
   }
 
   const alias = options.alias ? options.alias.trim() : undefined;
@@ -124,12 +144,15 @@ export async function addCommand(options: AddOptions): Promise<void> {
       credentials = { adcPath: Paths.gcloudAdcFile };
     }
 
+    const discoveredEmail = Discovery.discoverFromAdc()?.email;
     if (options.email) {
       const em = options.email.trim();
       if (!isEmail(em)) {
         throw new UsageError(`Invalid email address '${options.email}'.`);
       }
       email = em;
+    } else if (discoveredEmail) {
+      email = discoveredEmail;
     } else if (alias) {
       email = `${alias.toLowerCase()}@local.invalid`;
     } else {
@@ -172,5 +195,86 @@ export async function addCommand(options: AddOptions): Promise<void> {
   );
   console.log(
     `  Run ${colors.cyan(`agy-auth switch "${account.alias || account.email}"`)} to activate this profile.\n`
+  );
+}
+
+/**
+ * Import the Google account currently signed in to Antigravity.
+ *
+ * Antigravity owns the sign-in; this reads the session it already holds and
+ * records the account, so it both adds an account for the first time and
+ * refreshes the stored session of one that is already saved.
+ */
+async function addAntigravityAccount(options: AddOptions, services?: AddServices): Promise<void> {
+  const registry = new RegistryManager();
+  const tokenState = readAntigravityToken();
+
+  if (tokenState.status === 'error') {
+    throw new CliError(
+      `Could not read the Antigravity session: ${tokenState.warning || 'the session store is unreadable.'}`,
+      'session_store_error',
+      1
+    );
+  }
+
+  if (tokenState.status !== 'found') {
+    throw new CliError(
+      'No Antigravity session found. Sign in to Antigravity, then run `agy-auth add` again.',
+      'no_session',
+      1
+    );
+  }
+
+  const importSession = async (email?: string): Promise<ImportKeychainOAuthResult> =>
+    importKeychainOAuth({ email, fetchFn: services?.fetchFn, registry });
+
+  let result = await importSession(options.email?.trim());
+
+  // Google does not always return the address with the session. Asking is the
+  // only way to attribute it, and a wrong guess would label the wrong account.
+  if (result.status === 'needs_email') {
+    if (!process.stdin.isTTY || options.yes || options.json) {
+      throw new UsageError(
+        'Could not determine the account email. Pass `agy-auth add --email <email>`.'
+      );
+    }
+    try {
+      const answer = await input({
+        message: 'Enter the Google account email signed in to Antigravity:',
+        validate: validateEmailInput,
+      });
+      result = await importSession(answer.trim());
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'ExitPromptError') {
+        throw new CancellationError();
+      }
+      throw error;
+    }
+  }
+
+  if (result.status !== 'success') {
+    throw new CliError(
+      'Could not import the Antigravity session. Sign in to Antigravity again, then retry.',
+      'import_failed',
+      1
+    );
+  }
+
+  const account = result.account;
+
+  if (options.json) {
+    console.log(
+      JSON.stringify(
+        { schemaVersion: 1, command: 'add', ok: true, data: { account: sanitizeAccount(account) } },
+        null,
+        2
+      )
+    );
+    return;
+  }
+
+  console.log(`\n  ${colors.green('[ok]')} Added ${colors.green(formatAccountShort(account))}`);
+  console.log(
+    `  Run ${colors.cyan(`agy-auth switch "${account.alias || account.email}"`)} to use it.\n`
   );
 }

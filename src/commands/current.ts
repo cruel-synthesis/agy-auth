@@ -41,7 +41,7 @@ export async function currentCommand(options: CurrentOptions = {}): Promise<void
       );
       return;
     }
-    console.log('No active account configured. Run `agy-auth sync` or `agy-auth switch`.');
+    console.log('No active account configured. Run `agy-auth add` or `agy-auth switch`.');
     return;
   }
 

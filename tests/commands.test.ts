@@ -15,7 +15,6 @@ import { modelClearCommand, modelSetCommand } from '../src/commands/model.js';
 import { projectClearCommand, projectSetCommand } from '../src/commands/project.js';
 import { removeCommand } from '../src/commands/remove.js';
 import { switchCommand } from '../src/commands/switch.js';
-import { syncCommand } from '../src/commands/sync.js';
 import {
   AccountNotFoundError,
   AmbiguousSelectorError,
@@ -28,10 +27,10 @@ import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
 import { Storage } from '../src/core/storage.js';
 import {
+  TestEnv,
   generateSyntheticPrivateKey,
   installNativeStoreDouble,
   setupTestEnvironment,
-  TestEnv,
 } from './test-utils.js';
 
 describe('Command Modules Behavioral & Regression Suite', () => {
@@ -778,7 +777,7 @@ describe('Command Modules Behavioral & Regression Suite', () => {
     );
   });
 
-  it('executes syncCommand with explicit email and handles Keychain tokens and ADC discovery', async () => {
+  it('adds the Antigravity account, and updates it rather than duplicating on a repeat', async () => {
     const isSupportedSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
     const readSpy = vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
       status: 'found',
@@ -791,45 +790,22 @@ describe('Command Modules Behavioral & Regression Suite', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     try {
-      // Sync with explicit oauth-email
-      await syncCommand({ oauthEmail: 'synced@example.com', json: true });
+      await addCommand({ email: 'synced@example.com', json: true });
       const acc = new RegistryManager().findAccount('synced@example.com');
       expect(acc).toBeTruthy();
       expect(acc?.authType).toBe('oauth');
 
-      // Re-syncing same identity updates existing account
-      await syncCommand({ oauthEmail: 'synced@example.com', json: false });
+      await addCommand({ email: 'synced@example.com', json: false });
       expect(new RegistryManager().getAccounts().length).toBe(1);
 
-      // Sync with ADC file
-      fs.writeFileSync(
-        Paths.gcloudAdcFile,
-        JSON.stringify({
-          type: 'authorized_user',
-          client_id: 'c',
-          client_secret: 's',
-          refresh_token: 'r',
-        })
-      );
-      await syncCommand({ adcEmail: 'adc-synced@example.com', json: false });
-      expect(new RegistryManager().findAccount('adc-synced@example.com')).toBeTruthy();
-
-      // Sync with invalid emails throws UsageError
-      await expect(syncCommand({ oauthEmail: 'bad-email' })).rejects.toThrow(
+      await expect(addCommand({ email: 'bad-email' })).rejects.toThrow(
         /Invalid OAuth email address/
       );
-      await expect(syncCommand({ adcEmail: 'bad-email' })).rejects.toThrow(
-        /Invalid ADC email address/
-      );
 
-      // Sync without email in non-interactive mode skips
-      await syncCommand({ yes: true, json: false });
-
-      // Sync when nothing discovered
+      // No session to read means there is nothing to add, and saying so beats
+      // reporting a successful run that added nothing.
       readSpy.mockReturnValue({ status: 'missing' });
-      fs.unlinkSync(Paths.gcloudAdcFile);
-      await syncCommand({ yes: true, json: false });
-      await syncCommand({ json: true });
+      await expect(addCommand({ yes: true })).rejects.toMatchObject({ code: 'no_session' });
 
       expect(logSpy).toHaveBeenCalled();
     } finally {

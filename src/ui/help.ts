@@ -5,23 +5,23 @@ import { colors } from './theme.js';
 type CommandRow = [command: string, description: string];
 
 const ACCOUNT_COMMANDS: CommandRow[] = [
-  ['sync', 'Import the account signed in to Antigravity'],
-  ['login', 'Add another Google account'],
+  ['add', 'Add the account signed in to Antigravity'],
   ['list', 'Show saved accounts, plan and quota'],
   ['switch [account]', 'Switch to a saved account'],
   ['current', 'Show the account in use'],
+  ['remove [account...]', 'Remove saved accounts'],
   ['doctor', 'Check for problems'],
 ];
 
 const ALL_ACCOUNT_COMMANDS: CommandRow[] = [
-  ['sync', 'Import the account signed in to Antigravity'],
-  ['login', 'Add another Google account'],
+  ['add', 'Add the account signed in to Antigravity'],
+  ['add --api-key', 'Add an API key, service-account, or ADC profile'],
+  ['login', 'Sign in to another Google account in a browser'],
   ['list', 'Show saved accounts, plan and quota'],
   ['switch [account]', 'Switch to a saved account'],
   ['switch -', 'Switch back to the previous account'],
   ['current', 'Show the account in use'],
   ['details [account]', 'Show everything stored for one account'],
-  ['add', 'Add an API key, service-account, or ADC profile'],
   ['remove [account...]', 'Remove saved accounts'],
   ['doctor', 'Check for problems'],
 ];

@@ -1,8 +1,8 @@
 import { VERSION } from '../version.js';
 import {
-  getOAuthClientConfig,
-  type OAuthClientConfig,
   OAUTH_TOKEN_ENDPOINT,
+  type OAuthClientConfig,
+  getOAuthClientConfig,
 } from './oauth-config.js';
 import {
   Account,

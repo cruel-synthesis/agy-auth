@@ -1,11 +1,11 @@
+import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import http from 'node:http';
-import { spawn } from 'node:child_process';
 import { isEmail } from './credential-validation.js';
 import { CliError } from './errors.js';
-import { assertNativeAllowed, NativeOperationBlockedError } from './native-guard.js';
 import type { AgyKeychainPayload } from './keychain.js';
-import { getOAuthClientConfig, OAUTH_TOKEN_ENDPOINT } from './oauth-config.js';
+import { NativeOperationBlockedError, assertNativeAllowed } from './native-guard.js';
+import { OAUTH_TOKEN_ENDPOINT, getOAuthClientConfig } from './oauth-config.js';
 
 export interface OAuthResult {
   email: string;
@@ -121,7 +121,7 @@ export class OAuthFlow {
 
     if (!clientConfig) {
       throw new CliError(
-        'No OAuth client configured. Set the AGY_OAUTH_CLIENT_ID environment variable (and optionally AGY_OAUTH_CLIENT_SECRET) to a Google Cloud Desktop OAuth Client ID with loopback redirect support. Alternatively, import an existing Antigravity session using `agy-auth login --oauth-source keychain` or `agy-auth sync`.'
+        'No OAuth client configured. Set the AGY_OAUTH_CLIENT_ID environment variable (and optionally AGY_OAUTH_CLIENT_SECRET) to a Google Cloud Desktop OAuth Client ID with loopback redirect support. Alternatively, import an existing Antigravity session using `agy-auth login --oauth-source keychain` or `agy-auth add`.'
       );
     }
 

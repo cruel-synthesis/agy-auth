@@ -55,14 +55,14 @@ vi.mock('@inquirer/prompts', () => ({
   }),
 }));
 
+import { addCommand, validateEmailInput } from '../src/commands/add.js';
 import { exportCommand } from '../src/commands/export.js';
 import { loginCommand, validateAliasInput } from '../src/commands/login.js';
 import { removeCommand } from '../src/commands/remove.js';
-import { syncCommand, validateSyncEmail } from '../src/commands/sync.js';
 import { CancellationError, CliError, UsageError } from '../src/core/errors.js';
 import { KeychainManager } from '../src/core/keychain.js';
 import { RegistryManager } from '../src/core/registry.js';
-import { futureExpiry, pastExpiry, setupTestEnvironment, TestEnv } from './test-utils.js';
+import { TestEnv, futureExpiry, pastExpiry, setupTestEnvironment } from './test-utils.js';
 
 describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () => {
   let testEnv: TestEnv;
@@ -86,8 +86,8 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     expect(validateAliasInput('')).toBe(true);
     expect(typeof validateAliasInput('invalid spaces')).toBe('string');
 
-    expect(validateSyncEmail('valid@example.com')).toBe(true);
-    expect(typeof validateSyncEmail('invalid')).toBe('string');
+    expect(validateEmailInput('valid@example.com')).toBe(true);
+    expect(typeof validateEmailInput('invalid')).toBe('string');
   });
 
   it('fails loginCommand in non-TTY mode with UsageError', async () => {
@@ -508,7 +508,7 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     });
 
     try {
-      await expect(syncCommand({})).rejects.toThrow(CancellationError);
+      await expect(addCommand({})).rejects.toThrow(CancellationError);
     } finally {
       process.stdin.isTTY = origTTY;
       supportedSpy.mockRestore();
@@ -516,7 +516,7 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     }
   });
 
-  it('reports an unverifiable session as skipped and still syncs other sources', async () => {
+  it('refuses an unverifiable session without touching the saved profile', async () => {
     const registry = new RegistryManager();
     registry.addOrUpdateAccount({
       email: 'existing@example.com',
@@ -553,25 +553,17 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
       throw new Error('Network unavailable');
     });
 
-    let output = '';
-    const logSpy = vi.spyOn(console, 'log').mockImplementation((value: string) => {
-      output += value;
-    });
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     try {
-      // The OAuth source cannot be attributed, but that must not abort the run.
-      await syncCommand(
-        { oauthEmail: 'existing@example.com', json: true, yes: true },
-        { fetchFn: offlineFetch as unknown as typeof fetch }
-      );
-
-      const parsed = JSON.parse(output) as {
-        ok: boolean;
-        data: { skipped: string[]; synced: unknown[] };
-      };
-      expect(parsed.ok).toBe(true);
-      expect(parsed.data.synced).toHaveLength(0);
-      expect(parsed.data.skipped.join(' ')).toMatch(/could not confirm/i);
+      // A session that cannot be attributed is refused outright: reporting a
+      // successful run that saved nothing would be worse than an error.
+      await expect(
+        addCommand(
+          { email: 'existing@example.com', json: true, yes: true },
+          { fetchFn: offlineFetch as unknown as typeof fetch }
+        )
+      ).rejects.toThrow(/could not confirm/i);
 
       // Nothing was written over the saved profile.
       const stored = new RegistryManager().getAccounts()[0];
@@ -584,7 +576,7 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     }
   });
 
-  it('throws CliError on session-store error during sync', async () => {
+  it('throws CliError when the session store cannot be read', async () => {
     const supportedSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
     const readSpy = vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
       status: 'error',
@@ -592,7 +584,7 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     });
 
     try {
-      await expect(syncCommand({})).rejects.toMatchObject({ code: 'session_store_error' });
+      await expect(addCommand({})).rejects.toMatchObject({ code: 'session_store_error' });
     } finally {
       supportedSpy.mockRestore();
       readSpy.mockRestore();

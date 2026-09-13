@@ -8,7 +8,7 @@ import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
 import { Storage } from '../src/core/storage.js';
 import { Switcher } from '../src/core/switcher.js';
-import { generateSyntheticPrivateKey, setupTestEnvironment, TestEnv } from './test-utils.js';
+import { TestEnv, generateSyntheticPrivateKey, setupTestEnvironment } from './test-utils.js';
 
 describe('Switcher Transactional State Machine & Rollback', () => {
   let testEnv: TestEnv;

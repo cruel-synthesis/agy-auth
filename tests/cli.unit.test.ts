@@ -3,10 +3,10 @@ import { createCli, runCli } from '../src/cli.js';
 import { CancellationError, CliError } from '../src/core/errors.js';
 import { RegistryManager } from '../src/core/registry.js';
 import {
+  TestEnv,
   generateSyntheticPrivateKey,
   installNativeStoreDouble,
   setupTestEnvironment,
-  TestEnv,
 } from './test-utils.js';
 
 describe('CLI unit tests and option dispatch', () => {
@@ -251,7 +251,7 @@ describe('CLI unit tests and option dispatch', () => {
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     try {
-      const code = await runCli(['node', 'agy-auth', 'sync'], cli);
+      const code = await runCli(['node', 'agy-auth', 'add'], cli);
       expect(code).toBe(130);
       expect(errSpy).not.toHaveBeenCalled();
     } finally {

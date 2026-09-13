@@ -11,8 +11,7 @@ Overview of commands available in `agy-auth`.
 - [`current`](./current.md) (`whoami`): Show active credential profile (`--offline`, `-j`)
 - [`details`](./details.md) (`info`): Show detailed metadata for a profile (`--offline`, `-j`)
 - [`login`](./login.md): Add or refresh a Google OAuth account
-- [`sync`](./sync.md): Import active Antigravity session or local ADC credentials (`--oauth-email`, `--adc-email`, `-y`, `-j`)
-- [`add`](./add.md): Add an API key, service-account, or ADC profile
+- [`add`](./add.md): Add the account signed in to Antigravity, or another credential (`--api-key`, `--service-account`, `--adc`, `-y`, `-j`)
 - [`remove`](./remove.md) (`rm`): Remove one or more profiles (`--all`, `-y`, `-j`)
 
 ---

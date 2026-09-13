@@ -34,15 +34,16 @@ npx @cruel-synthesis/agy-auth --help
 
 ## Quick Start
 
-### 1. Discover Existing Profiles
-Discover credentials already configured in an accessible Antigravity session store or Google Cloud ADC:
+### 1. Add the Account You Are Signed In To
+Import the Google account currently signed in to Antigravity. Running it again
+for the same account refreshes its stored session rather than duplicating it:
 
 ```bash
-agy-auth sync
+agy-auth add
 ```
 
-### 2. Add or Refresh Profiles
-Add or refresh a Google OAuth account:
+### 2. Add Another Account
+Sign in to a different Google account:
 
 ```bash
 # Import the current Antigravity account or sign in through Antigravity
@@ -104,7 +105,7 @@ This feature is **experimental** because it depends on undocumented upstream con
 `agy-auth` ships **no OAuth client ID and no client secret**.
 
 - **Existing Antigravity Session (Out-of-the-box)**:
-  `agy-auth login` and `agy-auth sync` can import an active Antigravity session from Apple Keychain on macOS or from Antigravity's token file on any platform. This flow verifies your identity via Google's `userinfo` endpoint using the access token and **does not require setting an OAuth client ID**. The `keychain` source name is retained for command-line compatibility and reads this composite session store.
+  `agy-auth login` and `agy-auth add` can import an active Antigravity session from Apple Keychain on macOS or from Antigravity's token file on any platform. This flow verifies your identity via Google's `userinfo` endpoint using the access token and **does not require setting an OAuth client ID**. The `keychain` source name is retained for command-line compatibility and reads this composite session store.
 - **Another Google Account (Out-of-the-box on macOS)**:
   Interactive `agy-auth login` can open Antigravity for Google sign-in and then import the resulting session. The sign-in itself is handled by Antigravity; `agy-auth` does not ship or impersonate an OAuth client.
 - **Custom Browser Sign-In**:
@@ -142,8 +143,7 @@ Invoke-Expression (agy-auth env --shell powershell)
 | `agy-auth current` | Display details for the currently active profile (`--offline`, `--json`); refreshes live quota by default |
 | `agy-auth details [selector]` | Display in-depth profile, model, project, plan, and quota configuration (`--offline`, `--json`) |
 | `agy-auth login` | Add or refresh a Google OAuth account |
-| `agy-auth add [options]` | Add a credential profile via command-line flags |
-| `agy-auth sync` | Sync and discover local Antigravity session and ADC credentials |
+| `agy-auth add` | Add the account signed in to Antigravity, or another credential (`--api-key`, `--service-account`, `--adc`) |
 | `agy-auth remove [selector...]` | Remove profiles (`--all`, `--yes`, `--json`) |
 | `agy-auth alias <set\|clear>` | Assign or remove friendly nicknames for profiles |
 | `agy-auth project <set\|clear>` | Configure Google Cloud Project ID and compute region |

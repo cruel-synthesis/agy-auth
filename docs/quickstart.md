@@ -18,11 +18,11 @@ npx @cruel-synthesis/agy-auth --help
 
 ## 2. Adding Profiles
 
-### Option A: Sync Existing Local Credentials
+### Option A: Add the Account Signed In to Antigravity
 Automatically detect accessible Antigravity sessions and Google Cloud ADC files:
 
 ```bash
-agy-auth sync
+agy-auth add
 ```
 
 ### Option B: Google Account Login
@@ -85,7 +85,7 @@ Refreshing an expired OAuth token needs your own OAuth client, since `agy-auth` 
 export AGY_OAUTH_CLIENT_ID='your-client-id.apps.googleusercontent.com'
 ```
 
-Without it, an expired profile is reported as `expired`; sign in again through Antigravity and run `agy-auth sync`.
+Without it, an expired profile is reported as `expired`; sign in again through Antigravity and run `agy-auth add`.
 
 ---
 

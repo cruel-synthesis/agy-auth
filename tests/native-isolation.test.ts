@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defaultOpenBrowser } from '../src/core/oauth.js';
 import { KeychainManager } from '../src/core/keychain.js';
+import { defaultOpenBrowser } from '../src/core/oauth.js';
 import { TestEnv, setupTestEnvironment } from './test-utils.js';
 
 const SRC_ROOT = fileURLToPath(new URL('../src', import.meta.url));

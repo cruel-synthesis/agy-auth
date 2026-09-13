@@ -36,8 +36,8 @@ vi.mock('@inquirer/prompts', () => ({
   checkbox: vi.fn(async () => []),
 }));
 
-import { loginCommand } from '../src/commands/login.js';
 import { runCli } from '../src/cli.js';
+import { loginCommand } from '../src/commands/login.js';
 import * as antigravityStore from '../src/core/antigravity-store.js';
 import { CliError } from '../src/core/errors.js';
 import { KeychainManager } from '../src/core/keychain.js';
@@ -46,7 +46,7 @@ import { RegistryManager } from '../src/core/registry.js';
 import type { Account } from '../src/core/types.js';
 import { printTopLevelHelp } from '../src/ui/help.js';
 import { renderAccountsTable } from '../src/ui/table.js';
-import { futureExpiry, setupTestEnvironment, type TestEnv } from './test-utils.js';
+import { type TestEnv, futureExpiry, setupTestEnvironment } from './test-utils.js';
 
 describe('First-run and OAuth onboarding behavior', () => {
   let testEnv: TestEnv;
@@ -102,8 +102,8 @@ describe('First-run and OAuth onboarding behavior', () => {
     expect(res.stdout).toContain('list');
     expect(res.stdout).toContain('switch');
     expect(res.stdout).toContain('current');
-    expect(res.stdout).toContain('login');
-    expect(res.stdout).toContain('sync');
+    expect(res.stdout).toContain('add');
+    expect(res.stdout).toContain('remove');
     expect(res.stdout).toContain('doctor');
     expect(res.stdout).toContain('agy-auth help --all');
   });
@@ -429,8 +429,8 @@ describe('First-run and OAuth onboarding behavior', () => {
       expect(textBare).toContain('list');
       expect(textBare).toContain('switch');
       expect(textBare).toContain('current');
-      expect(textBare).toContain('login');
-      expect(textBare).toContain('sync');
+      expect(textBare).toContain('add');
+      expect(textBare).toContain('remove');
       expect(textBare).toContain('doctor');
       expect(textBare).toContain('agy-auth help --all');
     } finally {
@@ -465,7 +465,7 @@ describe('First-run and OAuth onboarding behavior', () => {
 
     const tableExpired = renderAccountsTable([expiredAccount], null, 120);
     expect(tableExpired).toContain(
-      "Hint: Run 'agy-auth sync' to import your active Antigravity session."
+      "Hint: Run 'agy-auth add' to import your active Antigravity session."
     );
 
     const uncachedAccount: Account = {
@@ -484,7 +484,7 @@ describe('First-run and OAuth onboarding behavior', () => {
 
     const emptyTable = renderAccountsTable([], null, 120);
     expect(emptyTable).toContain("No accounts registered. Run 'agy-auth login' to add one.");
-    expect(emptyTable).not.toContain("Run 'agy-auth sync' or 'agy-auth login'");
+    expect(emptyTable).not.toContain("Run 'agy-auth add' or 'agy-auth login'");
   });
 
   it('renders mixed-width rows without clipping shorter cells when terminal width is sufficient', () => {

@@ -69,7 +69,7 @@ export async function detailsCommand(query?: string, options: DetailsOptions = {
       );
       return;
     }
-    console.log('No accounts found in registry. Run `agy-auth sync` or `agy-auth login` first.');
+    console.log('No accounts found in registry. Run `agy-auth add` or `agy-auth login` first.');
     return;
   }
 

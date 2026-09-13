@@ -12,7 +12,7 @@ import { QuotaOptions } from '../src/core/quota.js';
 import { RegistryManager } from '../src/core/registry.js';
 import { Account, Registry } from '../src/core/types.js';
 import { getTableComponents, renderAccountsTable, renderSelectMenu } from '../src/ui/table.js';
-import { installNativeStoreDouble, TestEnv, setupTestEnvironment } from './test-utils.js';
+import { TestEnv, installNativeStoreDouble, setupTestEnvironment } from './test-utils.js';
 
 const FUTURE_RESET = 4_102_444_800;
 
@@ -243,7 +243,7 @@ describe('Plan and quota command behaviour', () => {
 
     expect(calls).toHaveLength(0);
     const text = stdout();
-    expect(text).toContain('agy-auth sync');
+    expect(text).toContain('agy-auth add');
     expect(text).toContain('Antigravity');
     expect(new RegistryManager().getAccounts()[0].status).toBe('expired');
   });

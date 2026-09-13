@@ -206,7 +206,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
     checks.push({
       name: 'Antigravity Session Store',
       status: 'warn',
-      message: `Antigravity session in ${source} expired at ${selectedExpiry}. Sign in to Google Antigravity again, then run \`agy-auth sync\`.`,
+      message: `Antigravity session in ${source} expired at ${selectedExpiry}. Sign in to Google Antigravity again, then run \`agy-auth add\`.`,
     });
   } else if (KeychainManager.isSupported()) {
     if (tokenState.status === 'found') {

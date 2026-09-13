@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Paths } from '../src/core/paths.js';
 import { Storage, isManagedBackupFileName } from '../src/core/storage.js';
-import { setupTestEnvironment, TestEnv } from './test-utils.js';
+import { TestEnv, setupTestEnvironment } from './test-utils.js';
 
 describe('Storage and Concurrency Subsystem', () => {
   let testEnv: TestEnv;

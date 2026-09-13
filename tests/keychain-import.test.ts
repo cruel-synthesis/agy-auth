@@ -6,7 +6,7 @@ import { KeychainManager } from '../src/core/keychain.js';
 import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
 import { Switcher } from '../src/core/switcher.js';
-import { futureExpiry, pastExpiry, setupTestEnvironment, type TestEnv } from './test-utils.js';
+import { type TestEnv, futureExpiry, pastExpiry, setupTestEnvironment } from './test-utils.js';
 
 describe('Keychain OAuth Import Module', () => {
   let testEnv: TestEnv;

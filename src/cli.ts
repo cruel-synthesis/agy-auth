@@ -14,7 +14,6 @@ import { modelClearCommand, modelSetCommand } from './commands/model.js';
 import { projectClearCommand, projectSetCommand } from './commands/project.js';
 import { removeCommand } from './commands/remove.js';
 import { switchCommand } from './commands/switch.js';
-import { syncCommand } from './commands/sync.js';
 import { CancellationError, CliError, UsageError } from './core/errors.js';
 import { printTopLevelHelp } from './ui/help.js';
 import { colors } from './ui/theme.js';
@@ -122,30 +121,19 @@ export function createCli(): Command {
       await loginCommand(options);
     });
 
-  // sync
-  program
-    .command('sync')
-    .description('Import an active Antigravity session or local ADC credentials')
-    .option('--oauth-email <email>', 'Google account email for Antigravity session')
-    .option('--adc-email <email>', 'Email for local ADC credentials')
-    .option('-y, --yes', 'Do not prompt; skip discoveries that require an email', false)
-    .option('-j, --json', 'Output as JSON')
-    .action(async (options) => {
-      await syncCommand(options);
-    });
-
   // add
   program
     .command('add')
-    .description('Add a credential profile')
+    .description('Add the account signed in to Antigravity, or another credential')
+    .option('--email <email>', 'Account email address')
+    .option('--alias <alias>', 'Account alias')
     .option('--api-key [key]', 'Gemini API key (omit value for masked entry)')
     .option('--service-account <path>', 'Path to Service Account JSON key file')
     .option('--adc [path]', 'Use Application Default Credentials (optional custom path)')
-    .option('--email <email>', 'Account email address')
-    .option('--alias <alias>', 'Account alias')
     .option('--project <id>', 'GCP project ID')
     .option('--location <location>', 'Compute region/location')
     .option('--model <model>', 'Preferred model name')
+    .option('-y, --yes', 'Do not prompt', false)
     .option('-j, --json', 'Output as JSON')
     .action(async (options) => {
       await addCommand(options);

@@ -307,7 +307,7 @@ export function renderAccountsTable(
 
   let hintLine = '';
   if (hasExpired) {
-    hintLine = `\n  ${colors.dim("Hint: Run 'agy-auth sync' to import your active Antigravity session.")}\n`;
+    hintLine = `\n  ${colors.dim("Hint: Run 'agy-auth add' to import your active Antigravity session.")}\n`;
   } else if (hasUncachedQuota) {
     hintLine = `\n  ${colors.dim("Hint: Run 'agy-auth list --check' to fetch live quota over the network.")}\n`;
   }

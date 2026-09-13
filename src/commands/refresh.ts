@@ -11,12 +11,12 @@ import { Account } from '../core/types.js';
 const REASON_TEXT: Record<QuotaFailureReason, string> = {
   'not-applicable': 'no usable OAuth token on the profile',
   'native-refresh-required':
-    'Antigravity owns this session; sign in through Antigravity, then run `agy-auth sync`',
-  'token-expired': 'token expired; sign in through Antigravity, then run `agy-auth sync`',
+    'Antigravity owns this session; sign in through Antigravity, then run `agy-auth add`',
+  'token-expired': 'token expired; sign in through Antigravity, then run `agy-auth add`',
   'scope-insufficient':
-    'token is missing the required scopes; sign in through Antigravity, then run `agy-auth sync`',
+    'token is missing the required scopes; sign in through Antigravity, then run `agy-auth add`',
   'auth-failed':
-    'authentication was rejected; sign in through Antigravity, then run `agy-auth sync`',
+    'authentication was rejected; sign in through Antigravity, then run `agy-auth add`',
   'quota-unavailable': 'the service did not return recognized quota data',
   'network-error': 'network or service error',
 };
