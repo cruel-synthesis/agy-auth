@@ -76,6 +76,16 @@ export const ServiceAccountKeySchema = z
   .strict();
 export type ServiceAccountKey = z.infer<typeof ServiceAccountKeySchema>;
 
+/**
+ * The Antigravity session payload, which agy-auth reads and writes but does not
+ * own.
+ *
+ * The installed client stores fields beyond the ones modelled here -- an
+ * `id_token` today, and whatever a later release adds. Rejecting those makes a
+ * real session unreadable, and dropping them on write hands the official client
+ * back a session it no longer recognises, so unknown keys are carried through
+ * untouched. Registry-owned schemas stay strict.
+ */
 export const KeychainPayloadSchema = z
   .object({
     auth_method: z.string().max(64).default('consumer'),
@@ -88,9 +98,9 @@ export const KeychainPayloadSchema = z
         token_type: z.string().max(64).optional(),
         expiry: z.string().max(128).optional(),
       })
-      .strict(),
+      .passthrough(),
   })
-  .strict();
+  .passthrough();
 export type KeychainPayload = z.infer<typeof KeychainPayloadSchema>;
 
 export const AccountCredentialsSchema = z

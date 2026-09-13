@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { doctorCommand } from '../src/commands/doctor.js';
 import { readAntigravityToken, writeAntigravityToken } from '../src/core/antigravity-store.js';
 import { importKeychainOAuth } from '../src/core/keychain-import.js';
-import { KeychainManager } from '../src/core/keychain.js';
+import { KeychainManager, parseAgyKeychainPayload } from '../src/core/keychain.js';
 import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
 import { Switcher } from '../src/core/switcher.js';
@@ -21,6 +21,53 @@ describe('Composite Antigravity Token Store Subsystem', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     testEnv.cleanup();
+  });
+
+  it('reads and rewrites a session carrying fields agy-auth does not model', () => {
+    // The installed Antigravity CLI stores an id_token alongside the token
+    // object. Rejecting it makes every real session unreadable, and dropping it
+    // on write corrupts the session the official client relies on.
+    const realWorldPayload = {
+      auth_method: 'consumer',
+      id_token: 'header.payload.signature',
+      token: {
+        access_token: 'synthetic-access',
+        refresh_token: 'synthetic-refresh',
+        token_type: 'Bearer',
+        expiry: futureExpiry(),
+        scope: 'openid email',
+      },
+    };
+
+    const parsed = parseAgyKeychainPayload(realWorldPayload);
+    expect(parsed).not.toBeNull();
+    expect(parsed).toMatchObject({
+      auth_method: 'consumer',
+      id_token: 'header.payload.signature',
+      token: { scope: 'openid email' },
+    });
+
+    fs.mkdirSync(path.dirname(Paths.antigravityTokenFile), { recursive: true });
+    fs.writeFileSync(Paths.antigravityTokenFile, JSON.stringify(realWorldPayload));
+    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(false);
+
+    const readBack = readAntigravityToken();
+    expect(readBack.status).toBe('found');
+    expect(readBack.payload).toMatchObject({
+      id_token: 'header.payload.signature',
+      token: { scope: 'openid email' },
+    });
+
+    // Writing the session back must hand the official client every field it
+    // gave us, not just the ones agy-auth understands.
+    const written = writeAntigravityToken(readBack.payload as KeychainPayload);
+    expect(written.ok).toBe(true);
+
+    const onDisk = JSON.parse(fs.readFileSync(Paths.antigravityTokenFile, 'utf-8'));
+    expect(onDisk).toMatchObject({
+      id_token: 'header.payload.signature',
+      token: { scope: 'openid email', token_type: 'Bearer' },
+    });
   });
 
   it('prefers keyring payload when keyring expiry is fresher than file expiry', () => {
