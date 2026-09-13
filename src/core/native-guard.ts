@@ -9,11 +9,17 @@
  * Test environments set `AGY_AUTH_NO_NATIVE=1`, which makes every such operation
  * fail immediately and visibly. The variable is exported to subprocesses too, so
  * a spawned CLI is held to the same rule as the test runner.
+ *
+ * The dedicated error type exists so that a caller which tolerates a native
+ * operation failing can still let an isolation breach through instead of
+ * quietly swallowing it.
  */
+export class NativeOperationBlockedError extends Error {}
+
 export function assertNativeAllowed(operation: string): void {
   if (process.env.AGY_AUTH_NO_NATIVE !== '1') return;
 
-  throw new Error(
+  throw new NativeOperationBlockedError(
     `Blocked native operation '${operation}' in an isolated environment. ` +
       'Install an explicit test double for it; redirecting HOME does not isolate ' +
       'native credential stores or application launchers.'

@@ -291,9 +291,14 @@ describe('OAuthFlow', () => {
     expect(tokenExchangeCount).toBe(1);
   });
 
-  // Whether it tolerates a launcher that fails can only be observed where a real
-  // process may be spawned, which is the native lane, not here.
-  it('defaultOpenBrowser refuses to launch anything under test isolation', () => {
-    expect(() => defaultOpenBrowser('https://example.com')).toThrow(/native operation/i);
+  // Exercises the injected launcher only. The suite guard stays on; that the
+  // real launcher is blocked by it is asserted in native-isolation.test.ts.
+  it('defaultOpenBrowser survives a launcher that cannot start', () => {
+    const failing = vi.fn(() => {
+      throw new Error('spawn xdg-open ENOENT');
+    });
+
+    expect(() => defaultOpenBrowser('https://example.com', failing)).not.toThrow();
+    expect(failing).toHaveBeenCalledWith(expect.any(String), ['https://example.com']);
   });
 });

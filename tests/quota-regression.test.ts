@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Account, Registry } from '../src/core/types.js';
 import { renderAccountsTable } from '../src/ui/table.js';
-import { TestEnv, setupTestEnvironment } from './test-utils.js';
+import { guardedNodeArgs, TestEnv, setupTestEnvironment } from './test-utils.js';
 
 /**
  * Permanent guard against the simplified rewrite that silently dropped live plan
@@ -139,7 +139,7 @@ describe('Plan and quota support regression guard', () => {
       { mode: 0o600 }
     );
 
-    const stdout = execFileSync('node', [cliPath, 'list', '--offline'], {
+    const stdout = execFileSync('node', guardedNodeArgs(cliPath, 'list', '--offline'), {
       encoding: 'utf-8',
       env: { ...testEnv.createSubprocessEnv(), NO_COLOR: '1', COLUMNS: '140' },
       stdio: ['ignore', 'pipe', 'pipe'],

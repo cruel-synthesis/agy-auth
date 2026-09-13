@@ -3,7 +3,7 @@ import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { isEmail } from './credential-validation.js';
 import { CliError } from './errors.js';
-import { assertNativeAllowed } from './native-guard.js';
+import { assertNativeAllowed, NativeOperationBlockedError } from './native-guard.js';
 import type { AgyKeychainPayload } from './keychain.js';
 import { getOAuthClientConfig, OAUTH_TOKEN_ENDPOINT } from './oauth-config.js';
 
@@ -78,20 +78,34 @@ function renderHtml(title: string, heading: string, bodyText: string, isError = 
 </html>`;
 }
 
-export function defaultOpenBrowser(url: string): void {
+export type BrowserLauncher = (command: string, args: string[]) => void;
+
+/**
+ * The native boundary for opening a browser.
+ *
+ * The guard and the only real process spawn sit together, so neither can be
+ * reached without the other.
+ */
+function spawnBrowser(command: string, args: string[]): void {
   assertNativeAllowed('browser launch');
 
+  const child = spawn(command, args, { detached: true, stdio: 'ignore' });
+  child.on('error', () => {});
+  child.unref();
+}
+
+export function defaultOpenBrowser(url: string, launch: BrowserLauncher = spawnBrowser): void {
   const platform = process.platform;
   const command =
     platform === 'darwin' ? 'open' : platform === 'win32' ? 'explorer.exe' : 'xdg-open';
-  const args = [url];
 
   try {
-    const child = spawn(command, args, { detached: true, stdio: 'ignore' });
-    child.on('error', () => {});
-    child.unref();
-  } catch {
-    // Authorization URL is printed to terminal for manual navigation
+    launch(command, [url]);
+  } catch (error: unknown) {
+    // A launcher that cannot start is not fatal: the authorization URL is
+    // printed to the terminal for manual navigation. An isolation breach is
+    // fatal, and must not be mistaken for one.
+    if (error instanceof NativeOperationBlockedError) throw error;
   }
 }
 

@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { guardedNodeArgs } from './test-utils.js';
 
 const promptMockState = {
   selectChoices: [] as Array<{ name: string; value: string }>,
@@ -69,7 +70,7 @@ describe('First-run and OAuth onboarding behavior', () => {
 
   function runSubprocess(args: string[]): { stdout: string; stderr: string; status: number } {
     try {
-      const stdout = execFileSync('node', [cliPath, ...args], {
+      const stdout = execFileSync('node', guardedNodeArgs(cliPath, ...args), {
         encoding: 'utf-8',
         env: {
           ...testEnv.createSubprocessEnv(),

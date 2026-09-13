@@ -29,6 +29,12 @@ node ./bin/agy-auth.js --help
 
 These variables do not redirect the macOS Keychain. Do not run OAuth `sync` or `switch` against a real Keychain item during development; use the automated test harness and synthetic fixtures for those paths.
 
+The test suite blocks native credential stores, browsers and application launches outright: `tests/setup-hermetic.ts` sets `AGY_AUTH_NO_NATIVE=1` for every test file, and `tests/subprocess-guard.mjs` sets it again inside any CLI spawned by a test. No test may unset it, and a spawned CLI must be launched through `guardedNodeArgs()`. Install an explicit double for the operation instead.
+
+Keep each native operation behind a single function that calls `assertNativeAllowed()` immediately before the real call, and execute a credential-store binary from that one place only. A caller that tolerates the operation failing must re-throw `NativeOperationBlockedError` rather than swallow it with everything else.
+
+Verifying a credential store end to end means writing to one. Do that on a disposable machine or runner with no personal accounts, never on a development machine. A change that reads back what it wrote, or otherwise depends on real stored state, needs that verification before it can be merged.
+
 Never commit registry files, exports, `.env` files, OAuth payloads, API keys, service-account JSON, ADC files, or logs containing those values. Examples and fixtures must use generated or unmistakably fake credentials.
 
 Public behavior changes should update the relevant file under `docs/commands/` and the changelog. Security reports belong in a private advisory, as described in [SECURITY.md](./SECURITY.md).

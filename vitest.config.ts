@@ -8,7 +8,7 @@ export default defineConfig({
     // The live lane runs real accounts against real endpoints; never here.
     exclude: ['**/node_modules/**', '**/dist/**', 'tests/**/*.live.test.ts'],
     globalSetup: ['./tests/global-setup.ts'],
-    setupFiles: ['./tests/setup-no-network.ts'],
+    setupFiles: ['./tests/setup-hermetic.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
