@@ -291,7 +291,9 @@ describe('OAuthFlow', () => {
     expect(tokenExchangeCount).toBe(1);
   });
 
-  it('defaultOpenBrowser does not throw on invalid system commands', () => {
-    expect(() => defaultOpenBrowser('https://example.com')).not.toThrow();
+  // Whether it tolerates a launcher that fails can only be observed where a real
+  // process may be spawned, which is the native lane, not here.
+  it('defaultOpenBrowser refuses to launch anything under test isolation', () => {
+    expect(() => defaultOpenBrowser('https://example.com')).toThrow(/native operation/i);
   });
 });

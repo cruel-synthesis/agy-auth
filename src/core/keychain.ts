@@ -108,28 +108,26 @@ export class KeychainManager {
     const parsed = parseAgyKeychainPayload(payload);
     if (!parsed) return false;
     if (!this.isSupported()) return false;
-    // Raised before the catch below so isolation breaches stay visible.
-    assertNativeAllowed('macOS Keychain access');
 
-    try {
-      const jsonStr = JSON.stringify(parsed);
-      const base64Str = Buffer.from(jsonStr, 'utf-8').toString('base64');
-      const formatted = `go-keyring-base64:${base64Str}`;
+    const jsonStr = JSON.stringify(parsed);
+    const base64Str = Buffer.from(jsonStr, 'utf-8').toString('base64');
+    const formatted = `go-keyring-base64:${base64Str}`;
 
-      const res = this.execSecurity([
-        'add-generic-password',
-        '-U',
-        '-s',
-        this.SERVICE_NAME,
-        '-a',
-        this.ACCOUNT_NAME,
-        '-w',
-        formatted,
-      ]);
-      return !res.error;
-    } catch {
-      return false;
-    }
+    // `execSecurity` is the only place this class reaches the Keychain, so it is
+    // also the only place the isolation guard belongs. Repeating the guard here
+    // would fire even when a caller has installed an explicit double, and the
+    // catch that used to wrap this block would have swallowed a real breach.
+    const res = this.execSecurity([
+      'add-generic-password',
+      '-U',
+      '-s',
+      this.SERVICE_NAME,
+      '-a',
+      this.ACCOUNT_NAME,
+      '-w',
+      formatted,
+    ]);
+    return !res.error;
   }
 
   /**

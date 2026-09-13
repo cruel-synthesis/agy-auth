@@ -12,3 +12,12 @@ const blocked = (): never => {
 };
 
 globalThis.fetch = blocked as unknown as typeof fetch;
+
+/**
+ * Native-store guard, applied to the whole run.
+ *
+ * `setupTestEnvironment()` also sets this, but a test file that does not call it
+ * would otherwise be free to reach the real Keychain, browser or IDE. Setting it
+ * here means no test file can opt out by omission.
+ */
+process.env.AGY_AUTH_NO_NATIVE = '1';
