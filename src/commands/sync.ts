@@ -3,10 +3,7 @@ import { readAntigravityToken } from '../core/antigravity-store.js';
 import { isEmail } from '../core/credential-validation.js';
 import { Discovery } from '../core/discovery.js';
 import { CancellationError, CliError, UsageError } from '../core/errors.js';
-import {
-  importKeychainOAuth,
-  type ImportKeychainOAuthResult,
-} from '../core/keychain-import.js';
+import { importKeychainOAuth, type ImportKeychainOAuthResult } from '../core/keychain-import.js';
 import { RegistryManager } from '../core/registry.js';
 import { type Account, sanitizeAccount } from '../core/types.js';
 import { formatAccountShort } from '../ui/format.js';
