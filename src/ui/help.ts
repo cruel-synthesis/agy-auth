@@ -1,116 +1,78 @@
 import { VERSION } from '../version.js';
 import { colors } from './theme.js';
 
+/** A command and what it does, rendered as one aligned row. */
+type CommandRow = [command: string, description: string];
+
+const ACCOUNT_COMMANDS: CommandRow[] = [
+  ['sync', 'Import the account signed in to Antigravity'],
+  ['login', 'Add another Google account'],
+  ['list', 'Show saved accounts, plan and quota'],
+  ['switch [account]', 'Switch to a saved account'],
+  ['current', 'Show the account in use'],
+  ['doctor', 'Check for problems'],
+];
+
+const ALL_ACCOUNT_COMMANDS: CommandRow[] = [
+  ['sync', 'Import the account signed in to Antigravity'],
+  ['login', 'Add another Google account'],
+  ['list', 'Show saved accounts, plan and quota'],
+  ['switch [account]', 'Switch to a saved account'],
+  ['switch -', 'Switch back to the previous account'],
+  ['current', 'Show the account in use'],
+  ['details [account]', 'Show everything stored for one account'],
+  ['add', 'Add an API key, service-account, or ADC profile'],
+  ['remove [account...]', 'Remove saved accounts'],
+  ['doctor', 'Check for problems'],
+];
+
+const MAINTENANCE_COMMANDS: CommandRow[] = [
+  ['alias <set|clear>', 'Set or clear an account alias'],
+  ['project <set|clear>', 'Set or clear the GCP project'],
+  ['model <set|clear>', 'Set or clear the preferred model'],
+  ['env', 'Print shell export commands for the active account'],
+  ['export [file]', 'Write a backup of saved accounts'],
+  ['import <file>', 'Read a backup of saved accounts'],
+  ['clean', 'Delete old managed backup files'],
+];
+
+const OTHER_COMMANDS: CommandRow[] = [
+  ['--version, -V', 'Show version'],
+  ['--help, -h', 'Show this help'],
+];
+
 export function printTopLevelHelp(all = false, version = VERSION): void {
   console.log(`${colors.cyan('agy-auth')} ${colors.cyan(version)}\n`);
 
   if (!all) {
     console.log(colors.cyan('Commands:'));
-    writeCommandSummary(
-      'list [--active] [--check] [--offline] [--json]',
-      'List registered credential profiles'
-    );
-    writeCommandSummary(
-      'switch [selector] [--json]',
-      'Switch the active credential profile (cached data only)'
-    );
-    writeCommandSummary(
-      'current [--offline] [--json]',
-      'Show active profile details with live plan and quota'
-    );
-    writeCommandSummary(
-      'login [--oauth-source <source>] [--email <email>] [options]',
-      'Add or refresh a Google OAuth account'
-    );
-    writeCommandSummary(
-      'sync [--oauth-email <email>] [--adc-email <email>] [--yes] [--json]',
-      'Import active Antigravity session or local ADC credentials'
-    );
-    writeCommandSummary(
-      'doctor [--offline] [--json]',
-      'Inspect the local installation and environment'
-    );
-
+    writeCommandRows(ACCOUNT_COMMANDS);
     console.log('');
-    console.log(
-      `  Run ${colors.cyan('`agy-auth help --all`')} to view all commands (aliases, environment, export/import).`
-    );
-    console.log(
-      `  Run ${colors.cyan('`agy-auth <command> --help`')} for command-specific usage details.\n`
-    );
+    console.log(colors.cyan('Notes:'));
+    console.log('  Run `agy-auth help --all` for every command.');
+    console.log('  Run `agy-auth <command> --help` for options and examples.\n');
     return;
   }
 
-  console.log(colors.cyan('Commands:'));
-
-  writeCommandSummary('--help, -h', 'Show this help');
-  writeCommandSummary('--version, -V', 'Show version');
-  writeCommandSummary('- [--json]', 'Switch to the previous active profile');
-  writeCommandSummary(
-    'list [--active] [--check] [--offline] [--json]',
-    'List profiles; refreshes live plan and quota for the active OAuth profile'
-  );
-  writeCommandSummary(
-    'switch [selector] [--json]',
-    'Switch the active credential profile (cached data only, no network request)'
-  );
-  writeCommandDetail('switch -');
-  writeCommandDetail('switch <alias|email|number|id>');
-  writeCommandSummary(
-    'current [--offline] [--json]',
-    'Show active profile details with live plan and quota'
-  );
-  writeCommandSummary(
-    'details [query] [--offline] [--json]',
-    'Show detailed metadata for a profile with live plan and quota'
-  );
-  writeCommandSummary(
-    'login [--oauth-source <source>] [--email <email>] [options]',
-    'Add or refresh a Google OAuth account'
-  );
-  writeCommandSummary(
-    'sync [--oauth-email <email>] [--adc-email <email>] [--yes] [--json]',
-    'Import active Antigravity session or local ADC credentials'
-  );
-  writeCommandSummary('add [options]', 'Add an API key, service-account, or ADC profile');
-  writeCommandSummary(
-    'remove [selectors...] [--all] [--yes] [--json]',
-    'Remove one or more profiles'
-  );
-  writeCommandDetail('remove <selector>...');
-  writeCommandDetail('remove --all');
+  console.log(colors.cyan('Accounts:'));
+  writeCommandRows(ALL_ACCOUNT_COMMANDS);
 
   console.log('');
   console.log(colors.cyan('Configuration and maintenance:'));
-  writeCommandSummary('alias <set|clear>', 'Manage profile aliases');
-  writeCommandSummary('project <set|clear>', 'Manage GCP project settings');
-  writeCommandSummary('model <set|clear>', 'Manage model preferences');
-  writeCommandSummary(
-    'env [--shell posix|powershell] [--clear] [--json]',
-    'Print shell export commands for active profile'
-  );
-  writeCommandSummary(
-    'export [output] [--include-secrets] [--yes] [--json]',
-    'Export profiles to a backup file'
-  );
-  writeCommandSummary('import <file> [--overwrite] [--json]', 'Import profiles from a backup file');
-  writeCommandSummary('clean [--dry-run] [--all] [--json]', 'Remove old managed backup files');
-  writeCommandSummary(
-    'doctor [--offline] [--json]',
-    'Inspect the local installation and environment'
-  );
+  writeCommandRows(MAINTENANCE_COMMANDS);
+
+  console.log('');
+  console.log(colors.cyan('Other:'));
+  writeCommandRows(OTHER_COMMANDS);
 
   console.log('');
   console.log(colors.cyan('Notes:'));
-  console.log('  Run `agy-auth <command> --help` for command-specific usage details.');
-  console.log('  Run `agy-auth list` to display stored credential profiles.');
+  console.log('  Run `agy-auth <command> --help` for options and examples.');
   console.log('');
   console.log('  Live plan and quota reporting is experimental: it uses undocumented Antigravity');
-  console.log(
-    '  endpoints that may change without notice. `list`, `current` and `details` refresh'
-  );
-  console.log('  it over the network by default; pass `--offline` for cached data only. `switch`');
-  console.log('  never makes a network request.');
+  console.log('  endpoints that may change without notice. `list`, `current` and `details`');
+  console.log('  refresh it over the network by default; pass `--offline` for cached data only.');
+  console.log('  `switch` never makes a network request.');
   console.log('');
   console.log('  Refreshing an expired OAuth token requires AGY_OAUTH_CLIENT_ID (and optionally');
   console.log(
@@ -118,11 +80,10 @@ export function printTopLevelHelp(all = false, version = VERSION): void {
   );
 }
 
-function writeCommandSummary(command: string, description: string): void {
-  console.log(`  ${colors.cyan(command)}`);
-  console.log(`      ${description}`);
-}
-
-function writeCommandDetail(command: string): void {
-  console.log(`      ${colors.cyan(command)}`);
+/** Pads before colouring so the descriptions line up regardless of ANSI codes. */
+function writeCommandRows(rows: CommandRow[]): void {
+  const width = Math.max(...rows.map(([command]) => command.length));
+  for (const [command, description] of rows) {
+    console.log(`  ${colors.cyan(command.padEnd(width))}  ${description}`);
+  }
 }
