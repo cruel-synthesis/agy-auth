@@ -781,3 +781,107 @@ export class QuotaClient {
     return results;
   }
 }
+
+/**
+ * One endpoint call, reduced to what can be read out loud: the HTTP status and
+ * the response's shape. Values are kept only where they classify a bucket
+ * (window names, reset times, fractions); anything long or identifying is
+ * replaced by its length.
+ */
+export interface QuotaProbeStep {
+  endpoint: string;
+  status: number | 'network-error' | 'skipped';
+  shape: string;
+}
+
+function describeString(value: string): string {
+  if (value.length > 120 || value.includes('@')) return `string(${value.length})`;
+  return JSON.stringify(value);
+}
+
+function describeShape(value: unknown, depth = 0): string {
+  if (value === null || value === undefined) return 'null';
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '[]';
+    if (depth >= 4) return `[${value.length}]`;
+    return `[${value.length} x ${describeShape(value[0], depth + 1)}]`;
+  }
+  if (isRecord(value)) {
+    if (depth >= 4) return '{..}';
+    const keys = Object.keys(value);
+    const shown = keys.slice(0, 16).map((key) => `${key}: ${describeShape(value[key], depth + 1)}`);
+    if (keys.length > shown.length) shown.push('..');
+    return `{ ${shown.join(', ')} }`;
+  }
+  if (typeof value === 'string') return describeString(value);
+  return String(value);
+}
+
+/**
+ * Call every quota contract once and report what came back. This exists because
+ * the endpoints are undocumented: when a reading stops parsing, the only way to
+ * tell a changed contract from an empty entitlement is to look at the answer.
+ */
+export async function probeQuotaEndpoints(
+  account: Account,
+  options: { fetchFn?: typeof fetch; timeoutMs?: number } = {}
+): Promise<QuotaProbeStep[]> {
+  const accessToken = account.credentials?.keychainPayload?.token?.access_token;
+  if (!accessToken) {
+    throw new Error('Account has no stored access token to probe with.');
+  }
+
+  const fetchFn = options.fetchFn ?? globalThis.fetch;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_QUOTA_REQUEST_TIMEOUT_MS;
+  const steps: QuotaProbeStep[] = [];
+
+  const call = async (endpoint: string, body: unknown): Promise<unknown> => {
+    try {
+      const response = await fetchFn(endpoint, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'User-Agent': USER_AGENT,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      let data: unknown;
+      try {
+        data = await response.json();
+      } catch {
+        data = undefined;
+      }
+      steps.push({ endpoint, status: response.status, shape: describeShape(data) });
+      return response.ok ? data : undefined;
+    } catch {
+      steps.push({ endpoint, status: 'network-error', shape: '-' });
+      return undefined;
+    }
+  };
+
+  for (const endpoint of QUOTA_SUMMARY_ENDPOINTS) {
+    await call(endpoint, {});
+  }
+
+  let discoveredProject: string | undefined;
+  for (const endpoint of LOAD_CODE_ASSIST_ENDPOINTS) {
+    const data = await call(endpoint, { metadata: { ideType: 'ANTIGRAVITY' } });
+    if (isRecord(data) && !discoveredProject) {
+      discoveredProject = nonEmptyString(data.cloudaicompanionProject, 128);
+    }
+  }
+
+  const project = account.gcpProject ?? discoveredProject;
+  for (const endpoint of RETRIEVE_USER_QUOTA_ENDPOINTS) {
+    if (!project) {
+      steps.push({ endpoint, status: 'skipped', shape: 'no project id known' });
+      continue;
+    }
+    await call(endpoint, { project });
+  }
+
+  return steps;
+}

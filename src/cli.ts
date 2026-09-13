@@ -267,6 +267,7 @@ export function createCli(): Command {
     .command('doctor')
     .description('Inspect the local installation and environment')
     .option('--offline', 'Skip external network reachability probe', false)
+    .option('--quota', 'Ask the quota service directly and report its answers')
     .option('-j, --json', 'Output as JSON')
     .action(async (options) => {
       await doctorCommand(options);

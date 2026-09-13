@@ -6,13 +6,44 @@ import { CliError } from '../core/errors.js';
 import { KeychainManager } from '../core/keychain.js';
 import { migrateRegistry } from '../core/migration.js';
 import { Paths } from '../core/paths.js';
-import { validateRegistry } from '../core/registry.js';
+import { type QuotaProbeStep, probeQuotaEndpoints } from '../core/quota.js';
+import { RegistryManager, validateRegistry } from '../core/registry.js';
 import { RegistrySchema, isRecord } from '../core/types.js';
 import { colors } from '../ui/theme.js';
 
 interface DoctorOptions {
   offline?: boolean;
   json?: boolean;
+  quota?: boolean;
+}
+
+interface QuotaProbeReport {
+  account: string;
+  steps: QuotaProbeStep[];
+}
+
+/**
+ * Ask the quota service directly and report what it said. The endpoints are
+ * undocumented, so when a reading stops parsing this is the only way to tell a
+ * changed contract from an account that simply has no quota.
+ */
+async function probeQuota(): Promise<QuotaProbeReport> {
+  const registry = new RegistryManager();
+  const account =
+    registry.getActiveAccount() ?? registry.getAccounts().find((a) => a.authType === 'oauth');
+
+  if (!account || account.authType !== 'oauth') {
+    throw new CliError(
+      'No OAuth account to probe. Run `agy-auth switch` to select one first.',
+      'no_oauth_account',
+      1
+    );
+  }
+
+  return {
+    account: account.email,
+    steps: await probeQuotaEndpoints(account),
+  };
 }
 
 interface CheckResult {
@@ -360,6 +391,8 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
     }
   }
 
+  const quotaProbe = options.quota ? await probeQuota() : undefined;
+
   const hasFail = checks.some((c) => c.status === 'fail');
 
   if (options.json) {
@@ -367,6 +400,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
       throw new CliError('One or more diagnostics checks failed.', 'doctor_failed', 1, {
         checks,
         passed: false,
+        ...(quotaProbe ? { quotaProbe } : {}),
       });
     }
     console.log(
@@ -378,6 +412,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
           data: {
             checks,
             passed: true,
+            ...(quotaProbe ? { quotaProbe } : {}),
           },
         },
         null,
@@ -398,6 +433,14 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
     console.log(`  ${icon} ${c.name}`);
     console.log(`    ${colors.dim(c.message)}`);
   }
+  if (quotaProbe) {
+    console.log(`  ${colors.cyanBold('Quota endpoint probe')} (${quotaProbe.account})`);
+    for (const step of quotaProbe.steps) {
+      console.log(`    ${step.endpoint.split('/v1internal:')[1]}  ${step.status}`);
+      console.log(`      ${colors.dim(step.shape)}`);
+    }
+  }
+
   console.log('');
 
   if (hasFail) {
