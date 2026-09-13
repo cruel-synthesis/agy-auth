@@ -3,7 +3,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import { validateAdcDocument, validateServiceAccountKey } from './credential-validation.js';
 import { migrateExportDocument } from './migration.js';
-import { ExportDocumentV2, ServiceAccountKey, ServiceAccountKeySchema } from './types.js';
+import { ExportDocumentV3, ServiceAccountKey, ServiceAccountKeySchema } from './types.js';
 
 export const MAX_CREDENTIAL_FILE_SIZE = 1024 * 1024; // 1 MiB
 export const MAX_IMPORT_FILE_SIZE = 5 * 1024 * 1024; // 5 MiB
@@ -144,7 +144,7 @@ export class CredentialFiles {
   /**
    * Load and validate an export/backup JSON file (supporting both format v1 and v2).
    */
-  public static loadExportBackupFile(filePath: string): ExportDocumentV2 {
+  public static loadExportBackupFile(filePath: string): ExportDocumentV3 {
     const data = this.loadJsonFile<unknown>(filePath, MAX_IMPORT_FILE_SIZE);
     return migrateExportDocument(data);
   }

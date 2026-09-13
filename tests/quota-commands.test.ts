@@ -85,7 +85,7 @@ describe('Plan and quota command behaviour', () => {
 
   function seed(accounts: Account[], activeAccountId: string | null = accounts[0]?.id ?? null) {
     const registry: Registry = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       activeAccountId,
       previousAccountId: null,
       accounts,
@@ -464,7 +464,7 @@ describe('Quota cache across import', () => {
       path.join(process.env.AGY_AUTH_HOME as string, 'registry.json'),
       `${JSON.stringify(
         {
-          schemaVersion: 2,
+          schemaVersion: 3,
           activeAccountId: null,
           previousAccountId: null,
           accounts: [account],

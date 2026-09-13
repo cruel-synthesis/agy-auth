@@ -22,7 +22,7 @@ describe('Schema Migration and Timestamp Monotonicity', () => {
     testEnv.cleanup();
   });
 
-  it('migrates Schema v1 registry to Schema v2 with full field preservation', () => {
+  it('migrates a Schema v1 registry to the current schema with full field preservation', () => {
     const pem = generateSyntheticPrivateKey();
     const v1Data = {
       version: 1,
@@ -85,7 +85,7 @@ describe('Schema Migration and Timestamp Monotonicity', () => {
 
     const { registry, migrated } = migrateRegistry(v1Data);
     expect(migrated).toBe(true);
-    expect(registry.schemaVersion).toBe(2);
+    expect(registry.schemaVersion).toBe(3);
     expect(registry.activeAccountId).toBe('acc_1');
     expect(registry.accounts.length).toBe(4);
     expect(registry.accounts[0].authType).toBe('oauth');
@@ -102,7 +102,82 @@ describe('Schema Migration and Timestamp Monotonicity', () => {
     expect(registry.settings.defaultLocation).toBe('us-central1');
   });
 
-  it('migrates v1 export documents to v2 format and handles invalid documents', () => {
+  it('upgrades v2 registries without inventing a credential source', () => {
+    const v2Data = {
+      schemaVersion: 2,
+      activeAccountId: 'acc_native',
+      previousAccountId: null,
+      accounts: [
+        {
+          id: 'acc_native',
+          email: 'native@example.com',
+          authType: 'oauth',
+          status: 'valid',
+          credentials: {
+            keychainPayload: {
+              auth_method: 'consumer',
+              token: { access_token: 'a', refresh_token: 'r' },
+            },
+          },
+          createdAt: 1,
+          updatedAt: 2,
+        },
+        {
+          id: 'acc_key',
+          email: 'key@example.com',
+          authType: 'api-key',
+          status: 'valid',
+          credentials: { apiKey: 'AIzaSyExample' },
+          createdAt: 1,
+          updatedAt: 2,
+        },
+      ],
+      settings: { defaultLocation: 'global' },
+    };
+
+    const { registry, migrated } = migrateRegistry(v2Data);
+
+    expect(migrated).toBe(true);
+    expect(registry.schemaVersion).toBe(3);
+
+    // Where the credentials came from is unrecoverable for pre-existing
+    // profiles, so it is recorded as unknown rather than assumed.
+    const native = registry.accounts.find((a) => a.id === 'acc_native');
+    expect(native?.credentialSource).toBe('unknown');
+
+    // Provenance is an OAuth concept; other auth types do not gain one.
+    const key = registry.accounts.find((a) => a.id === 'acc_key');
+    expect(key?.credentialSource).toBeUndefined();
+  });
+
+  it('keeps a recorded credential source through a v3 round trip', () => {
+    const v3Data = {
+      schemaVersion: 3,
+      activeAccountId: null,
+      previousAccountId: null,
+      accounts: [
+        {
+          id: 'acc_custom',
+          email: 'custom@example.com',
+          authType: 'oauth',
+          status: 'valid',
+          credentialSource: 'custom-client',
+          oauthClientId: 'client-abc.apps.googleusercontent.com',
+          createdAt: 1,
+          updatedAt: 2,
+        },
+      ],
+      settings: { defaultLocation: 'global' },
+    };
+
+    const { registry, migrated } = migrateRegistry(v3Data);
+
+    expect(migrated).toBe(false);
+    expect(registry.accounts[0].credentialSource).toBe('custom-client');
+    expect(registry.accounts[0].oauthClientId).toBe('client-abc.apps.googleusercontent.com');
+  });
+
+  it('migrates v1 export documents to the current format and handles invalid documents', () => {
     const pem = generateSyntheticPrivateKey();
     const v1Export = {
       kind: 'agy-auth-profile-export',
@@ -130,7 +205,7 @@ describe('Schema Migration and Timestamp Monotonicity', () => {
 
     const migrated = migrateExportDocument(v1Export);
     expect(migrated.kind).toBe('agy-auth-export');
-    expect(migrated.formatVersion).toBe(2);
+    expect(migrated.formatVersion).toBe(3);
     expect(migrated.accounts.length).toBe(1);
     expect(migrated.accounts[0].email).toBe('exp@example.com');
 
@@ -141,6 +216,33 @@ describe('Schema Migration and Timestamp Monotonicity', () => {
     expect(() => migrateExportDocument({ kind: 'unknown-export', formatVersion: 99 })).toThrow(
       /Unsupported export document format/
     );
+  });
+
+  it('still imports v2 export documents written before provenance existed', () => {
+    const v2Export = {
+      kind: 'agy-auth-export',
+      formatVersion: 2,
+      registrySchemaVersion: 2,
+      exportedAt: '2026-01-01T00:00:00.000Z',
+      includesSecrets: false,
+      accounts: [
+        {
+          id: 'acc_v2',
+          email: 'v2@example.com',
+          authType: 'oauth',
+          status: 'valid',
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ],
+    };
+
+    const migrated = migrateExportDocument(v2Export);
+
+    expect(migrated.formatVersion).toBe(3);
+    expect(migrated.registrySchemaVersion).toBe(3);
+    expect(migrated.exportedAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(migrated.accounts[0].credentialSource).toBe('unknown');
   });
 
   it('rejects legacy accounts with missing or unsupported authType without defaulting', () => {

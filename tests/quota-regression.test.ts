@@ -127,7 +127,7 @@ describe('Plan and quota support regression guard', () => {
 
   it('renders cached quota through the packaged CLI bundle', () => {
     const registry: Registry = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       activeAccountId: 'quota1',
       previousAccountId: null,
       accounts: [cachedQuotaAccount()],

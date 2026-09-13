@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export const AuthTypeSchema = z.enum(['oauth', 'api-key', 'service-account', 'adc']);
 export type AuthType = z.infer<typeof AuthTypeSchema>;
@@ -113,6 +113,17 @@ export const AccountCredentialsSchema = z
   .strict();
 export type AccountCredentials = z.infer<typeof AccountCredentialsSchema>;
 
+/**
+ * Which OAuth client issued an account's credentials.
+ *
+ * A refresh token is only usable by the client it was issued to, so this
+ * decides whether agy-auth may attempt a refresh at all. `unknown` covers
+ * profiles saved before this was recorded: their origin cannot be recovered, so
+ * it is never guessed.
+ */
+export const OAuthCredentialSourceSchema = z.enum(['antigravity', 'custom-client', 'unknown']);
+export type OAuthCredentialSource = z.infer<typeof OAuthCredentialSourceSchema>;
+
 export const AccountSchema = z
   .object({
     id: z
@@ -126,6 +137,10 @@ export const AccountSchema = z
       .optional(),
     authType: AuthTypeSchema,
     credentials: AccountCredentialsSchema.optional(),
+    /** OAuth profiles only: which client issued these credentials. */
+    credentialSource: OAuthCredentialSourceSchema.optional(),
+    /** The custom OAuth client id that issued them, when one did. */
+    oauthClientId: z.string().max(256).optional(),
     status: AccountStatusSchema.default('unverified'),
     verification: VerificationRecordSchema.optional(),
     gcpProject: z.string().max(128).optional(),
@@ -156,7 +171,7 @@ export const DEFAULT_SETTINGS: RegistrySettings = {
 
 export const RegistrySchema = z
   .object({
-    schemaVersion: z.literal(2),
+    schemaVersion: z.literal(3),
     activeAccountId: z.string().max(64).nullable(),
     previousAccountId: z.string().max(64).nullable(),
     accounts: z.array(AccountSchema),
@@ -165,6 +180,12 @@ export const RegistrySchema = z
   .strict();
 export type Registry = z.infer<typeof RegistrySchema>;
 
+/** Accounts as written before credential provenance was recorded. */
+export const AccountV2Schema = AccountSchema.omit({
+  credentialSource: true,
+  oauthClientId: true,
+}).strict();
+
 export const ExportDocumentV2Schema = z
   .object({
     kind: z.literal('agy-auth-export'),
@@ -172,10 +193,22 @@ export const ExportDocumentV2Schema = z
     registrySchemaVersion: z.literal(2),
     exportedAt: z.string().max(128),
     includesSecrets: z.boolean(),
-    accounts: z.array(AccountSchema),
+    accounts: z.array(AccountV2Schema),
   })
   .strict();
 export type ExportDocumentV2 = z.infer<typeof ExportDocumentV2Schema>;
+
+export const ExportDocumentV3Schema = z
+  .object({
+    kind: z.literal('agy-auth-export'),
+    formatVersion: z.literal(3),
+    registrySchemaVersion: z.literal(3),
+    exportedAt: z.string().max(128),
+    includesSecrets: z.boolean(),
+    accounts: z.array(AccountSchema),
+  })
+  .strict();
+export type ExportDocumentV3 = z.infer<typeof ExportDocumentV3Schema>;
 
 export interface SwitchResult {
   previousAccount: Account | null;

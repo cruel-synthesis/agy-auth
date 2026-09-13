@@ -4,7 +4,7 @@ import { confirm } from '@inquirer/prompts';
 import { UsageError } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
 import { Storage } from '../core/storage.js';
-import { ExportDocumentV2, sanitizeAccounts } from '../core/types.js';
+import { ExportDocumentV3, sanitizeAccounts } from '../core/types.js';
 import { colors } from '../ui/theme.js';
 
 interface ExportOptions {
@@ -34,10 +34,10 @@ export async function exportCommand(options: ExportOptions = {}): Promise<void> 
 
   const exportedAccounts = options.includeSecrets ? accounts : sanitizeAccounts(accounts);
 
-  const exportDoc: ExportDocumentV2 = {
+  const exportDoc: ExportDocumentV3 = {
     kind: 'agy-auth-export',
-    formatVersion: 2,
-    registrySchemaVersion: 2,
+    formatVersion: 3,
+    registrySchemaVersion: 3,
     exportedAt: new Date().toISOString(),
     includesSecrets: Boolean(options.includeSecrets),
     accounts: exportedAccounts,

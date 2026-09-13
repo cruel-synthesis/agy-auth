@@ -3,10 +3,12 @@ import {
   AccountCredentials,
   AccountSchema,
   AccountStatus,
+  AccountV2Schema,
   CURRENT_SCHEMA_VERSION,
   DEFAULT_SETTINGS,
-  ExportDocumentV2,
   ExportDocumentV2Schema,
+  ExportDocumentV3,
+  ExportDocumentV3Schema,
   KeychainPayload,
   ModelRateLimits,
   RateLimitSnapshot,
@@ -290,6 +292,19 @@ export function validateUniqueness(accounts: Account[]): void {
   }
 }
 
+/**
+ * Records where an OAuth profile's credentials came from.
+ *
+ * Registries written before schema 3 carry no such record and it cannot be
+ * reconstructed, so they are marked `unknown` rather than assumed to be native.
+ */
+function upgradeAccountProvenance(account: Account): Account {
+  if (account.authType !== 'oauth' || account.credentialSource !== undefined) {
+    return account;
+  }
+  return { ...account, credentialSource: 'unknown' };
+}
+
 export function migrateRegistry(raw: unknown): { registry: Registry; migrated: boolean } {
   if (!isRecord(raw)) {
     throw new Error('Registry data must be an object.');
@@ -309,15 +324,19 @@ export function migrateRegistry(raw: unknown): { registry: Registry; migrated: b
     return { registry: parsed, migrated: false };
   }
 
-  // Migrate schema 1 -> schema 2
   if (!Array.isArray(raw.accounts)) {
     throw new Error("Registry is missing 'accounts' array.");
   }
 
+  // Schema 1 needs the legacy field translation; schema 2 is already shaped
+  // correctly and only lacks the provenance recorded from schema 3 onwards.
   const accounts: Account[] = [];
   for (let i = 0; i < raw.accounts.length; i++) {
-    const migratedAcc = migrateLegacyAccount(raw.accounts[i], i);
-    accounts.push(migratedAcc);
+    const account =
+      rawVersion === 1
+        ? migrateLegacyAccount(raw.accounts[i], i)
+        : AccountV2Schema.parse(raw.accounts[i]);
+    accounts.push(upgradeAccountProvenance(account));
   }
 
   validateUniqueness(accounts);
@@ -346,7 +365,7 @@ export function migrateRegistry(raw: unknown): { registry: Registry; migrated: b
   };
 
   const migratedRegistry: Registry = {
-    schemaVersion: 2,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
     activeAccountId,
     previousAccountId,
     accounts,
@@ -357,16 +376,31 @@ export function migrateRegistry(raw: unknown): { registry: Registry; migrated: b
   return { registry: migratedRegistry, migrated: true };
 }
 
-export function migrateExportDocument(raw: unknown): ExportDocumentV2 {
+export function migrateExportDocument(raw: unknown): ExportDocumentV3 {
   if (!isRecord(raw)) {
     throw new Error('Invalid export document: root must be an object.');
   }
 
-  // Format v2 documents
-  if (raw.kind === 'agy-auth-export' && raw.formatVersion === 2) {
-    const parsed = ExportDocumentV2Schema.parse(raw);
+  // Format v3 documents
+  if (raw.kind === 'agy-auth-export' && raw.formatVersion === 3) {
+    const parsed = ExportDocumentV3Schema.parse(raw);
     validateUniqueness(parsed.accounts);
     return parsed;
+  }
+
+  // Format v2 documents predate credential provenance.
+  if (raw.kind === 'agy-auth-export' && raw.formatVersion === 2) {
+    const parsed = ExportDocumentV2Schema.parse(raw);
+    const accounts = parsed.accounts.map(upgradeAccountProvenance);
+    validateUniqueness(accounts);
+    return {
+      kind: 'agy-auth-export',
+      formatVersion: 3,
+      registrySchemaVersion: 3,
+      exportedAt: parsed.exportedAt,
+      includesSecrets: parsed.includesSecrets,
+      accounts,
+    };
   }
 
   // Format v1 documents
@@ -376,14 +410,13 @@ export function migrateExportDocument(raw: unknown): ExportDocumentV2 {
     }
     const accounts: Account[] = [];
     for (let i = 0; i < raw.accounts.length; i++) {
-      const migrated = migrateLegacyAccount(raw.accounts[i], i);
-      accounts.push(migrated);
+      accounts.push(upgradeAccountProvenance(migrateLegacyAccount(raw.accounts[i], i)));
     }
     validateUniqueness(accounts);
     return {
       kind: 'agy-auth-export',
-      formatVersion: 2,
-      registrySchemaVersion: 2,
+      formatVersion: 3,
+      registrySchemaVersion: 3,
       exportedAt:
         typeof raw.exportedAt === 'string' && raw.exportedAt.trim()
           ? raw.exportedAt

@@ -784,7 +784,7 @@ describe('Registry integration', () => {
     const account = oauthAccount();
     delete (account as Partial<Account>).plan;
     writeRegistry({
-      schemaVersion: 2,
+      schemaVersion: 3,
       activeAccountId: 'acc1',
       previousAccountId: null,
       accounts: [account],
@@ -851,7 +851,7 @@ describe('Registry integration', () => {
   it('applies quota state narrowly and rejects stale optimistic writes', async () => {
     const account = oauthAccount({ status: 'unverified' });
     writeRegistry({
-      schemaVersion: 2,
+      schemaVersion: 3,
       activeAccountId: 'acc1',
       previousAccountId: null,
       accounts: [account],
@@ -898,7 +898,7 @@ describe('Registry integration', () => {
   it('creates no backup churn for routine quota refreshes', async () => {
     const account = oauthAccount();
     writeRegistry({
-      schemaVersion: 2,
+      schemaVersion: 3,
       activeAccountId: 'acc1',
       previousAccountId: null,
       accounts: [account],
@@ -934,7 +934,7 @@ describe('Registry integration', () => {
       quotaCheckedAt: 1_700_000_000_000,
     });
     writeRegistry({
-      schemaVersion: 2,
+      schemaVersion: 3,
       activeAccountId: 'acc1',
       previousAccountId: null,
       accounts: [account],
@@ -971,7 +971,7 @@ describe('Registry integration', () => {
       quotaCheckedAt: 1_700_000_000_000,
     });
     writeRegistry({
-      schemaVersion: 2,
+      schemaVersion: 3,
       activeAccountId: 'acc1',
       previousAccountId: null,
       accounts: [account],
@@ -1015,7 +1015,7 @@ describe('Registry integration', () => {
       updatedAt: Date.now() - 1000,
     };
     writeRegistry({
-      schemaVersion: 2,
+      schemaVersion: 3,
       activeAccountId: 'oauth1',
       previousAccountId: null,
       accounts: [oauth, apiKey],
@@ -1102,7 +1102,7 @@ describe('Registry integration', () => {
 
   it('rejects a quota result for an account that no longer exists', () => {
     const draft: Registry = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       activeAccountId: null,
       previousAccountId: null,
       accounts: [],
