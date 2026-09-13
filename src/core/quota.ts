@@ -790,6 +790,7 @@ export class QuotaClient {
  */
 export interface QuotaProbeStep {
   endpoint: string;
+  request: string;
   status: number | 'network-error' | 'skipped';
   shape: string;
 }
@@ -835,7 +836,8 @@ export async function probeQuotaEndpoints(
   const timeoutMs = options.timeoutMs ?? DEFAULT_QUOTA_REQUEST_TIMEOUT_MS;
   const steps: QuotaProbeStep[] = [];
 
-  const call = async (endpoint: string, body: unknown): Promise<unknown> => {
+  const call = async (endpoint: string, body: Record<string, unknown>): Promise<unknown> => {
+    const request = describeShape(body);
     try {
       const response = await fetchFn(endpoint, {
         method: 'POST',
@@ -854,18 +856,16 @@ export async function probeQuotaEndpoints(
       } catch {
         data = undefined;
       }
-      steps.push({ endpoint, status: response.status, shape: describeShape(data) });
+      steps.push({ endpoint, request, status: response.status, shape: describeShape(data) });
       return response.ok ? data : undefined;
     } catch {
-      steps.push({ endpoint, status: 'network-error', shape: '-' });
+      steps.push({ endpoint, request, status: 'network-error', shape: '-' });
       return undefined;
     }
   };
 
-  for (const endpoint of QUOTA_SUMMARY_ENDPOINTS) {
-    await call(endpoint, {});
-  }
-
+  // loadCodeAssist first: it is the only call that can supply a project id, and
+  // both quota contracts declare one in their request.
   let discoveredProject: string | undefined;
   for (const endpoint of LOAD_CODE_ASSIST_ENDPOINTS) {
     const data = await call(endpoint, { metadata: { ideType: 'ANTIGRAVITY' } });
@@ -875,9 +875,17 @@ export async function probeQuotaEndpoints(
   }
 
   const project = account.gcpProject ?? discoveredProject;
+
+  // Both bodies for the summary, because agy-auth sends the empty one today and
+  // the published request message has a project field.
+  for (const endpoint of QUOTA_SUMMARY_ENDPOINTS) {
+    await call(endpoint, {});
+    if (project) await call(endpoint, { project });
+  }
+
   for (const endpoint of RETRIEVE_USER_QUOTA_ENDPOINTS) {
     if (!project) {
-      steps.push({ endpoint, status: 'skipped', shape: 'no project id known' });
+      steps.push({ endpoint, request: '-', status: 'skipped', shape: 'no project id known' });
       continue;
     }
     await call(endpoint, { project });

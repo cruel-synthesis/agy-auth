@@ -436,7 +436,8 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
   if (quotaProbe) {
     console.log(`  ${colors.cyanBold('Quota endpoint probe')} (${quotaProbe.account})`);
     for (const step of quotaProbe.steps) {
-      console.log(`    ${step.endpoint.split('/v1internal:')[1]}  ${step.status}`);
+      const call = step.endpoint.split('/v1internal:')[1];
+      console.log(`    ${call}  ${step.request}  ${step.status}`);
       console.log(`      ${colors.dim(step.shape)}`);
     }
   }
