@@ -422,6 +422,95 @@ describe('Keychain OAuth Import Module', () => {
     expect(registry.getActiveAccount()?.id).toBe(existing.id);
   });
 
+  it('records a native session as Antigravity-issued', async () => {
+    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
+      status: 'found',
+      payload: {
+        auth_method: 'consumer',
+        token: {
+          access_token: 'native-access',
+          refresh_token: 'native-refresh',
+          token_type: 'Bearer',
+          expiry: futureExpiry(),
+        },
+      },
+    });
+
+    const fetchFn = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ email: 'native@example.com', email_verified: true }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+    );
+
+    const result = await importKeychainOAuth({ fetchFn: fetchFn as unknown as typeof fetch });
+
+    expect(result.status).toBe('success');
+    if (result.status === 'success') {
+      expect(result.account.credentialSource).toBe('antigravity');
+      expect(result.account.oauthClientId).toBeUndefined();
+    }
+  });
+
+  it('does not carry a refresh token across issuing clients', async () => {
+    const registry = new RegistryManager();
+    registry.addOrUpdateAccount({
+      email: 'crossover@example.com',
+      authType: 'oauth',
+      status: 'valid',
+      credentialSource: 'custom-client',
+      oauthClientId: 'some-custom-client',
+      credentials: {
+        keychainPayload: {
+          auth_method: 'consumer',
+          token: {
+            access_token: 'custom-access',
+            refresh_token: 'custom-issued-refresh',
+            token_type: 'Bearer',
+          },
+        },
+      },
+    });
+
+    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
+      status: 'found',
+      payload: {
+        auth_method: 'consumer',
+        // A native session that carries no refresh token of its own.
+        token: {
+          access_token: 'native-access',
+          refresh_token: '',
+          token_type: 'Bearer',
+          expiry: futureExpiry(),
+        },
+      },
+    });
+
+    const fetchFn = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ email: 'crossover@example.com', email_verified: true }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+    );
+
+    const result = await importKeychainOAuth({
+      fetchFn: fetchFn as unknown as typeof fetch,
+      registry,
+    });
+
+    expect(result.status).toBe('success');
+    if (result.status === 'success') {
+      expect(result.account.credentialSource).toBe('antigravity');
+      // The old refresh token belonged to a different client; it must not be
+      // reattached to a session that client never issued.
+      expect(result.account.credentials?.keychainPayload?.token.refresh_token).toBe('');
+    }
+  });
+
   it('rejects an explicit email that disagrees with the verified Google identity', async () => {
     const registry = new RegistryManager();
     registry.addOrUpdateAccount({

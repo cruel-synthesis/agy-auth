@@ -1,5 +1,9 @@
 import { VERSION } from '../version.js';
-import { OAUTH_TOKEN_ENDPOINT, getOAuthClientConfig } from './oauth-config.js';
+import {
+  getOAuthClientConfig,
+  type OAuthClientConfig,
+  OAUTH_TOKEN_ENDPOINT,
+} from './oauth-config.js';
 import {
   Account,
   AccountStatus,
@@ -51,6 +55,8 @@ const TOKEN_REFRESH_BUFFER_SECONDS = 300;
 export type QuotaFailureReason =
   | 'not-applicable'
   | 'token-expired'
+  /** agy-auth holds no client authorised to refresh these credentials. */
+  | 'native-refresh-required'
   | 'scope-insufficient'
   | 'auth-failed'
   | 'quota-unavailable'
@@ -492,13 +498,15 @@ export class QuotaClient {
   private static async refreshAccessToken(
     stored: RefreshedToken,
     ctx: RequestContext,
-    env: NodeJS.ProcessEnv
+    env: NodeJS.ProcessEnv,
+    account: Account
   ): Promise<RefreshedToken | null> {
     const refreshToken = stored.refresh_token;
     if (!refreshToken) return null;
 
     const client = getOAuthClientConfig(env);
     if (!client) return null;
+    if (!this.mayRefreshWith(account, client)) return null;
 
     const budget = Math.min(ctx.requestTimeoutMs, remainingBudget(ctx));
     if (budget <= 0) return null;
@@ -546,6 +554,21 @@ export class QuotaClient {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Whether the configured OAuth client is entitled to refresh this account.
+   *
+   * Google binds a refresh token to the client that issued it, so offering one
+   * to a different client both fails and discloses the credential to an
+   * application that was never involved in issuing it. Only a profile known to
+   * have come from this very client may be refreshed here; a native Antigravity
+   * session is refreshed by Antigravity itself, and a profile of unrecorded
+   * origin is not assumed to be safe to try.
+   */
+  private static mayRefreshWith(account: Account, client: OAuthClientConfig): boolean {
+    if (account.credentialSource !== 'custom-client') return false;
+    return !account.oauthClientId || account.oauthClientId === client.clientId;
   }
 
   /** The token can no longer be used at all. */
@@ -601,14 +624,23 @@ export class QuotaClient {
     let tokenUpdate: TokenUpdate | undefined;
 
     if (this.isRefreshDue(stored.expiry, now())) {
-      const refreshed = await this.refreshAccessToken(stored, ctx, options.env ?? process.env);
+      const refreshed = await this.refreshAccessToken(
+        stored,
+        ctx,
+        options.env ?? process.env,
+        account
+      );
       if (refreshed) {
         accessToken = refreshed.access_token;
         tokenUpdate = new TokenUpdate(refreshed);
       } else if (this.isTokenExpired(stored.expiry, now())) {
         // Nothing left to try: the token is spent and could not be replaced.
+        // Say which, so the caller can point at Antigravity rather than at a
+        // client configuration the user is not expected to have.
+        const reason =
+          account.credentialSource === 'antigravity' ? 'native-refresh-required' : 'token-expired';
         return {
-          result: { ...base, ok: false, reason: 'token-expired', status: 'expired' },
+          result: { ...base, ok: false, reason, status: 'expired' },
         };
       }
       // Otherwise the stored token still has life in it; carry on with it.

@@ -349,6 +349,8 @@ export class RegistryManager {
         alias: accountData.alias?.trim() || undefined,
         authType: accountData.authType,
         credentials: accountData.credentials,
+        credentialSource: accountData.credentialSource,
+        oauthClientId: accountData.oauthClientId,
         status: accountData.status || 'unverified',
         verification: accountData.verification,
         gcpProject: accountData.gcpProject,

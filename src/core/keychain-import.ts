@@ -191,7 +191,12 @@ export async function importKeychainOAuth(
     (a) => a.authType === 'oauth' && a.email.toLowerCase() === finalEmail.toLowerCase()
   );
 
-  const existingRefreshToken = existing?.credentials?.keychainPayload?.token?.refresh_token || '';
+  // A refresh token only works for the client that issued it, so one saved from
+  // a different client is not reattached to this native session.
+  const existingRefreshToken =
+    existing && existing.credentialSource !== 'custom-client'
+      ? existing.credentials?.keychainPayload?.token?.refresh_token || ''
+      : '';
 
   const refreshToken = payload.token.refresh_token || existingRefreshToken || '';
 
@@ -247,6 +252,8 @@ export async function importKeychainOAuth(
     email: finalEmail,
     alias: options.alias !== undefined ? options.alias.trim() || undefined : existing?.alias,
     authType: 'oauth',
+    // This session came out of the Antigravity store, so Antigravity issued it.
+    credentialSource: 'antigravity',
     status,
     verification,
     gcpProject:

@@ -10,6 +10,8 @@ import { Account } from '../core/types.js';
 
 const REASON_TEXT: Record<QuotaFailureReason, string> = {
   'not-applicable': 'no usable OAuth token on the profile',
+  'native-refresh-required':
+    'Antigravity owns this session; sign in through Antigravity, then run `agy-auth sync`',
   'token-expired': 'token expired; sign in through Antigravity, then run `agy-auth sync`',
   'scope-insufficient':
     'token is missing the required scopes; sign in through Antigravity, then run `agy-auth sync`',

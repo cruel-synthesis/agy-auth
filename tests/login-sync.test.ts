@@ -212,6 +212,8 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
       email: 'returning@example.com',
       alias: 'returning-user',
       authType: 'oauth',
+      // A user returning to the same browser-OAuth client they signed in with.
+      credentialSource: 'custom-client',
       credentials: {
         keychainPayload: {
           auth_method: 'consumer',

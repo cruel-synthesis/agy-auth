@@ -320,6 +320,8 @@ describe('Plan and quota command behaviour', () => {
   it('does not touch the Keychain during a quota refresh that rotates a token', async () => {
     seed([
       oauthAccount({
+        // Only a custom-client profile is one agy-auth may refresh itself.
+        credentialSource: 'custom-client',
         credentials: {
           keychainPayload: {
             auth_method: 'consumer',

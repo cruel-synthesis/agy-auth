@@ -547,8 +547,10 @@ describe('Quota error policy', () => {
 });
 
 describe('Environment-gated OAuth refresh', () => {
+  // This suite exercises the one provenance agy-auth may refresh itself.
   const expiredAccount = () =>
     oauthAccount({
+      credentialSource: 'custom-client',
       credentials: {
         keychainPayload: {
           auth_method: 'consumer',
@@ -565,6 +567,7 @@ describe('Environment-gated OAuth refresh', () => {
   /** Still valid, but inside the five-minute early-refresh window. */
   const nearlyExpiredAccount = () =>
     oauthAccount({
+      credentialSource: 'custom-client',
       credentials: {
         keychainPayload: {
           auth_method: 'consumer',
@@ -608,6 +611,109 @@ describe('Environment-gated OAuth refresh', () => {
 
     expect(result.ok).toBe(false);
     expect(result.reason).toBe('token-expired');
+    expect(result.status).toBe('expired');
+  });
+
+  it('never sends a native Antigravity refresh token to a configured custom client', async () => {
+    const { fetchFn, calls } = mockFetch({
+      'oauth2.googleapis.com': () =>
+        jsonResponse({ access_token: 'should-never-be-issued', expires_in: 1800 }),
+      retrieveUserQuotaSummary: () => jsonResponse(SUMMARY_OK),
+      loadCodeAssist: () => jsonResponse(CODE_ASSIST_OK),
+    });
+
+    const nativeAccount = oauthAccount({
+      credentialSource: 'antigravity',
+      credentials: {
+        keychainPayload: {
+          auth_method: 'consumer',
+          token: {
+            access_token: 'stale-access-token',
+            refresh_token: 'antigravity-issued-refresh',
+            token_type: 'Bearer',
+            expiry: new Date(Date.now() - 3_600_000).toISOString(),
+          },
+        },
+      },
+    });
+
+    const { result, tokenUpdate } = await QuotaClient.refreshAccountQuota(nativeAccount, {
+      fetchFn,
+      env: { AGY_OAUTH_CLIENT_ID: 'unrelated-client', AGY_OAUTH_CLIENT_SECRET: 'unrelated-secret' },
+    });
+
+    // The refresh token belongs to Antigravity's client, so it is never offered
+    // to a different one, even though one is configured.
+    expect(calls.some((url) => url.includes('oauth2.googleapis.com'))).toBe(false);
+    expect(tokenUpdate).toBeUndefined();
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe('native-refresh-required');
+    expect(result.status).toBe('expired');
+  });
+
+  it('refreshes a custom-client account with the configured client', async () => {
+    const { fetchFn, calls } = mockFetch({
+      'oauth2.googleapis.com': () =>
+        jsonResponse({ access_token: 'fresh-access-token', expires_in: 1800 }),
+      retrieveUserQuotaSummary: () => jsonResponse(SUMMARY_OK),
+      loadCodeAssist: () => jsonResponse(CODE_ASSIST_OK),
+    });
+
+    const customAccount = oauthAccount({
+      credentialSource: 'custom-client',
+      oauthClientId: 'env-client-id',
+      credentials: {
+        keychainPayload: {
+          auth_method: 'consumer',
+          token: {
+            access_token: 'stale-access-token',
+            refresh_token: 'custom-issued-refresh',
+            token_type: 'Bearer',
+            expiry: new Date(Date.now() - 3_600_000).toISOString(),
+          },
+        },
+      },
+    });
+
+    const { result, tokenUpdate } = await QuotaClient.refreshAccountQuota(customAccount, {
+      fetchFn,
+      env: { AGY_OAUTH_CLIENT_ID: 'env-client-id', AGY_OAUTH_CLIENT_SECRET: 'env-secret' },
+    });
+
+    expect(calls.some((url) => url.includes('oauth2.googleapis.com'))).toBe(true);
+    expect(tokenUpdate?.token.access_token).toBe('fresh-access-token');
+    expect(result.ok).toBe(true);
+  });
+
+  it('declines to refresh when a different client is configured than the one that issued', async () => {
+    const { fetchFn, calls } = mockFetch({
+      'oauth2.googleapis.com': () =>
+        jsonResponse({ access_token: 'should-never-be-issued', expires_in: 1800 }),
+    });
+
+    const customAccount = oauthAccount({
+      credentialSource: 'custom-client',
+      oauthClientId: 'client-that-issued',
+      credentials: {
+        keychainPayload: {
+          auth_method: 'consumer',
+          token: {
+            access_token: 'stale-access-token',
+            refresh_token: 'custom-issued-refresh',
+            token_type: 'Bearer',
+            expiry: new Date(Date.now() - 3_600_000).toISOString(),
+          },
+        },
+      },
+    });
+
+    const { result } = await QuotaClient.refreshAccountQuota(customAccount, {
+      fetchFn,
+      env: { AGY_OAUTH_CLIENT_ID: 'a-completely-different-client' },
+    });
+
+    expect(calls.some((url) => url.includes('oauth2.googleapis.com'))).toBe(false);
+    expect(result.ok).toBe(false);
     expect(result.status).toBe('expired');
   });
 

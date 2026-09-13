@@ -220,10 +220,16 @@ async function signInWithBrowser(
       (account) => account.authType === 'oauth' && account.email.toLowerCase() === normalizedEmail
     );
 
-  const refreshToken =
-    result.payload.token.refresh_token ||
-    existing?.credentials?.keychainPayload?.token?.refresh_token ||
-    '';
+  const configuredClient = getOAuthClientConfig();
+  // Only a refresh token this same client issued can be reused here.
+  const reusableRefreshToken =
+    existing &&
+    existing.credentialSource === 'custom-client' &&
+    (!existing.oauthClientId || existing.oauthClientId === configuredClient?.clientId)
+      ? existing.credentials?.keychainPayload?.token?.refresh_token || ''
+      : '';
+
+  const refreshToken = result.payload.token.refresh_token || reusableRefreshToken || '';
   const payload: AgyKeychainPayload = {
     auth_method: 'consumer',
     token: {
@@ -238,6 +244,8 @@ async function signInWithBrowser(
     email: result.email,
     alias: options.alias !== undefined ? options.alias.trim() || undefined : existing?.alias,
     authType: 'oauth',
+    credentialSource: 'custom-client',
+    oauthClientId: configuredClient?.clientId,
     status: 'valid',
     gcpProject:
       options.project !== undefined ? options.project.trim() || undefined : existing?.gcpProject,
