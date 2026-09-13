@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CliError, UsageError } from '../src/core/errors.js';
-import { fetchVerifiedGoogleEmail, importKeychainOAuth } from '../src/core/keychain-import.js';
+import { importKeychainOAuth } from '../src/core/keychain-import.js';
 import { KeychainManager } from '../src/core/keychain.js';
 import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
@@ -101,7 +101,7 @@ describe('Keychain OAuth Import Module', () => {
     }
   });
 
-  it('handles userinfo 401, timeout, malformed JSON, and unverified email returning needs_email', async () => {
+  it('separates a rejected session from an identity it merely could not check', async () => {
     vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
     vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
       status: 'found',
@@ -115,20 +115,36 @@ describe('Keychain OAuth Import Module', () => {
       },
     });
 
-    // 1. 401 Unauthorized
+    // Google rejecting the session is an answer, not an unknown. Asking the user
+    // to name an account here would label a dead token with an arbitrary email.
     const fetch401 = vi.fn(async () => new Response('Unauthorized', { status: 401 }));
-    let res = await importKeychainOAuth({ fetchFn: fetch401 as unknown as typeof fetch });
-    expect(res.status).toBe('needs_email');
+    await expect(
+      importKeychainOAuth({ fetchFn: fetch401 as unknown as typeof fetch })
+    ).rejects.toMatchObject({ code: 'session_rejected' });
 
-    // 2. Malformed JSON
+    const fetch403 = vi.fn(async () => new Response('Forbidden', { status: 403 }));
+    await expect(
+      importKeychainOAuth({ fetchFn: fetch403 as unknown as typeof fetch })
+    ).rejects.toMatchObject({ code: 'session_rejected' });
+
+    // A malformed body leaves the identity genuinely unknown.
     const fetchMalformed = vi.fn(
       async () =>
         new Response('not json', { status: 200, headers: { 'content-type': 'text/plain' } })
     );
-    res = await importKeychainOAuth({ fetchFn: fetchMalformed as unknown as typeof fetch });
+    let res = await importKeychainOAuth({ fetchFn: fetchMalformed as unknown as typeof fetch });
     expect(res.status).toBe('needs_email');
+    if (res.status === 'needs_email') expect(res.reason).toBe('unavailable');
 
-    // 3. Unverified email in userinfo
+    // So does an unreachable network.
+    const fetchOffline = vi.fn(async () => {
+      throw new Error('Network offline');
+    });
+    res = await importKeychainOAuth({ fetchFn: fetchOffline as unknown as typeof fetch });
+    expect(res.status).toBe('needs_email');
+    if (res.status === 'needs_email') expect(res.reason).toBe('unavailable');
+
+    // An unverified address is a definite negative answer, reported as its own case.
     const fetchUnverified = vi.fn(
       async () =>
         new Response(JSON.stringify({ email: 'unverified@example.com', email_verified: false }), {
@@ -138,6 +154,7 @@ describe('Keychain OAuth Import Module', () => {
     );
     res = await importKeychainOAuth({ fetchFn: fetchUnverified as unknown as typeof fetch });
     expect(res.status).toBe('needs_email');
+    if (res.status === 'needs_email') expect(res.reason).toBe('unverified_identity');
   });
 
   it('creates new account as unverified when explicit fallback email is supplied and live check fails', async () => {

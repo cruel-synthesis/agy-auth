@@ -25,6 +25,8 @@ export type ImportKeychainOAuthResult =
     }
   | {
       status: 'needs_email';
+      /** Why the identity is unknown: no answer at all, or a definite "not verified". */
+      reason: 'unavailable' | 'unverified_identity';
       payload: KeychainPayload;
       defaultProject?: string;
       defaultLocation?: string;
@@ -32,30 +34,59 @@ export type ImportKeychainOAuthResult =
     };
 
 /**
- * Derives and verifies the account email from Google's userinfo endpoint using the access token.
+ * The four distinguishable answers Google can give about a session.
+ *
+ * Collapsing them loses the difference between "this token is dead" and "we
+ * could not ask right now", which decides whether it is safe to write anything.
+ */
+export type GoogleIdentityOutcome =
+  | { kind: 'verified'; email: string }
+  | { kind: 'unverified'; email: string }
+  | { kind: 'rejected'; status: number }
+  | { kind: 'unavailable'; reason: string };
+
+/**
+ * Asks Google's userinfo endpoint who a given access token belongs to.
  * Does not require an OAuth client ID or client secret.
  */
-export async function fetchVerifiedGoogleEmail(
+export async function fetchGoogleIdentity(
   accessToken: string,
   fetchFn: typeof fetch = fetch
-): Promise<{ email: string; verified: boolean } | null> {
+): Promise<GoogleIdentityOutcome> {
+  let res: Response;
   try {
-    const res = await fetchFn('https://www.googleapis.com/oauth2/v3/userinfo', {
+    res = await fetchFn('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: `Bearer ${accessToken}` },
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { email?: string; email_verified?: boolean };
-    if (typeof data.email === 'string' && isEmail(data.email.trim())) {
-      return {
-        email: data.email.trim(),
-        verified: data.email_verified === true,
-      };
-    }
-    return null;
-  } catch {
-    return null;
+  } catch (error: unknown) {
+    return {
+      kind: 'unavailable',
+      reason: error instanceof Error ? error.message : String(error),
+    };
   }
+
+  // 401/403 are decisive: the credential itself was refused.
+  if (res.status === 401 || res.status === 403) {
+    return { kind: 'rejected', status: res.status };
+  }
+  if (!res.ok) {
+    return { kind: 'unavailable', reason: `userinfo responded with HTTP ${res.status}` };
+  }
+
+  let data: { email?: string; email_verified?: boolean };
+  try {
+    data = (await res.json()) as { email?: string; email_verified?: boolean };
+  } catch {
+    return { kind: 'unavailable', reason: 'userinfo returned a malformed response body' };
+  }
+
+  const email = typeof data.email === 'string' ? data.email.trim() : '';
+  if (!isEmail(email)) {
+    return { kind: 'unavailable', reason: 'userinfo returned no usable email address' };
+  }
+
+  return data.email_verified === true ? { kind: 'verified', email } : { kind: 'unverified', email };
 }
 
 /**
@@ -92,16 +123,22 @@ export async function importKeychainOAuth(
   const accessToken = payload.token.access_token;
   const fetchFn = options.fetchFn || fetch;
 
-  let liveEmail: string | null = null;
-  let emailVerified = false;
+  const identity: GoogleIdentityOutcome = accessToken
+    ? await fetchGoogleIdentity(accessToken, fetchFn)
+    : { kind: 'unavailable', reason: 'the session carries no access token' };
 
-  if (accessToken) {
-    const liveResult = await fetchVerifiedGoogleEmail(accessToken, fetchFn);
-    if (liveResult) {
-      liveEmail = liveResult.email;
-      emailVerified = liveResult.verified;
-    }
+  if (identity.kind === 'rejected') {
+    throw new CliError(
+      `Google rejected the active Antigravity session (HTTP ${identity.status}). ` +
+        'Sign in again in Antigravity, then rerun this command.',
+      'session_rejected',
+      1,
+      { status: identity.status }
+    );
   }
+
+  const liveEmail = identity.kind === 'unavailable' ? null : identity.email;
+  const emailVerified = identity.kind === 'verified';
 
   let finalEmail: string | undefined;
   let isDerived = false;
@@ -140,6 +177,7 @@ export async function importKeychainOAuth(
   if (!finalEmail) {
     return {
       status: 'needs_email',
+      reason: identity.kind === 'unverified' ? 'unverified_identity' : 'unavailable',
       payload,
       defaultProject,
       defaultLocation,
