@@ -6,7 +6,7 @@ import { RegistryManager } from '../src/core/registry.js';
 import { Account } from '../src/core/types.js';
 import { Verifier } from '../src/core/verifier.js';
 import { VERSION } from '../src/version.js';
-import { TestEnv, generateSyntheticPrivateKey, setupTestEnvironment } from './test-utils.js';
+import { generateSyntheticPrivateKey, setupTestEnvironment, TestEnv } from './test-utils.js';
 
 describe('Verifier module (Local and Remote API Key Checks)', () => {
   let testEnv: TestEnv;

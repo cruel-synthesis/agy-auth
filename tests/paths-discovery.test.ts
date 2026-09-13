@@ -4,10 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Discovery } from '../src/core/discovery.js';
 import { Paths } from '../src/core/paths.js';
 import {
-  TestEnv,
   allResolvedPaths,
   generateSyntheticPrivateKey,
   setupTestEnvironment,
+  TestEnv,
 } from './test-utils.js';
 
 describe('Paths and Discovery Subsystems', () => {

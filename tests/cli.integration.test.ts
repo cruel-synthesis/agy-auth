@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RegistryManager } from '../src/core/registry.js';
 import { VERSION } from '../src/version.js';
-import { TestEnv, guardedNodeArgs, setupTestEnvironment } from './test-utils.js';
+import { guardedNodeArgs, TestEnv, setupTestEnvironment } from './test-utils.js';
 
 describe('Built CLI Integration and Concurrency', () => {
   let testEnv: TestEnv;

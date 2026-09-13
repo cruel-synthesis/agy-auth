@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Account, Registry } from '../src/core/types.js';
 import { renderAccountsTable } from '../src/ui/table.js';
-import { TestEnv, guardedNodeArgs, setupTestEnvironment } from './test-utils.js';
+import { guardedNodeArgs, TestEnv, setupTestEnvironment } from './test-utils.js';
 
 /**
  * Permanent guard against the simplified rewrite that silently dropped live plan

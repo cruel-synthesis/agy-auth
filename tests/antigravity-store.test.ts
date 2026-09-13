@@ -9,7 +9,7 @@ import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
 import { Switcher } from '../src/core/switcher.js';
 import type { KeychainPayload } from '../src/core/types.js';
-import { HOUR_MS, type TestEnv, futureExpiry, setupTestEnvironment } from './test-utils.js';
+import { futureExpiry, HOUR_MS, setupTestEnvironment, type TestEnv } from './test-utils.js';
 
 describe('Composite Antigravity Token Store Subsystem', () => {
   let testEnv: TestEnv;

@@ -7,12 +7,12 @@ import { KeychainManager } from '../src/core/keychain.js';
 import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
 import {
-  type NativeStoreDouble,
-  TestEnv,
   futureExpiry,
   generateSyntheticPrivateKey,
   installNativeStoreDouble,
+  type NativeStoreDouble,
   setupTestEnvironment,
+  TestEnv,
 } from './test-utils.js';
 
 describe('Doctor Diagnostic Command Comprehensive Suite', () => {

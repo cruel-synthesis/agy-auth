@@ -8,7 +8,7 @@ import {
   validateAdcDocument,
   validateServiceAccountKey,
 } from '../src/core/credential-validation.js';
-import { TestEnv, generateSyntheticPrivateKey, setupTestEnvironment } from './test-utils.js';
+import { generateSyntheticPrivateKey, setupTestEnvironment, TestEnv } from './test-utils.js';
 
 describe('Credential Files Loader and Validation', () => {
   let testEnv: TestEnv;

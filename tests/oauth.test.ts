@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { defaultOpenBrowser, OAuthFlow, OAUTH_SCOPES } from '../src/core/oauth.js';
 import { NativeOperationBlockedError } from '../src/core/native-guard.js';
-import { OAUTH_SCOPES, OAuthFlow, defaultOpenBrowser } from '../src/core/oauth.js';
 
 function visitCallback(
   authorizationUrl: string,
