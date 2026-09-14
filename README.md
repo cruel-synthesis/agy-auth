@@ -11,7 +11,7 @@
 - **Multi-Account Switching**: Switch between multiple Google profiles for Antigravity and Gemini CLI workflows.
 - **Authentication Methods**: Antigravity OAuth sessions, Gemini API keys, service-account JSON files, and authorized-user or service-account Google Cloud ADC.
 - **Live Plan and Quota Reporting (experimental)**: `list`, `current`, and `details` show your subscription plan and remaining Gemini and Claude/GPT quota for 5-hour and weekly windows. See [the caveats below](#live-plan-and-quota-experimental).
-- **Local-First Architecture**: Local metadata management under `~/.agy-auth/`. No embedded OAuth client secret, bundled third-party OAuth client ID, telemetry, or background daemon. Network access is limited to the quota, verification, token-refresh, and diagnostic requests documented below.
+- **Local-First Architecture**: Local metadata management under `~/.agy-auth/`. No telemetry or background daemon. Network access is limited to the quota, verification, token-refresh, and diagnostic requests documented below.
 - **Machine Interface**: Non-interactive commands support `--json` with structured envelopes (`schemaVersion: 1`) and standard exit codes (0, 1, 2, 130).
 - **Journaled Switching**: Validates inputs, snapshots affected state, and attempts compensating rollback for Antigravity settings, session stores, ADC, and service-account files. Rollback failures are reported.
 - **Privacy & File Security**: Restricted POSIX file modes (`0700` directories, `0600` files), file-lock concurrency guards, symlink rejection, and redacted profile/status JSON. The `env` command deliberately emits shell values and can contain an API key.
@@ -43,7 +43,7 @@ agy-auth add
 ```
 
 ### 2. Add Another Account
-Sign in to a different Google account in the browser. This requires your own Google Desktop OAuth Client ID in `AGY_OAUTH_CLIENT_ID`:
+Sign in to a different Google account in the browser:
 
 ```bash
 agy-auth login
@@ -95,14 +95,14 @@ This feature is **experimental** because it depends on undocumented upstream con
 
 ### OAuth Onboarding and Token Refresh
 
-`agy-auth` signs no one in under a client that is not theirs.
-
 - **Existing Antigravity Session (Out-of-the-box)**:
   `agy-auth add` imports an active Antigravity session from Apple Keychain on macOS or from Antigravity's token file on any platform. This flow verifies your identity via Google's `userinfo` endpoint using the access token and **requires no OAuth client ID**.
-- **Renewing an Imported Session**:
-  Google binds a refresh token to the client that issued it, so an Antigravity session can be renewed by Antigravity's own OAuth client and by no other. `agy-auth` carries that client's published ID and secret and uses it for exactly one thing: exchanging an Antigravity refresh token for a new access token. It never signs a new account in with it. Installed-app clients cannot hold a secret ([RFC 8252 §8.5](https://www.rfc-editor.org/rfc/rfc8252#section-8.5)), which is why that pair ships readable inside Antigravity's own binary.
 - **Browser Sign-In**:
-  `agy-auth login` performs a PKCE loopback sign-in on any platform, and requires your own Google Cloud Desktop OAuth Client ID:
+  `agy-auth login` performs a PKCE loopback sign-in on any platform, using Antigravity's OAuth client and its scopes.
+- **Which Client, and Why That One**:
+  `agy-auth` carries the OAuth client ID and secret that Antigravity publishes in its own binary. Two facts make it the only workable choice. Google binds a refresh token to the client that issued it, so a session imported from Antigravity can be renewed by that client and by no other. And Google's individual tier now answers that client alone: asked under any other name, `loadCodeAssist` reports the tier as `UNSUPPORTED_CLIENT` and every quota call returns `403 SUBSCRIPTION_REQUIRED`, so an account signed in under a client of your own registers and then reports no plan and no quota for as long as you keep it. Installed-app clients cannot hold a secret ([RFC 8252 §8.5](https://www.rfc-editor.org/rfc/rfc8252#section-8.5)), which is why that pair ships readable inside Antigravity's own binary.
+
+  To sign in under a client of your own instead, accepting that it will report neither plan nor quota:
 
 ```bash
 export AGY_OAUTH_CLIENT_ID='your-client-id.apps.googleusercontent.com'

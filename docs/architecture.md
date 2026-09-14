@@ -12,7 +12,7 @@
 - `src/core/antigravity-store.ts`: Composite Antigravity session reader and writer for Apple Keychain and the token file, with deterministic freshness selection and partial-store warnings.
 - `src/core/keychain-import.ts`: Shared Antigravity session importer, userinfo-based email derivation/verification, and atomic profile merger.
 - `src/core/oauth.ts`: Browser OAuth 2.0 PKCE flow with loopback callback server on `127.0.0.1`, state validation, verified userinfo lookup, security headers, and single-settlement server cleanup.
-- `src/core/oauth-config.ts`: Environment-only OAuth client configuration. The package ships no client ID and no client secret.
+- `src/core/oauth-config.ts`: The OAuth client used to sign in and to renew - Antigravity's published pair, or the one `AGY_OAUTH_CLIENT_ID` names.
 - `src/core/keychain.ts`: Local macOS Keychain item inspection and replacement (0 network calls).
 - `src/core/discovery.ts`: Local Antigravity settings metadata and Application Default Credentials discovery.
 - `src/commands/refresh.ts`: Shared best-effort refresh helper used by `list`, `current`, and `details`; selects OAuth profiles, produces the JSON `quotaRefresh` summary and the single human-mode warning.
@@ -53,9 +53,9 @@ Profile switching is serialized under process locks and executes through a journ
 Quota reporting talks to undocumented Antigravity `v1internal` endpoints. They may change without notice, so every stage is written to fail closed onto cached data.
 
 1. **Eligibility**: Only OAuth profiles with a stored access token are probed. Everything else returns `not-applicable` with no request.
-2. **Token freshness**: A token whose recorded expiry is within 5 minutes is refreshed *only* when `AGY_OAUTH_CLIENT_ID` is present in the environment. Otherwise the profile is reported `expired` and no request is made.
-3. **Contract A** (`retrieveUserQuotaSummary`): tried first, with the mirror host as fallback. If it yields at least one recognized family/window, the result is accepted.
-4. **Plan and project discovery** (`loadCodeAssist`): supplies the plan name and, when the profile has no project configured, a project ID. It never overrides a project the user set.
+2. **Token freshness**: A token whose recorded expiry is within 5 minutes is refreshed by the client that issued it: Antigravity's for an imported or browser-signed-in session, the configured one for a profile signed in under `AGY_OAUTH_CLIENT_ID`. A profile whose client cannot be determined is reported `expired` and no request is made.
+3. **Plan and project discovery** (`loadCodeAssist`): runs first, because it is the only call that names the project the quota contracts ask for. It supplies the tier in force, and a project ID when the profile has none configured; it never overrides a project the user set.
+4. **Contract A** (`retrieveUserQuotaSummary`): tried next, with the mirror host as fallback. It is the only contract reporting the 5-hour and weekly windows. If it yields at least one recognized family/window, the result is accepted.
 5. **Contract B** (`retrieveUserQuota`): tried only when a real project ID is available. No default project is ever invented.
 6. **Commit**: `quota-apply.ts` re-reads the account under the registry lock and writes only quota-derived fields, and only if `updatedAt` is unchanged since the request began.
 
@@ -80,7 +80,7 @@ Only explicit `gemini` and `claude`/`gpt`/`3p` families and explicit 5-hour and 
 | HTTP 401 after any permitted refresh | `expired` | preserved |
 | Explicit insufficient-scope evidence | `needs-reauth` | preserved |
 | Generic 403, 429, 5xx, timeout, malformed body, network failure | unchanged | quota snapshot preserved |
-| Expired token with no `AGY_OAUTH_CLIENT_ID` | `expired` | preserved |
+| Expired token with no client entitled to renew it | `expired` | preserved |
 
 The reported reason distinguishes a valid but unusable payload from other failures: if any contract returned a syntactically valid HTTP 200 object, the failure is `quota-unavailable`. If no request did so and there was no decisive authentication or scope result, it is `network-error`; this category includes timeouts, malformed bodies, and non-decisive HTTP errors such as 429 or 5xx.
 

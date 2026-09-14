@@ -14,10 +14,11 @@ Options:
 - `--model <model>`: Preferred model name
 - `-h, --help`: Show this help
 
-`login` starts a PKCE loopback sign-in with your own Google Desktop OAuth client,
-so it requires `AGY_OAUTH_CLIENT_ID` (and `AGY_OAUTH_CLIENT_SECRET` if your client
-needs one). `agy-auth` ships no OAuth client of its own.
+`login` starts a PKCE loopback sign-in with Antigravity's OAuth client and its
+scopes, and records the account as such so its quota can be refreshed later.
+Set `AGY_OAUTH_CLIENT_ID` (and `AGY_OAUTH_CLIENT_SECRET` if your client needs
+one) to use a client of your own instead; Google's individual tier answers only
+Antigravity's, so an account added that way reports no plan and no quota.
 
-To add the account already signed in to Antigravity, run `agy-auth add`; that flow
-needs no OAuth client. `agy-auth add` also covers API key, Service Account, and
-ADC credentials.
+To add the account already signed in to Antigravity, run `agy-auth add`, which
+also covers API key, Service Account, and ADC credentials.

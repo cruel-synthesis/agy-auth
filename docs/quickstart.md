@@ -26,7 +26,7 @@ agy-auth add
 ```
 
 ### Option B: Google Account Login
-Sign in to another Google account in the browser. This needs your own Google Desktop OAuth Client ID in `AGY_OAUTH_CLIENT_ID`:
+Sign in to another Google account in the browser:
 
 ```bash
 agy-auth login
@@ -72,7 +72,7 @@ ACCOUNT | PLAN | GEMINI 5H | GEMINI WK | CLAUDE 5H | CLAUDE WK | LAST
 
 Percentages are quota **remaining**; `-` means no cached value and `stale` means the cached window has already reset. Live plan and quota reporting is **experimental** because it uses undocumented Antigravity endpoints that can change without notice.
 
-An account imported from Antigravity is renewed automatically with Antigravity's own OAuth client, the only one Google lets renew it. A profile added by browser sign-in is renewed with the client that signed it in, so that one needs `AGY_OAUTH_CLIENT_ID` set.
+Accounts are signed in and renewed with Antigravity's own OAuth client, the only one Google answers with a plan and a quota. Set `AGY_OAUTH_CLIENT_ID` to sign in under a client of your own, accepting that the account will report neither.
 
 When renewal fails the profile is reported as `expired`; sign in again through Antigravity and run `agy-auth add`.
 
