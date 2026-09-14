@@ -455,7 +455,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
     );
     for (const step of quotaProbe.steps) {
       const call = step.endpoint.split('/v1internal:')[1];
-      console.log(`    ${call}  ${step.request}  ${step.status}`);
+      console.log(`    ${step.client}  ${call}  ${step.request}  ${step.status}`);
       console.log(`      ${colors.dim(step.shape)}`);
     }
   }

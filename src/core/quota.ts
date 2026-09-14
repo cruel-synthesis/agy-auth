@@ -48,6 +48,18 @@ const LOAD_CODE_ASSIST_ENDPOINTS = [
   'https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist',
 ] as const;
 
+/**
+ * The client Antigravity itself presents.
+ *
+ * The service decides tier eligibility per client and says so in
+ * `ineligibleTiers[].reasonCode`, so a probe that presents only agy-auth cannot
+ * tell a rejected client from an account without a subscription.
+ */
+const ANTIGRAVITY_USER_AGENT = 'Antigravity/4.1.29 Chrome/132.0.6834.160 Electron/39.2.3';
+
+/** The project the quota endpoints are asked about when none is discovered. */
+const DEFAULT_QUOTA_PROJECT = 'cloudaicompanion-enterprise';
+
 const DEFAULT_QUOTA_DEADLINE_MS = 15_000;
 const DEFAULT_QUOTA_REQUEST_TIMEOUT_MS = 8_000;
 export const QUOTA_REFRESH_CONCURRENCY = 4;
@@ -816,13 +828,17 @@ export interface QuotaProbe {
 
 export interface QuotaProbeStep {
   endpoint: string;
+  /** Which client this call presented as. */
+  client: string;
   request: string;
   status: number | 'network-error' | 'skipped';
   shape: string;
 }
 
 function describeString(value: string): string {
-  if (value.length > 120 || value.includes('@')) return `string(${value.length})`;
+  // Long enough for an error message, which is the one string in these
+  // responses worth reading. Anything holding an address is still withheld.
+  if (value.length > 400 || value.includes('@')) return `string(${value.length})`;
   return JSON.stringify(value);
 }
 
@@ -875,7 +891,12 @@ export async function probeQuotaEndpoints(
   const timeoutMs = ctx.requestTimeoutMs;
   const steps: QuotaProbeStep[] = [];
 
-  const call = async (endpoint: string, body: Record<string, unknown>): Promise<unknown> => {
+  const call = async (
+    endpoint: string,
+    body: Record<string, unknown>,
+    userAgent: string
+  ): Promise<unknown> => {
+    const client = userAgent === USER_AGENT ? 'agy-auth' : 'antigravity';
     const request = describeShape(body);
     try {
       const response = await fetchFn(endpoint, {
@@ -884,7 +905,7 @@ export async function probeQuotaEndpoints(
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           Accept: 'application/json',
-          'User-Agent': USER_AGENT,
+          'User-Agent': userAgent,
         },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(timeoutMs),
@@ -895,39 +916,40 @@ export async function probeQuotaEndpoints(
       } catch {
         data = undefined;
       }
-      steps.push({ endpoint, request, status: response.status, shape: describeShape(data) });
+      steps.push({
+        endpoint,
+        client,
+        request,
+        status: response.status,
+        shape: describeShape(data),
+      });
       return response.ok ? data : undefined;
     } catch {
-      steps.push({ endpoint, request, status: 'network-error', shape: '-' });
+      steps.push({ endpoint, client, request, status: 'network-error', shape: '-' });
       return undefined;
     }
   };
 
-  // loadCodeAssist first: it is the only call that can supply a project id, and
-  // both quota contracts declare one in their request.
-  let discoveredProject: string | undefined;
-  for (const endpoint of LOAD_CODE_ASSIST_ENDPOINTS) {
-    const data = await call(endpoint, { metadata: { ideType: 'ANTIGRAVITY' } });
-    if (isRecord(data) && !discoveredProject) {
-      discoveredProject = nonEmptyString(data.cloudaicompanionProject, 128);
+  // Two axes, because the last probe left two candidates for the 403: the
+  // client agy-auth presents as, and the project it names.
+  for (const userAgent of [USER_AGENT, ANTIGRAVITY_USER_AGENT]) {
+    const data = await call(
+      LOAD_CODE_ASSIST_ENDPOINTS[0],
+      { metadata: { ideType: 'ANTIGRAVITY' } },
+      userAgent
+    );
+    const discovered = isRecord(data)
+      ? nonEmptyString(data.cloudaicompanionProject, 128)
+      : undefined;
+
+    const projects = [discovered ?? account.gcpProject, DEFAULT_QUOTA_PROJECT].filter(
+      (value, index, all): value is string => value !== undefined && all.indexOf(value) === index
+    );
+
+    for (const project of projects) {
+      await call(QUOTA_SUMMARY_ENDPOINTS[0], { project }, userAgent);
+      await call(RETRIEVE_USER_QUOTA_ENDPOINTS[0], { project }, userAgent);
     }
-  }
-
-  const project = account.gcpProject ?? discoveredProject;
-
-  // Both bodies for the summary, because agy-auth sends the empty one today and
-  // the published request message has a project field.
-  for (const endpoint of QUOTA_SUMMARY_ENDPOINTS) {
-    await call(endpoint, {});
-    if (project) await call(endpoint, { project });
-  }
-
-  for (const endpoint of RETRIEVE_USER_QUOTA_ENDPOINTS) {
-    if (!project) {
-      steps.push({ endpoint, request: '-', status: 'skipped', shape: 'no project id known' });
-      continue;
-    }
-    await call(endpoint, { project });
   }
 
   return {
