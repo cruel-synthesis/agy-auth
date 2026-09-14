@@ -37,6 +37,26 @@ export function selectRefreshable(accounts: Account[]): Account[] {
   return accounts.filter((account) => account.authType === 'oauth');
 }
 
+/** How long a live quota reading is treated as current. */
+export const QUOTA_CACHE_TTL_MS = 10 * 60 * 1000;
+
+/** Statuses that cannot improve until the user signs in again. */
+const NEEDS_USER_ACTION: ReadonlySet<string> = new Set(['expired', 'invalid', 'needs-reauth']);
+
+/**
+ * The profiles an ordinary read contacts: every OAuth profile whose reading has
+ * aged out, not just the active one - the table shows them all, so a row that is
+ * never refreshed is never right. Profiles already known to need a fresh sign-in
+ * are left alone; they would spend a round trip each time to learn nothing.
+ * `list --check` still asks about every profile.
+ */
+export function selectStale(accounts: Account[]): Account[] {
+  const cutoff = Date.now() - QUOTA_CACHE_TTL_MS;
+  return selectRefreshable(accounts).filter(
+    (account) => !NEEDS_USER_ACTION.has(account.status) && (account.quotaCheckedAt ?? 0) <= cutoff
+  );
+}
+
 /**
  * Best-effort live refresh for the given profiles. Failures are reported, never
  * thrown: the caller still renders whatever cached data exists.
