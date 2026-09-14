@@ -80,14 +80,25 @@ function explain(best: AccountScore, nowMs: number): string {
   );
 }
 
+interface RefreshOutcome {
+  /** One-line human warning, present only when a refresh failed. */
+  warning?: string;
+  /** Ids of accounts whose refresh did not succeed this call. */
+  failed: Set<string>;
+}
+
 /** Take a live reading for these accounts and write it to the registry. */
 async function refreshAndApply(
   registry: RegistryManager,
   accounts: Account[],
   options: AutoOptions
-): Promise<void> {
+): Promise<RefreshOutcome> {
   const refresh = await refreshQuota(accounts, false, options.quotaOptions);
   await applyQuotaResults(registry, refresh.refreshes);
+  return {
+    warning: refresh.warning,
+    failed: new Set(refresh.refreshes.filter((r) => !r.result.ok).map((r) => r.result.accountId)),
+  };
 }
 
 function clockOf(nowMs: number): string {
@@ -117,7 +128,17 @@ async function watchTick(registry: RegistryManager, options: AutoOptions): Promi
     return { event: 'idle', detail: 'no account in use', activeAccountId: null };
   }
 
-  await refreshAndApply(registry, selectRefreshable([active]), options);
+  const activeRefresh = await refreshAndApply(registry, selectRefreshable([active]), options);
+  if (activeRefresh.failed.has(active.id)) {
+    // A failed reading is not a reading. Deciding "exhausted" from it would act
+    // on data no fresher than what was already on hand, and could switch away
+    // from an account that still has quota simply because the network didn't.
+    return {
+      event: 'holding',
+      detail: `${formatAccountShort(active)}: ${activeRefresh.warning ?? 'could not refresh quota this check'}; using the last known reading`,
+      activeAccountId: active.id,
+    };
+  }
 
   const readActive = () => {
     const fresh = registry.getRegistry();
