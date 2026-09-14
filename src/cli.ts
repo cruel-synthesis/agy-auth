@@ -1,6 +1,7 @@
 import { Command, CommanderError } from 'commander';
 import { addCommand } from './commands/add.js';
 import { aliasClearCommand, aliasSetCommand } from './commands/alias.js';
+import { autoCommand } from './commands/auto.js';
 import { cleanCommand } from './commands/clean.js';
 import { currentCommand } from './commands/current.js';
 import { detailsCommand } from './commands/details.js';
@@ -82,6 +83,18 @@ export function createCli(): Command {
     .option('-j, --json', 'Machine-readable output')
     .action(async (query, options) => {
       await switchCommand(query, options);
+    });
+
+  // auto
+  program
+    .command('auto')
+    .alias('best')
+    .description('Switch to the account whose quota is most at risk of going to waste')
+    .option('-n, --dry-run', 'Show the ranking and the choice without switching')
+    .option('--offline', 'Decide from cached quota only; make no network request', false)
+    .option('-j, --json', 'Machine-readable output')
+    .action(async (options) => {
+      await autoCommand(options);
     });
 
   // current

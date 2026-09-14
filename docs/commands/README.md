@@ -8,6 +8,7 @@ Overview of commands available in `agy-auth`.
 
 - [`list`](./list.md) (`ls`): List registered credential profiles (`-a`, `-c`, `--offline`, `-j`)
 - [`switch`](./switch.md) (`sw`): Switch active credential profile (`-j`)
+- [`auto`](./auto.md) (`best`): Switch to the account whose quota is most at risk of going to waste (`-n`, `--offline`, `-j`)
 - [`current`](./current.md) (`whoami`): Show active credential profile (`--offline`, `-j`)
 - [`details`](./details.md) (`info`): Show detailed metadata for a profile (`--offline`, `-j`)
 - [`login`](./login.md): Sign in to a Google account in the browser

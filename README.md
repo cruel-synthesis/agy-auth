@@ -66,6 +66,8 @@ agy-auth list --offline    # cached data only, no network request
 agy-auth list --check      # verify profiles and refresh quota for every OAuth profile
 agy-auth switch work       # cached data only; never makes a network request
 agy-auth switch 2
+agy-auth auto              # switch to whichever account wastes the least quota
+agy-auth auto --dry-run    # show the ranking and the choice without switching
 agy-auth -                 # Switch to previous profile
 agy-auth current
 ```
@@ -133,6 +135,7 @@ Invoke-Expression (agy-auth env --shell powershell)
 | `agy-auth list` (or `ls`) | List profiles with plan and quota (`--active`, `--check`, `--offline`, `--json`); refreshes any OAuth profile whose reading is over ten minutes old |
 | `agy-auth switch [selector]` | Switch active profile by number, alias, email, or interactive picker (cached data only, no network request) |
 | `agy-auth -` | Switch to the previously active profile |
+| `agy-auth auto` (or `best`) | Switch to the account whose quota is most at risk of going to waste (`--dry-run`, `--offline`, `--json`) |
 | `agy-auth current` | Display details for the currently active profile (`--offline`, `--json`); refreshes live quota by default |
 | `agy-auth details [selector]` | Display in-depth profile, model, project, plan, and quota configuration (`--offline`, `--json`) |
 | `agy-auth login` | Add or refresh a Google OAuth account |
