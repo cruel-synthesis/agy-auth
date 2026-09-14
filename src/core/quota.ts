@@ -835,6 +835,8 @@ export interface QuotaProbe {
   credentialSource: string;
   renewed: boolean;
   steps: QuotaProbeStep[];
+  /** What the live parser made of the best answer received, or null. */
+  parsed: RateLimitSnapshot | null;
 }
 
 export interface QuotaProbeStep {
@@ -857,11 +859,11 @@ function describeShape(value: unknown, depth = 0): string {
   if (value === null || value === undefined) return 'null';
   if (Array.isArray(value)) {
     if (value.length === 0) return '[]';
-    if (depth >= 4) return `[${value.length}]`;
+    if (depth >= 6) return `[${value.length}]`;
     return `[${value.length} x ${describeShape(value[0], depth + 1)}]`;
   }
   if (isRecord(value)) {
-    if (depth >= 4) return '{..}';
+    if (depth >= 6) return '{..}';
     const keys = Object.keys(value);
     const shown = keys.slice(0, 16).map((key) => `${key}: ${describeShape(value[key], depth + 1)}`);
     if (keys.length > shown.length) shown.push('..');
@@ -941,6 +943,8 @@ export async function probeQuotaEndpoints(
     }
   };
 
+  let summaryPayload: unknown;
+
   // Two axes, because the last probe left two candidates for the 403: the
   // client agy-auth presents as, and the project it names.
   for (const userAgent of [USER_AGENT, ANTIGRAVITY_USER_AGENT]) {
@@ -958,15 +962,21 @@ export async function probeQuotaEndpoints(
     );
 
     for (const project of projects) {
-      await call(QUOTA_SUMMARY_ENDPOINTS[0], { project }, userAgent);
+      const summary = await call(QUOTA_SUMMARY_ENDPOINTS[0], { project }, userAgent);
+      if (summary !== undefined) summaryPayload = summary;
       await call(RETRIEVE_USER_QUOTA_ENDPOINTS[0], { project }, userAgent);
     }
   }
+
+  // The raw shapes say what the service sent; this says whether agy-auth can
+  // read it, which is the difference between a fixed table and a blank one.
+  const snapshot = buildSnapshot(collectFromSummary(summaryPayload));
 
   return {
     email: account.email,
     credentialSource: account.credentialSource ?? 'unknown',
     renewed: renewed !== null,
     steps,
+    parsed: hasUsableWindows(snapshot) ? snapshot : null,
   };
 }

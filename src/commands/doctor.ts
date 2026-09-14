@@ -458,6 +458,10 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
       console.log(`    ${step.client}  ${call}  ${step.request}  ${step.status}`);
       console.log(`      ${colors.dim(step.shape)}`);
     }
+    const parsed = quotaProbe.parsed
+      ? JSON.stringify(quotaProbe.parsed)
+      : 'nothing the quota table can show';
+    console.log(`    ${colors.dim(`parsed: ${parsed}`)}`);
   }
 
   console.log('');
