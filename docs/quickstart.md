@@ -44,7 +44,7 @@ agy-auth add --api-key --email developer@example.com --alias personal
 ## 3. Managing and Switching Profiles
 
 ```bash
-# List all registered profiles, refreshing live quota for the active OAuth profile
+# List all registered profiles, refreshing live quota where the reading has aged out
 agy-auth list
 
 # List without touching the network

@@ -136,28 +136,41 @@ describe('Plan and quota command behaviour', () => {
     }
   });
 
-  it('refreshes only the active OAuth profile for a default list', async () => {
+  it('refreshes every OAuth profile whose reading has aged out for a default list', async () => {
     const active = oauthAccount();
-    const other = oauthAccount({
-      id: 'oauth2',
-      email: 'other@example.com',
-      alias: 'secondary',
-      updatedAt: Date.now() - 86_400_000,
+    const stale = oauthAccount({ id: 'oauth2', email: 'stale@example.com', alias: 'stale' });
+    const recent = oauthAccount({
+      id: 'oauth3',
+      email: 'recent@example.com',
+      alias: 'recent',
+      quotaCheckedAt: Date.now(),
     });
-    seed([active, other], 'oauth1');
+    const expired = oauthAccount({
+      id: 'oauth4',
+      email: 'expired@example.com',
+      alias: 'expired',
+      status: 'expired',
+    });
+    seed([active, stale, recent, expired], 'oauth1');
 
     const calls: string[] = [];
     await listCommand({ json: true, quotaOptions: { fetchFn: quotaFetch(calls) } });
 
     const payload = JSON.parse(stdout());
     expect(payload.data.quotaRefresh.attempted).toBe(true);
-    expect(payload.data.quotaRefresh.accounts).toEqual([{ accountId: 'oauth1', ok: true }]);
+    expect(payload.data.quotaRefresh.accounts).toEqual([
+      { accountId: 'oauth1', ok: true },
+      { accountId: 'oauth2', ok: true },
+    ]);
 
     const stored = new RegistryManager().getAccounts();
     expect(stored.find((a) => a.id === 'oauth1')?.plan).toBe('Google AI Ultra');
     expect(stored.find((a) => a.id === 'oauth1')?.rateLimit?.gemini?.rate5h?.usedPercent).toBe(65);
-    expect(stored.find((a) => a.id === 'oauth2')?.plan).toBeUndefined();
-    expect(stored.find((a) => a.id === 'oauth2')?.quotaCheckedAt).toBeUndefined();
+    // A profile that is not the active one is refreshed too; that is the point.
+    expect(stored.find((a) => a.id === 'oauth2')?.plan).toBe('Google AI Ultra');
+    // A recent reading and a profile awaiting a fresh sign-in are both left alone.
+    expect(stored.find((a) => a.id === 'oauth3')?.plan).toBeUndefined();
+    expect(stored.find((a) => a.id === 'oauth4')?.quotaCheckedAt).toBeUndefined();
   });
 
   it('refreshes every selected OAuth profile for list --check and skips other auth types', async () => {
@@ -204,7 +217,7 @@ describe('Plan and quota command behaviour', () => {
         rateLimit: {
           gemini: { rate5h: { usedPercent: 20, windowMinutes: 300, resetsAt: FUTURE_RESET } },
         },
-        quotaCheckedAt: Date.now() - 300_000,
+        quotaCheckedAt: Date.now() - 3_600_000,
       }),
     ]);
 

@@ -61,7 +61,7 @@ For automation, `--api-key <key>` remains available, but command-line values can
 List your registered profiles and switch between them:
 
 ```bash
-agy-auth list              # refreshes live quota for the active OAuth profile
+agy-auth list              # refreshes live quota for any profile whose reading has aged out
 agy-auth list --offline    # cached data only, no network request
 agy-auth list --check      # verify profiles and refresh quota for every OAuth profile
 agy-auth switch work       # cached data only; never makes a network request
@@ -130,7 +130,7 @@ Invoke-Expression (agy-auth env --shell powershell)
 
 | Command | Purpose |
 |---|---|
-| `agy-auth list` (or `ls`) | List profiles with plan and quota (`--active`, `--check`, `--offline`, `--json`); refreshes the active OAuth profile by default |
+| `agy-auth list` (or `ls`) | List profiles with plan and quota (`--active`, `--check`, `--offline`, `--json`); refreshes any OAuth profile whose reading is over ten minutes old |
 | `agy-auth switch [selector]` | Switch active profile by number, alias, email, or interactive picker (cached data only, no network request) |
 | `agy-auth -` | Switch to the previously active profile |
 | `agy-auth current` | Display details for the currently active profile (`--offline`, `--json`); refreshes live quota by default |
