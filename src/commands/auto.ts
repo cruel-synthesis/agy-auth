@@ -97,7 +97,7 @@ function clockOf(nowMs: number): string {
 
 /** What one watch check found, ready to print either way. */
 interface TickReport {
-  event: 'holding' | 'switched' | 'would-switch' | 'exhausted' | 'idle';
+  event: 'holding' | 'switched' | 'would-switch' | 'exhausted' | 'switch-failed' | 'idle';
   detail: string;
   activeAccountId: string | null;
   chosenAccountId?: string;
@@ -163,7 +163,19 @@ async function watchTick(registry: RegistryManager, options: AutoOptions): Promi
     };
   }
 
-  Switcher.switchAccount(choice.best.account);
+  try {
+    Switcher.switchAccount(choice.best.account);
+  } catch (error) {
+    // The watcher outlives any one bad switch attempt - a stale keychain entry
+    // or a lock held by another command is reported, not fatal.
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      event: 'switch-failed',
+      detail: `${formatAccountShort(active)}: ${reason}; could not switch to ${target} (${message})`,
+      activeAccountId: active.id,
+    };
+  }
+
   return {
     event: 'switched',
     detail: `${formatAccountShort(active)}: ${reason}; switched to ${target}`,
@@ -212,7 +224,7 @@ async function watchCommand(registry: RegistryManager, options: AutoOptions): Pr
           JSON.stringify({
             schemaVersion: 1,
             command: 'auto',
-            ok: report.event !== 'exhausted',
+            ok: report.event !== 'exhausted' && report.event !== 'switch-failed',
             data: { at: new Date(nowMs).toISOString(), ...report },
           })
         );
