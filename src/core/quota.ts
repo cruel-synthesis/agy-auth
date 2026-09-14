@@ -557,6 +557,19 @@ export class QuotaClient {
   }
 
   /**
+   * Renew for a diagnostic run: same code path as a live reading, but attempted
+   * regardless of how much life the stored token appears to have left.
+   */
+  public static renewForProbe(
+    stored: KeychainPayload['token'],
+    ctx: RequestContext,
+    env: NodeJS.ProcessEnv,
+    account: Account
+  ): Promise<RefreshedToken | null> {
+    return this.refreshAccessToken(stored, ctx, env, account);
+  }
+
+  /**
    * The only OAuth client entitled to refresh this account, if any.
    *
    * Google binds a refresh token to the client that issued it, so offering one
@@ -793,6 +806,14 @@ export class QuotaClient {
  * (window names, reset times, fractions); anything long or identifying is
  * replaced by its length.
  */
+export interface QuotaProbe {
+  email: string;
+  /** Which OAuth client, if any, is entitled to renew this account. */
+  credentialSource: string;
+  renewed: boolean;
+  steps: QuotaProbeStep[];
+}
+
 export interface QuotaProbeStep {
   endpoint: string;
   request: string;
@@ -830,15 +851,28 @@ function describeShape(value: unknown, depth = 0): string {
  */
 export async function probeQuotaEndpoints(
   account: Account,
-  options: { fetchFn?: typeof fetch; timeoutMs?: number } = {}
-): Promise<QuotaProbeStep[]> {
-  const accessToken = account.credentials?.keychainPayload?.token?.access_token;
-  if (!accessToken) {
+  options: QuotaOptions = {}
+): Promise<QuotaProbe> {
+  const stored = account.credentials?.keychainPayload?.token;
+  if (!stored?.access_token) {
     throw new Error('Account has no stored access token to probe with.');
   }
 
-  const fetchFn = options.fetchFn ?? globalThis.fetch;
-  const timeoutMs = options.timeoutMs ?? DEFAULT_QUOTA_REQUEST_TIMEOUT_MS;
+  const now = options.now ?? (() => Date.now());
+  const ctx: RequestContext = {
+    fetchFn: options.fetchFn ?? globalThis.fetch,
+    now,
+    endsAt: now() + (options.deadlineMs ?? DEFAULT_QUOTA_DEADLINE_MS),
+    requestTimeoutMs: options.requestTimeoutMs ?? DEFAULT_QUOTA_REQUEST_TIMEOUT_MS,
+  };
+
+  // Renew first, exactly as a live reading does. Probing with a spent token
+  // only ever reports 401 and says nothing about the contract.
+  const renewed = await QuotaClient.renewForProbe(stored, ctx, options.env ?? process.env, account);
+  const accessToken = renewed?.access_token ?? stored.access_token;
+
+  const fetchFn = ctx.fetchFn;
+  const timeoutMs = ctx.requestTimeoutMs;
   const steps: QuotaProbeStep[] = [];
 
   const call = async (endpoint: string, body: Record<string, unknown>): Promise<unknown> => {
@@ -896,5 +930,10 @@ export async function probeQuotaEndpoints(
     await call(endpoint, { project });
   }
 
-  return steps;
+  return {
+    email: account.email,
+    credentialSource: account.credentialSource ?? 'unknown',
+    renewed: renewed !== null,
+    steps,
+  };
 }

@@ -6,7 +6,7 @@ import { CliError } from '../core/errors.js';
 import { KeychainManager } from '../core/keychain.js';
 import { migrateRegistry } from '../core/migration.js';
 import { Paths } from '../core/paths.js';
-import { type QuotaProbeStep, probeQuotaEndpoints } from '../core/quota.js';
+import { type QuotaProbe, probeQuotaEndpoints } from '../core/quota.js';
 import { RegistryManager, validateRegistry } from '../core/registry.js';
 import { CURRENT_SCHEMA_VERSION, RegistrySchema, isRecord } from '../core/types.js';
 import { colors } from '../ui/theme.js';
@@ -17,17 +17,12 @@ interface DoctorOptions {
   quota?: boolean;
 }
 
-interface QuotaProbeReport {
-  account: string;
-  steps: QuotaProbeStep[];
-}
-
 /**
  * Ask the quota service directly and report what it said. The endpoints are
  * undocumented, so when a reading stops parsing this is the only way to tell a
  * changed contract from an account that simply has no quota.
  */
-async function probeQuota(): Promise<QuotaProbeReport> {
+async function probeQuota(): Promise<QuotaProbe> {
   const registry = new RegistryManager();
   const account =
     registry.getActiveAccount() ?? registry.getAccounts().find((a) => a.authType === 'oauth');
@@ -40,10 +35,7 @@ async function probeQuota(): Promise<QuotaProbeReport> {
     );
   }
 
-  return {
-    account: account.email,
-    steps: await probeQuotaEndpoints(account),
-  };
+  return probeQuotaEndpoints(account);
 }
 
 interface CheckResult {
@@ -457,7 +449,10 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
     console.log(`    ${colors.dim(c.message)}`);
   }
   if (quotaProbe) {
-    console.log(`  ${colors.cyanBold('Quota endpoint probe')} (${quotaProbe.account})`);
+    const renewal = quotaProbe.renewed ? 'token renewed' : 'token not renewed';
+    console.log(
+      `  ${colors.cyanBold('Quota endpoint probe')} (${quotaProbe.email}, credentials from ${quotaProbe.credentialSource}, ${renewal})`
+    );
     for (const step of quotaProbe.steps) {
       const call = step.endpoint.split('/v1internal:')[1];
       console.log(`    ${call}  ${step.request}  ${step.status}`);
