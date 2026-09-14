@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defaultOpenBrowser, OAuthFlow, OAUTH_SCOPES } from '../src/core/oauth.js';
+import { ANTIGRAVITY_OAUTH_CLIENT } from '../src/core/oauth-config.js';
 import { NativeOperationBlockedError } from '../src/core/native-guard.js';
 
 function visitCallback(
@@ -36,19 +37,29 @@ describe('OAuthFlow', () => {
     vi.restoreAllMocks();
   });
 
-  it('fails closed before opening a browser when no OAuth client is configured', async () => {
-    const openBrowserFn = vi.fn();
-    const fetchFn = vi.fn();
+  it("signs in with Antigravity's client unless one is configured", async () => {
+    const opened: string[] = [];
+    const openBrowserFn = vi.fn(async (url: string) => {
+      opened.push(url);
+    });
 
-    await expect(
+    const start = (env: NodeJS.ProcessEnv) =>
       OAuthFlow.authenticate({
-        env: {},
-        fetchFn: fetchFn as unknown as typeof fetch,
+        env,
+        timeoutMs: 50,
+        fetchFn: vi.fn() as unknown as typeof fetch,
         openBrowserFn,
-      })
-    ).rejects.toThrow(/AGY_OAUTH_CLIENT_ID/);
-    expect(openBrowserFn).not.toHaveBeenCalled();
-    expect(fetchFn).not.toHaveBeenCalled();
+      }).catch(() => undefined);
+
+    await start({});
+    await start({ AGY_OAUTH_CLIENT_ID: 'mine.apps.googleusercontent.com' });
+
+    expect(new URL(opened[0]).searchParams.get('client_id')).toBe(
+      ANTIGRAVITY_OAUTH_CLIENT.clientId
+    );
+    expect(new URL(opened[1]).searchParams.get('client_id')).toBe(
+      'mine.apps.googleusercontent.com'
+    );
   });
 
   it('completes PKCE login and accepts only a verified Google email', async () => {
