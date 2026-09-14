@@ -497,12 +497,18 @@ export class QuotaClient {
     );
     if (outcome.kind !== 'ok') return { outcome: outcome.kind };
 
-    const paidTier = isRecord(outcome.data.paidTier) ? outcome.data.paidTier : undefined;
+    // `currentTier` is the tier in force. `paidTier` sits beside it carrying an
+    // upgrade link, so preferring it names a plan the account does not hold.
     const currentTier = isRecord(outcome.data.currentTier) ? outcome.data.currentTier : undefined;
+    const paidTier = isRecord(outcome.data.paidTier) ? outcome.data.paidTier : undefined;
+    const tier = currentTier ?? paidTier;
+    const tierId = nonEmptyString(tier?.id, 128);
 
     return {
       outcome: 'ok',
-      plan: nonEmptyString(paidTier?.name, 128) ?? nonEmptyString(currentTier?.name, 128),
+      // The free tier is named after the product, which distinguishes nothing in
+      // a column of Antigravity accounts. Its id does.
+      plan: tierId === 'free-tier' ? 'Free' : (nonEmptyString(tier?.name, 128) ?? tierId),
       project: nonEmptyString(outcome.data.cloudaicompanionProject, 128),
     };
   }
