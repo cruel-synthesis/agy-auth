@@ -10,9 +10,37 @@ agy-auth best [options]
 Options:
 
 - `-n, --dry-run`: Show the ranking and the choice without switching
+- `-w, --watch`: Keep running and switch whenever the account in use runs out
+- `--interval <minutes>`: Minutes between checks while watching (default: 5)
 - `--offline`: Decide from cached quota only; make no network request (default: false)
 - `-j, --json`: Output results as JSON
 - `-h, --help`: Show this help
+
+## Switching on its own
+
+`agy-auth auto --watch` stays running and takes a live reading of the account in
+use every few minutes. While that account still has room it does nothing but say
+so. The moment it runs out, the others are read and the best one is switched to,
+by the same scoring described below.
+
+```
+  Watching the account in use, switching when it runs out. Checking every 5 min.
+  Ctrl-C to stop.
+
+  14:32  work@example.com has 62% of its 5-hour limit left
+  14:37  work@example.com has 18% of its 5-hour limit left
+  14:42  work@example.com: 5-hour limit nearly spent; switched to spare@example.com
+  14:47  spare@example.com has 94% of its 5-hour limit left
+```
+
+Only the account in use is contacted on an ordinary check, so leaving the watcher
+running costs one account's traffic per interval rather than everyone's. With
+`--json` each check prints one JSON object per line. With `--dry-run` it reports
+what it would do and switches nothing. It cannot be combined with `--offline`.
+
+This is a process you start and can see, not a service installed behind your back:
+closing the terminal ends it. Antigravity picks up the switched session the same
+way it does after `agy-auth switch`.
 
 ## How the choice is made
 

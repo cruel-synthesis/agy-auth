@@ -22,6 +22,7 @@ const ALL_ACCOUNT_COMMANDS: CommandRow[] = [
   ['switch [account]', 'Switch to a saved account'],
   ['switch -', 'Switch back to the previous account'],
   ['auto', 'Switch to the account with the most quota at risk'],
+  ['auto --watch', 'Keep switching as each account runs out'],
   ['current', 'Show the account in use'],
   ['details [account]', 'Show everything stored for one account'],
   ['remove [account...]', 'Remove saved accounts'],

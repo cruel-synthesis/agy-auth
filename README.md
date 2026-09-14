@@ -11,7 +11,7 @@
 - **Multi-Account Switching**: Switch between multiple Google profiles for Antigravity and Gemini CLI workflows.
 - **Authentication Methods**: Antigravity OAuth sessions, Gemini API keys, service-account JSON files, and authorized-user or service-account Google Cloud ADC.
 - **Live Plan and Quota Reporting (experimental)**: `list`, `current`, and `details` show your subscription plan and remaining Gemini and Claude/GPT quota for 5-hour and weekly windows. See [the caveats below](#live-plan-and-quota-experimental).
-- **Local-First Architecture**: Local metadata management under `~/.agy-auth/`. No telemetry or background daemon. Network access is limited to the quota, verification, token-refresh, and diagnostic requests documented below.
+- **Local-First Architecture**: Local metadata management under `~/.agy-auth/`. No telemetry, and nothing installed that runs on its own - `agy-auth auto --watch` keeps running only as long as you leave it running. Network access is limited to the quota, verification, token-refresh, and diagnostic requests documented below.
 - **Machine Interface**: Non-interactive commands support `--json` with structured envelopes (`schemaVersion: 1`) and standard exit codes (0, 1, 2, 130).
 - **Journaled Switching**: Validates inputs, snapshots affected state, and attempts compensating rollback for Antigravity settings, session stores, ADC, and service-account files. Rollback failures are reported.
 - **Privacy & File Security**: Restricted POSIX file modes (`0700` directories, `0600` files), file-lock concurrency guards, symlink rejection, and redacted profile/status JSON. The `env` command deliberately emits shell values and can contain an API key.
@@ -68,6 +68,7 @@ agy-auth switch work       # cached data only; never makes a network request
 agy-auth switch 2
 agy-auth auto              # switch to whichever account wastes the least quota
 agy-auth auto --dry-run    # show the ranking and the choice without switching
+agy-auth auto --watch      # keep running; switch whenever the account in use runs out
 agy-auth -                 # Switch to previous profile
 agy-auth current
 ```
@@ -135,7 +136,7 @@ Invoke-Expression (agy-auth env --shell powershell)
 | `agy-auth list` (or `ls`) | List profiles with plan and quota (`--active`, `--check`, `--offline`, `--json`); refreshes any OAuth profile whose reading is over ten minutes old |
 | `agy-auth switch [selector]` | Switch active profile by number, alias, email, or interactive picker (cached data only, no network request) |
 | `agy-auth -` | Switch to the previously active profile |
-| `agy-auth auto` (or `best`) | Switch to the account whose quota is most at risk of going to waste (`--dry-run`, `--offline`, `--json`) |
+| `agy-auth auto` (or `best`) | Switch to the account whose quota is most at risk of going to waste (`--dry-run`, `--watch`, `--interval`, `--offline`, `--json`) |
 | `agy-auth current` | Display details for the currently active profile (`--offline`, `--json`); refreshes live quota by default |
 | `agy-auth details [selector]` | Display in-depth profile, model, project, plan, and quota configuration (`--offline`, `--json`) |
 | `agy-auth login` | Add or refresh a Google OAuth account |

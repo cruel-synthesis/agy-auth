@@ -1,19 +1,25 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import { AccountScore, chooseBestAccount } from '../core/best-account.js';
-import { CliError, UsageError } from '../core/errors.js';
+import { CancellationError, CliError, UsageError } from '../core/errors.js';
 import { applyQuotaResults } from '../core/quota-apply.js';
 import { QuotaOptions } from '../core/quota.js';
 import { RegistryManager } from '../core/registry.js';
 import { Switcher } from '../core/switcher.js';
+import { Account } from '../core/types.js';
 import { formatAccountShort } from '../ui/format.js';
 import { colors } from '../ui/theme.js';
-import { refreshQuota, selectStale } from './refresh.js';
+import { refreshQuota, selectRefreshable, selectStale } from './refresh.js';
 
 interface AutoOptions {
   dryRun?: boolean;
+  interval?: string;
   json?: boolean;
   offline?: boolean;
   quotaOptions?: QuotaOptions;
+  watch?: boolean;
 }
+
+const DEFAULT_INTERVAL_MINUTES = 5;
 
 /** A coarse countdown: precision past the leading unit is noise here. */
 function formatUntil(resetsAt: number | undefined, nowMs: number): string {
@@ -74,6 +80,159 @@ function explain(best: AccountScore, nowMs: number): string {
   );
 }
 
+/** Take a live reading for these accounts and write it to the registry. */
+async function refreshAndApply(
+  registry: RegistryManager,
+  accounts: Account[],
+  options: AutoOptions
+): Promise<void> {
+  const refresh = await refreshQuota(accounts, false, options.quotaOptions);
+  await applyQuotaResults(registry, refresh.refreshes);
+}
+
+function clockOf(nowMs: number): string {
+  const at = new Date(nowMs);
+  return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+}
+
+/** What one watch check found, ready to print either way. */
+interface TickReport {
+  event: 'holding' | 'switched' | 'would-switch' | 'exhausted' | 'idle';
+  detail: string;
+  activeAccountId: string | null;
+  chosenAccountId?: string;
+}
+
+/**
+ * One watch check: renew the reading for the account in use and, if it can no
+ * longer take work, move to the best of the others.
+ *
+ * Only the account in use is contacted while it still has room. The rest are
+ * asked about at the moment the choice is actually made, so a watcher left
+ * running costs one account's traffic per interval rather than everyone's.
+ */
+async function watchTick(registry: RegistryManager, options: AutoOptions): Promise<TickReport> {
+  const active = registry.getActiveAccount();
+  if (!active) {
+    return { event: 'idle', detail: 'no account in use', activeAccountId: null };
+  }
+
+  await refreshAndApply(registry, selectRefreshable([active]), options);
+
+  const readActive = () => {
+    const fresh = registry.getRegistry();
+    const choice = chooseBestAccount(fresh.accounts, fresh.activeAccountId, Date.now());
+    return {
+      choice,
+      current: choice.ranked.find((entry) => entry.account.id === fresh.activeAccountId),
+    };
+  };
+
+  const { current } = readActive();
+  if (current && current.score > 0) {
+    return {
+      event: 'holding',
+      detail: `${formatAccountShort(active)} has ${percent(current.headroom)} of its 5-hour limit left`,
+      activeAccountId: active.id,
+    };
+  }
+
+  // The account in use is spent. Only now is a reading of the others worth its
+  // traffic, and the choice must not be made on stale ones.
+  const others = registry.getAccounts().filter((account) => account.id !== active.id);
+  await refreshAndApply(registry, selectRefreshable(others), options);
+
+  const { choice } = readActive();
+  const reason = current?.blocked ?? 'out of quota';
+
+  if (!choice.best) {
+    return {
+      event: 'exhausted',
+      detail: `${formatAccountShort(active)}: ${reason}, and no other account can take work`,
+      activeAccountId: active.id,
+    };
+  }
+
+  const target = formatAccountShort(choice.best.account);
+  if (options.dryRun) {
+    return {
+      event: 'would-switch',
+      detail: `${formatAccountShort(active)}: ${reason}; would switch to ${target}`,
+      activeAccountId: active.id,
+      chosenAccountId: choice.best.account.id,
+    };
+  }
+
+  Switcher.switchAccount(choice.best.account);
+  return {
+    event: 'switched',
+    detail: `${formatAccountShort(active)}: ${reason}; switched to ${target}`,
+    activeAccountId: choice.best.account.id,
+    chosenAccountId: choice.best.account.id,
+  };
+}
+
+function intervalMs(raw: string | undefined): number {
+  if (raw === undefined) return DEFAULT_INTERVAL_MINUTES * 60_000;
+  const minutes = Number(raw);
+  if (!Number.isFinite(minutes) || minutes < 1) {
+    throw new UsageError('`--interval` takes a number of minutes, at least 1.');
+  }
+  return minutes * 60_000;
+}
+
+/**
+ * Watch the account in use and move off it when it runs out, until interrupted.
+ *
+ * This is a process you start and can see, not a service installed behind your
+ * back: closing the terminal ends it.
+ */
+async function watchCommand(registry: RegistryManager, options: AutoOptions): Promise<void> {
+  const period = intervalMs(options.interval);
+  const controller = new AbortController();
+  const onSigInt = () => controller.abort();
+  process.once('SIGINT', onSigInt);
+
+  if (!options.json) {
+    const every = `${Math.round(period / 60_000)} min`;
+    const action = options.dryRun ? 'reporting' : 'switching';
+    console.log(
+      `\n  Watching the account in use, ${action} when it runs out. Checking every ${every}.`
+    );
+    console.log(`  ${colors.dim('Ctrl-C to stop.')}\n`);
+  }
+
+  try {
+    for (;;) {
+      const report = await watchTick(registry, options);
+      const nowMs = Date.now();
+
+      if (options.json) {
+        console.log(
+          JSON.stringify({
+            schemaVersion: 1,
+            command: 'auto',
+            ok: report.event !== 'exhausted',
+            data: { at: new Date(nowMs).toISOString(), ...report },
+          })
+        );
+      } else {
+        const line = `  ${colors.dim(clockOf(nowMs))}  ${report.detail}`;
+        console.log(report.event === 'holding' ? colors.dim(line) : line);
+      }
+
+      await delay(period, undefined, { signal: controller.signal });
+    }
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new CancellationError('Stopped watching.');
+    }
+    throw error;
+  } finally {
+    process.removeListener('SIGINT', onSigInt);
+  }
+}
+
 export async function autoCommand(options: AutoOptions = {}): Promise<void> {
   const registry = new RegistryManager();
   const accounts = registry.getAccounts();
@@ -82,9 +241,17 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
     throw new UsageError('No accounts registered. Run `agy-auth login` to add an account.');
   }
 
+  if (options.watch) {
+    if (options.offline) {
+      throw new UsageError(
+        '`--watch` needs live readings and cannot be combined with `--offline`.'
+      );
+    }
+    return watchCommand(registry, options);
+  }
+
   if (!options.offline) {
-    const refresh = await refreshQuota(selectStale(accounts), false, options.quotaOptions);
-    await applyQuotaResults(registry, refresh.refreshes);
+    await refreshAndApply(registry, selectStale(accounts), options);
   }
 
   // Re-read: the choice must be made on the readings just written, not the ones

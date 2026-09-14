@@ -91,6 +91,8 @@ export function createCli(): Command {
     .alias('best')
     .description('Switch to the account whose quota is most at risk of going to waste')
     .option('-n, --dry-run', 'Show the ranking and the choice without switching')
+    .option('-w, --watch', 'Keep running and switch whenever the account in use runs out')
+    .option('--interval <minutes>', 'Minutes between checks while watching (default: 5)')
     .option('--offline', 'Decide from cached quota only; make no network request', false)
     .option('-j, --json', 'Machine-readable output')
     .action(async (options) => {
