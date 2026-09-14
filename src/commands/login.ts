@@ -29,11 +29,15 @@ export function validateAliasInput(value: string): boolean | string {
     : 'Alias must be alphanumeric with underscores/hyphens (max 32 chars).';
 }
 
-function printSavedAccount(account: Account, isNew: boolean): void {
+function printSavedAccount(account: Account, isNew: boolean, isActive: boolean): void {
   const action = isNew ? 'Profile added successfully' : 'Profile updated successfully';
   console.log(
     `\n  ${colors.green('[ok]')} ${action}: ${colors.green(formatAccountShort(account))}`
   );
+  if (isActive) {
+    console.log('  It is the account in use.\n');
+    return;
+  }
   console.log(
     `  Run ${colors.cyan(`agy-auth switch "${account.alias || account.email}"`)} to activate it.\n`
   );
@@ -106,5 +110,5 @@ export async function loginCommand(
     credentials: { keychainPayload: payload },
   });
 
-  printSavedAccount(account, !existing);
+  printSavedAccount(account, !existing, registry.getActiveAccount()?.id === account.id);
 }
