@@ -74,9 +74,9 @@ export function printTopLevelHelp(all = false, version = VERSION): void {
   console.log('  refresh it over the network by default; pass `--offline` for cached data only.');
   console.log('  `switch` never makes a network request.');
   console.log('');
-  console.log("  An account imported from Antigravity is renewed with Antigravity's own OAuth");
-  console.log('  client, the only one Google lets renew it. Browser sign-in needs a client of');
-  console.log('  your own in AGY_OAUTH_CLIENT_ID.\n');
+  console.log("  Sign-in and renewal use Antigravity's own OAuth client, the only one Google");
+  console.log('  answers with a plan and a quota. Set AGY_OAUTH_CLIENT_ID to use your own');
+  console.log('  instead, accepting that the account will report neither.\n');
 }
 
 /** Pads before colouring so the descriptions line up regardless of ANSI codes. */

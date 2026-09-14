@@ -1,6 +1,6 @@
 import { UsageError } from '../core/errors.js';
 import type { AgyKeychainPayload } from '../core/keychain.js';
-import { getOAuthClientConfig } from '../core/oauth-config.js';
+import { ANTIGRAVITY_OAUTH_CLIENT, getSignInClient } from '../core/oauth-config.js';
 import { type AuthenticateOptions, OAuthFlow, type OAuthResult } from '../core/oauth.js';
 import { RegistryManager } from '../core/registry.js';
 import type { Account } from '../core/types.js';
@@ -65,12 +65,18 @@ export async function loginCommand(
       (account) => account.authType === 'oauth' && account.email.toLowerCase() === normalizedEmail
     );
 
-  const configuredClient = getOAuthClientConfig();
-  // Only a refresh token this same client issued can be reused here.
+  const client = getSignInClient();
+  const source =
+    client.clientId === ANTIGRAVITY_OAUTH_CLIENT.clientId ? 'antigravity' : 'custom-client';
+
+  // Google honours a refresh token only for the client that issued it, so one
+  // already stored is reusable only when this sign-in used that same client.
   const reusableRefreshToken =
     existing &&
-    existing.credentialSource === 'custom-client' &&
-    (!existing.oauthClientId || existing.oauthClientId === configuredClient?.clientId)
+    existing.credentialSource === source &&
+    (source === 'antigravity' ||
+      !existing.oauthClientId ||
+      existing.oauthClientId === client.clientId)
       ? existing.credentials?.keychainPayload?.token?.refresh_token || ''
       : '';
 
@@ -89,8 +95,8 @@ export async function loginCommand(
     email: result.email,
     alias: options.alias !== undefined ? options.alias.trim() || undefined : existing?.alias,
     authType: 'oauth',
-    credentialSource: 'custom-client',
-    oauthClientId: configuredClient?.clientId,
+    credentialSource: source,
+    ...(source === 'custom-client' ? { oauthClientId: client.clientId } : {}),
     status: 'valid',
     gcpProject:
       options.project !== undefined ? options.project.trim() || undefined : existing?.gcpProject,

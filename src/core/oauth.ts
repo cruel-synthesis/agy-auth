@@ -5,7 +5,7 @@ import { isEmail } from './credential-validation.js';
 import { CliError } from './errors.js';
 import type { AgyKeychainPayload } from './keychain.js';
 import { NativeOperationBlockedError, assertNativeAllowed } from './native-guard.js';
-import { OAUTH_TOKEN_ENDPOINT, getOAuthClientConfig } from './oauth-config.js';
+import { OAUTH_TOKEN_ENDPOINT, getSignInClient } from './oauth-config.js';
 
 export interface OAuthResult {
   email: string;
@@ -33,11 +33,13 @@ interface GoogleUserInfo {
   email_verified?: boolean;
 }
 
+/** The scopes Antigravity's client requests; the quota endpoints expect them. */
 export const OAUTH_SCOPES = [
-  'openid',
-  'email',
-  'profile',
   'https://www.googleapis.com/auth/cloud-platform',
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
+  'https://www.googleapis.com/auth/cclog',
+  'https://www.googleapis.com/auth/experimentsandconfigs',
 ].join(' ');
 
 const SECURITY_HEADERS = {
@@ -117,13 +119,7 @@ export class OAuthFlow {
    */
   public static async authenticate(options: AuthenticateOptions = {}): Promise<OAuthResult> {
     const env = options.env || process.env;
-    const clientConfig = getOAuthClientConfig(env);
-
-    if (!clientConfig) {
-      throw new CliError(
-        'Browser sign-in needs your own Google OAuth client in AGY_OAUTH_CLIENT_ID. To add the account signed in to Antigravity instead, run `agy-auth add`.'
-      );
-    }
+    const clientConfig = getSignInClient(env);
 
     const fetchFn = options.fetchFn || fetch;
     const openBrowserFn = options.openBrowserFn || defaultOpenBrowser;

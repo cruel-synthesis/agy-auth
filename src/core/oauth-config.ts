@@ -6,11 +6,11 @@ export interface OAuthClientConfig {
 /**
  * The OAuth client Antigravity signs in with, published in its own binary.
  *
- * Google binds a refresh token to the client that issued it, so a session
- * imported from Antigravity can be renewed by this client and by no other.
- * agy-auth uses it for exactly that and nothing else: it never signs a new
- * account in with it, so it never creates a session Antigravity did not.
- * `login` still requires a client of the user's own.
+ * Google's individual tier answers this client and refuses every other, telling
+ * the rest that the tier "is no longer supported" and denying them quota, so an
+ * account signed in under a client of your own registers and then reports
+ * nothing for as long as you keep it. agy-auth therefore signs in and renews
+ * with this one.
  *
  * Installed applications cannot keep a secret (RFC 8252 section 8.5), which is
  * why this pair ships in a binary anyone can read rather than being withheld.
@@ -21,10 +21,8 @@ export const ANTIGRAVITY_OAUTH_CLIENT: OAuthClientConfig = {
 };
 
 /**
- * The client used to sign in a new account, supplied entirely by the
- * environment. agy-auth ships none: redistributing a third-party client ID for
- * sign-in would make every user of this tool impersonate an application they
- * never registered. Without `AGY_OAUTH_CLIENT_ID`, `login` is unavailable.
+ * A client of your own, when `AGY_OAUTH_CLIENT_ID` names one. Null otherwise,
+ * which is the ordinary case.
  */
 export function getOAuthClientConfig(
   env: NodeJS.ProcessEnv = process.env
@@ -34,6 +32,11 @@ export function getOAuthClientConfig(
 
   const clientSecret = env.AGY_OAUTH_CLIENT_SECRET?.trim();
   return clientSecret ? { clientId, clientSecret } : { clientId };
+}
+
+/** The client browser sign-in uses: your own when configured, Antigravity's otherwise. */
+export function getSignInClient(env: NodeJS.ProcessEnv = process.env): OAuthClientConfig {
+  return getOAuthClientConfig(env) ?? ANTIGRAVITY_OAUTH_CLIENT;
 }
 
 export const OAUTH_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
