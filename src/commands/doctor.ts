@@ -56,6 +56,96 @@ function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/**
+ * Where the Antigravity session lives, and whether it is usable.
+ *
+ * Separate from doctorCommand so that a credential store which refuses to be
+ * read reports one failed check instead of ending the whole diagnosis.
+ */
+function checkSessionStore(): CheckResult {
+  const name = 'Antigravity Session Store';
+  const signIn = 'Sign in to Google Antigravity to create active session credentials.';
+  const tokenState = readAntigravityToken();
+  const selectedExpiry =
+    tokenState.status === 'found' ? tokenState.payload?.token.expiry : undefined;
+  const selectedExpiryMs = selectedExpiry ? Date.parse(selectedExpiry) : Number.NaN;
+
+  if (Number.isFinite(selectedExpiryMs) && selectedExpiryMs <= Date.now()) {
+    const source = tokenState.source === 'keyring' ? 'system Keychain' : 'token file';
+    return {
+      name,
+      status: 'warn',
+      message: `Antigravity session in ${source} expired at ${selectedExpiry}. Sign in to Google Antigravity again, then run \`agy-auth add\`.`,
+    };
+  }
+
+  if (!KeychainManager.isSupported()) {
+    if (tokenState.status !== 'found') {
+      return { name, status: 'warn', message: signIn };
+    }
+    return {
+      name,
+      status: 'ok',
+      message: `No action needed. Active Antigravity session found in token file (expiry: ${tokenState.fileExpiry || 'no expiry'}).`,
+    };
+  }
+
+  if (tokenState.status === 'missing') {
+    return { name, status: 'warn', message: signIn };
+  }
+
+  if (tokenState.status !== 'found') {
+    return {
+      name,
+      status: 'fail',
+      message:
+        `Re-authenticate in Google Antigravity to resolve corrupted session store. ${tokenState.warning || ''}`.trim(),
+    };
+  }
+
+  const fileExp = tokenState.fileExpiry || 'no expiry';
+  const keyExp = tokenState.keyringExpiry || 'no expiry';
+  const reauth = 'Re-authenticate in Antigravity if the session stops working.';
+
+  if (tokenState.source === 'keyring' && tokenState.fileStatus === 'error') {
+    return {
+      name,
+      status: 'warn',
+      message: `Active Antigravity session found in system Keychain, but the token file could not be read. ${tokenState.fileMessage || tokenState.warning || reauth}`,
+    };
+  }
+
+  if (tokenState.source === 'file' && tokenState.keyringStatus === 'error') {
+    return {
+      name,
+      status: 'warn',
+      message: `Active Antigravity session found in token file, but the system Keychain could not be read. ${tokenState.keyringMessage || tokenState.warning || reauth}`,
+    };
+  }
+
+  if (tokenState.source === 'file' && tokenState.keyringStatus === 'found') {
+    return {
+      name,
+      status: 'warn',
+      message: `Re-authenticate in Antigravity if IDE session expires. Token file is fresher than system Keychain (file: ${fileExp}, Keychain: ${keyExp}; Keychain writes may be failing).`,
+    };
+  }
+
+  if (tokenState.source === 'file') {
+    return {
+      name,
+      status: 'ok',
+      message: `No action needed. Active Antigravity session found in token file (expiry: ${fileExp}).`,
+    };
+  }
+
+  return {
+    name,
+    status: 'ok',
+    message: `No action needed. Active Antigravity session found in system Keychain (expiry: ${keyExp}).`,
+  };
+}
+
 export async function doctorCommand(options: DoctorOptions = {}): Promise<void> {
   const checks: CheckResult[] = [];
 
@@ -228,81 +318,14 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
   }
 
   // 3. Check Antigravity session token storage (composite store)
-  const tokenState = readAntigravityToken();
-  const selectedExpiry =
-    tokenState.status === 'found' ? tokenState.payload?.token.expiry : undefined;
-  const selectedExpiryMs = selectedExpiry ? Date.parse(selectedExpiry) : Number.NaN;
-  if (Number.isFinite(selectedExpiryMs) && selectedExpiryMs <= Date.now()) {
-    const source = tokenState.source === 'keyring' ? 'system Keychain' : 'token file';
+  try {
+    checks.push(checkSessionStore());
+  } catch (err) {
     checks.push({
       name: 'Antigravity Session Store',
       status: 'warn',
-      message: `Antigravity session in ${source} expired at ${selectedExpiry}. Sign in to Google Antigravity again, then run \`agy-auth add\`.`,
+      message: `Session store could not be read: ${formatError(err)}`,
     });
-  } else if (KeychainManager.isSupported()) {
-    if (tokenState.status === 'found') {
-      const fileExp = tokenState.fileExpiry || 'no expiry';
-      const keyExp = tokenState.keyringExpiry || 'no expiry';
-
-      if (tokenState.source === 'keyring' && tokenState.fileStatus === 'error') {
-        checks.push({
-          name: 'Antigravity Session Store',
-          status: 'warn',
-          message: `Active Antigravity session found in system Keychain, but the token file could not be read. ${tokenState.fileMessage || tokenState.warning || 'Re-authenticate in Antigravity if the session stops working.'}`,
-        });
-      } else if (tokenState.source === 'file' && tokenState.keyringStatus === 'error') {
-        checks.push({
-          name: 'Antigravity Session Store',
-          status: 'warn',
-          message: `Active Antigravity session found in token file, but the system Keychain could not be read. ${tokenState.keyringMessage || tokenState.warning || 'Re-authenticate in Antigravity if the session stops working.'}`,
-        });
-      } else if (tokenState.source === 'file' && tokenState.keyringStatus === 'found') {
-        checks.push({
-          name: 'Antigravity Session Store',
-          status: 'warn',
-          message: `Re-authenticate in Antigravity if IDE session expires. Token file is fresher than system Keychain (file: ${fileExp}, Keychain: ${keyExp}; Keychain writes may be failing).`,
-        });
-      } else if (tokenState.source === 'file') {
-        checks.push({
-          name: 'Antigravity Session Store',
-          status: 'ok',
-          message: `No action needed. Active Antigravity session found in token file (expiry: ${fileExp}).`,
-        });
-      } else {
-        checks.push({
-          name: 'Antigravity Session Store',
-          status: 'ok',
-          message: `No action needed. Active Antigravity session found in system Keychain (expiry: ${keyExp}).`,
-        });
-      }
-    } else if (tokenState.status === 'missing') {
-      checks.push({
-        name: 'Antigravity Session Store',
-        status: 'warn',
-        message: 'Sign in to Google Antigravity to create active session credentials.',
-      });
-    } else {
-      checks.push({
-        name: 'Antigravity Session Store',
-        status: 'fail',
-        message:
-          `Re-authenticate in Google Antigravity to resolve corrupted session store. ${tokenState.warning || ''}`.trim(),
-      });
-    }
-  } else {
-    if (tokenState.status === 'found') {
-      checks.push({
-        name: 'Antigravity Session Store',
-        status: 'ok',
-        message: `No action needed. Active Antigravity session found in token file (expiry: ${tokenState.fileExpiry || 'no expiry'}).`,
-      });
-    } else {
-      checks.push({
-        name: 'Antigravity Session Store',
-        status: 'warn',
-        message: 'Sign in to Google Antigravity to create active session credentials.',
-      });
-    }
   }
 
   // 4. Check Antigravity Settings file
