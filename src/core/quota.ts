@@ -602,13 +602,18 @@ export class QuotaClient {
    * assumed to be safe to try.
    */
   private static clientFor(account: Account, env: NodeJS.ProcessEnv): OAuthClientConfig | null {
-    if (account.credentialSource === 'antigravity') return ANTIGRAVITY_OAUTH_CLIENT;
-    if (account.credentialSource !== 'custom-client') return null;
+    if (account.credentialSource === 'custom-client') {
+      const client = getOAuthClientConfig(env);
+      if (!client) return null;
+      if (account.oauthClientId && account.oauthClientId !== client.clientId) return null;
+      return client;
+    }
 
-    const client = getOAuthClientConfig(env);
-    if (!client) return null;
-    if (account.oauthClientId && account.oauthClientId !== client.clientId) return null;
-    return client;
+    // 'antigravity', and the 'unknown' left by registries written before
+    // provenance was recorded: a stored session payload only ever came from the
+    // Antigravity import, and a refresh offered to the wrong client is refused
+    // without consequence. Refusing to try strands the account instead.
+    return account.credentials?.keychainPayload ? ANTIGRAVITY_OAUTH_CLIENT : null;
   }
 
   /** The token can no longer be used at all. */
