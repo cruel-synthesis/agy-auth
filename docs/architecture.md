@@ -26,7 +26,7 @@
 
 ```text
 ~/.agy-auth/
-├── registry.json       # Registry Schema v2 state
+├── registry.json       # Registry state (schema 3)
 ├── registry.lock       # Atomic mutation mutex
 ├── accounts/           # Materialized service account keys (mode 0600 on POSIX)
 └── backups/            # Pre-mutation recovery snapshots

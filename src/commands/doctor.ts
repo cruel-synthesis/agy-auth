@@ -8,7 +8,7 @@ import { migrateRegistry } from '../core/migration.js';
 import { Paths } from '../core/paths.js';
 import { type QuotaProbeStep, probeQuotaEndpoints } from '../core/quota.js';
 import { RegistryManager, validateRegistry } from '../core/registry.js';
-import { RegistrySchema, isRecord } from '../core/types.js';
+import { CURRENT_SCHEMA_VERSION, RegistrySchema, isRecord } from '../core/types.js';
 import { colors } from '../ui/theme.js';
 
 interface DoctorOptions {
@@ -172,20 +172,20 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
             status: 'fail',
             message: 'Registry file contains malformed JSON or is not an object.',
           });
-        } else if (parsed.schemaVersion !== 2) {
+        } else if (parsed.schemaVersion !== CURRENT_SCHEMA_VERSION) {
           try {
             const migrated = migrateRegistry(parsed);
             validateRegistry(migrated.registry);
             checks.push({
               name: 'Registry Schema & Integrity',
               status: 'warn',
-              message: 'Legacy registry schema v1 detected (migration pending).',
+              message: `Registry uses schema ${parsed.schemaVersion}; it will be migrated to ${CURRENT_SCHEMA_VERSION} on the next command that saves.`,
             });
           } catch (migrateErr) {
             checks.push({
               name: 'Registry Schema & Integrity',
               status: 'fail',
-              message: `Legacy registry format is incompatible: ${migrateErr instanceof Error ? migrateErr.message : String(migrateErr)}`,
+              message: `Registry cannot be migrated: ${migrateErr instanceof Error ? migrateErr.message : String(migrateErr)}`,
             });
           }
         } else {
@@ -194,7 +194,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
             checks.push({
               name: 'Registry Schema & Integrity',
               status: 'fail',
-              message: `Registry Schema v2 validation failed: ${parsedResult.error.issues.map((i) => i.message).join(', ')}`,
+              message: `Registry schema validation failed: ${parsedResult.error.issues.map((i) => i.message).join(', ')}`,
             });
           } else {
             try {
@@ -202,7 +202,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
               checks.push({
                 name: 'Registry Schema & Integrity',
                 status: 'ok',
-                message: `Registry Schema v2 valid (${parsedResult.data.accounts.length} account(s) registered).`,
+                message: `Registry schema ${CURRENT_SCHEMA_VERSION} valid (${parsedResult.data.accounts.length} account(s) registered).`,
               });
             } catch (validationError) {
               checks.push({

@@ -15,7 +15,7 @@ Options:
 
 Diagnostics checked:
 - Storage directory permissions and integrity (`~/.agy-auth/`)
-- Registry Schema v2 parsing and integrity (flags pending migration for legacy formats)
+- Registry schema parsing and integrity (flags a registry still on an older schema)
 - Antigravity token-file and native keyring session status
 - Antigravity `settings.json` parsing
 - Application Default Credentials (ADC) file validation
