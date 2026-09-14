@@ -95,10 +95,12 @@ This feature is **experimental** because it depends on undocumented upstream con
 
 ### OAuth Onboarding and Token Refresh
 
-`agy-auth` ships **no OAuth client ID and no client secret**.
+`agy-auth` signs no one in under a client that is not theirs.
 
 - **Existing Antigravity Session (Out-of-the-box)**:
-  `agy-auth add` imports an active Antigravity session from Apple Keychain on macOS or from Antigravity's token file on any platform. This flow verifies your identity via Google's `userinfo` endpoint using the access token and **does not require setting an OAuth client ID**.
+  `agy-auth add` imports an active Antigravity session from Apple Keychain on macOS or from Antigravity's token file on any platform. This flow verifies your identity via Google's `userinfo` endpoint using the access token and **requires no OAuth client ID**.
+- **Renewing an Imported Session**:
+  Google binds a refresh token to the client that issued it, so an Antigravity session can be renewed by Antigravity's own OAuth client and by no other. `agy-auth` carries that client's published ID and secret and uses it for exactly one thing: exchanging an Antigravity refresh token for a new access token. It never signs a new account in with it. Installed-app clients cannot hold a secret ([RFC 8252 §8.5](https://www.rfc-editor.org/rfc/rfc8252#section-8.5)), which is why that pair ships readable inside Antigravity's own binary.
 - **Browser Sign-In**:
   `agy-auth login` performs a PKCE loopback sign-in on any platform, and requires your own Google Cloud Desktop OAuth Client ID:
 

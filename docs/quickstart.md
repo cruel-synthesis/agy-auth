@@ -72,13 +72,9 @@ ACCOUNT | PLAN | GEMINI 5H | GEMINI WK | CLAUDE 5H | CLAUDE WK | LAST
 
 Percentages are quota **remaining**; `-` means no cached value and `stale` means the cached window has already reset. Live plan and quota reporting is **experimental** because it uses undocumented Antigravity endpoints that can change without notice.
 
-Refreshing an expired OAuth token needs your own OAuth client, since `agy-auth` ships none:
+An account imported from Antigravity is renewed automatically with Antigravity's own OAuth client, the only one Google lets renew it. A profile added by browser sign-in is renewed with the client that signed it in, so that one needs `AGY_OAUTH_CLIENT_ID` set.
 
-```bash
-export AGY_OAUTH_CLIENT_ID='your-client-id.apps.googleusercontent.com'
-```
-
-Without it, an expired profile is reported as `expired`; sign in again through Antigravity and run `agy-auth add`.
+When renewal fails the profile is reported as `expired`; sign in again through Antigravity and run `agy-auth add`.
 
 ---
 

@@ -74,10 +74,9 @@ export function printTopLevelHelp(all = false, version = VERSION): void {
   console.log('  refresh it over the network by default; pass `--offline` for cached data only.');
   console.log('  `switch` never makes a network request.');
   console.log('');
-  console.log('  Refreshing an expired OAuth token requires AGY_OAUTH_CLIENT_ID (and optionally');
-  console.log(
-    '  AGY_OAUTH_CLIENT_SECRET). agy-auth ships no OAuth client ID or secret of its own.\n'
-  );
+  console.log("  An account imported from Antigravity is renewed with Antigravity's own OAuth");
+  console.log('  client, the only one Google lets renew it. Browser sign-in needs a client of');
+  console.log('  your own in AGY_OAUTH_CLIENT_ID.\n');
 }
 
 /** Pads before colouring so the descriptions line up regardless of ANSI codes. */

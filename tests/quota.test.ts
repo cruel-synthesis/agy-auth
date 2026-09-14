@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { getOAuthClientConfig } from '../src/core/oauth-config.js';
+import { ANTIGRAVITY_OAUTH_CLIENT, getOAuthClientConfig } from '../src/core/oauth-config.js';
 import { applyCheckResults, applyQuotaResult, applyQuotaResults } from '../src/core/quota-apply.js';
 import {
   QUOTA_REFRESH_CONCURRENCY,
@@ -615,10 +615,13 @@ describe('Environment-gated OAuth refresh', () => {
     expect(result.status).toBe('expired');
   });
 
-  it('never sends a native Antigravity refresh token to a configured custom client', async () => {
+  it("renews an Antigravity session with Antigravity's client, never the configured one", async () => {
+    let refreshBody = '';
     const { fetchFn, calls } = mockFetch({
-      'oauth2.googleapis.com': () =>
-        jsonResponse({ access_token: 'should-never-be-issued', expires_in: 1800 }),
+      'oauth2.googleapis.com': (_url, init) => {
+        refreshBody = String(init?.body ?? '');
+        return jsonResponse({ access_token: 'renewed-access-token', expires_in: 1800 });
+      },
       retrieveUserQuotaSummary: () => jsonResponse(SUMMARY_OK),
       loadCodeAssist: () => jsonResponse(CODE_ASSIST_OK),
     });
@@ -643,13 +646,16 @@ describe('Environment-gated OAuth refresh', () => {
       env: { AGY_OAUTH_CLIENT_ID: 'unrelated-client', AGY_OAUTH_CLIENT_SECRET: 'unrelated-secret' },
     });
 
-    // The refresh token belongs to Antigravity's client, so it is never offered
-    // to a different one, even though one is configured.
-    expect(calls.some((url) => url.includes('oauth2.googleapis.com'))).toBe(false);
-    expect(tokenUpdate).toBeUndefined();
-    expect(result.ok).toBe(false);
-    expect(result.reason).toBe('native-refresh-required');
-    expect(result.status).toBe('expired');
+    // The refresh token belongs to Antigravity's client, so only that client is
+    // offered it, even though a different one is configured.
+    expect(calls.some((url) => url.includes('oauth2.googleapis.com'))).toBe(true);
+    expect(refreshBody).toContain(
+      encodeURIComponent(ANTIGRAVITY_OAUTH_CLIENT.clientId).replace(/%20/g, '+')
+    );
+    expect(refreshBody).not.toContain('unrelated-client');
+    expect(tokenUpdate).toBeDefined();
+    expect(result.ok).toBe(true);
+    expect(result.status).toBe('valid');
   });
 
   it('refreshes a custom-client account with the configured client', async () => {

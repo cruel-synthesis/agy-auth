@@ -1,5 +1,6 @@
 import { VERSION } from '../version.js';
 import {
+  ANTIGRAVITY_OAUTH_CLIENT,
   OAUTH_TOKEN_ENDPOINT,
   type OAuthClientConfig,
   getOAuthClientConfig,
@@ -504,9 +505,8 @@ export class QuotaClient {
     const refreshToken = stored.refresh_token;
     if (!refreshToken) return null;
 
-    const client = getOAuthClientConfig(env);
+    const client = this.clientFor(account, env);
     if (!client) return null;
-    if (!this.mayRefreshWith(account, client)) return null;
 
     const budget = Math.min(ctx.requestTimeoutMs, remainingBudget(ctx));
     if (budget <= 0) return null;
@@ -557,18 +557,23 @@ export class QuotaClient {
   }
 
   /**
-   * Whether the configured OAuth client is entitled to refresh this account.
+   * The only OAuth client entitled to refresh this account, if any.
    *
    * Google binds a refresh token to the client that issued it, so offering one
    * to a different client both fails and discloses the credential to an
-   * application that was never involved in issuing it. Only a profile known to
-   * have come from this very client may be refreshed here; a native Antigravity
-   * session is refreshed by Antigravity itself, and a profile of unrecorded
-   * origin is not assumed to be safe to try.
+   * application that was never involved in issuing it. A session imported from
+   * Antigravity therefore goes to Antigravity's client, a browser sign-in goes
+   * to the client that performed it, and a profile of unrecorded origin is not
+   * assumed to be safe to try.
    */
-  private static mayRefreshWith(account: Account, client: OAuthClientConfig): boolean {
-    if (account.credentialSource !== 'custom-client') return false;
-    return !account.oauthClientId || account.oauthClientId === client.clientId;
+  private static clientFor(account: Account, env: NodeJS.ProcessEnv): OAuthClientConfig | null {
+    if (account.credentialSource === 'antigravity') return ANTIGRAVITY_OAUTH_CLIENT;
+    if (account.credentialSource !== 'custom-client') return null;
+
+    const client = getOAuthClientConfig(env);
+    if (!client) return null;
+    if (account.oauthClientId && account.oauthClientId !== client.clientId) return null;
+    return client;
   }
 
   /** The token can no longer be used at all. */
