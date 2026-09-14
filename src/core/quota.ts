@@ -680,28 +680,9 @@ export class QuotaClient {
       // Otherwise the stored token still has life in it; carry on with it.
     }
 
-    // Contract A first: it needs no project and answers in one round trip.
-    const summary = await this.postFirst(QUOTA_SUMMARY_ENDPOINTS, {}, accessToken, ctx);
-    if (summary.kind === 'ok') {
-      const snapshot = buildSnapshot(collectFromSummary(summary.data));
-      if (hasUsableWindows(snapshot)) {
-        const info = await this.loadCodeAssist(accessToken, ctx);
-        return {
-          result: {
-            ...base,
-            ok: true,
-            status: 'valid',
-            rateLimit: snapshot,
-            quotaCheckedAt: now(),
-            ...(info.plan ? { plan: info.plan } : {}),
-            ...(info.project && !account.gcpProject ? { discoveredProject: info.project } : {}),
-          },
-          tokenUpdate,
-        };
-      }
-    }
-
-    // Contract B needs a real project. Discovery may supply one; nothing invents one.
+    // loadCodeAssist first: it is the only call that names the project, both
+    // quota contracts want one, and it carries the plan - so a reading that
+    // finds no buckets still reports the tier instead of leaving it blank.
     const info = await this.loadCodeAssist(accessToken, ctx);
     const discoveredProject = info.project && !account.gcpProject ? info.project : undefined;
     const projectId = info.project ?? account.gcpProject;
@@ -710,6 +691,32 @@ export class QuotaClient {
       ...(discoveredProject ? { discoveredProject } : {}),
     };
 
+    // Contract A: one round trip, and the only one reporting the 5-hour and
+    // weekly windows the table shows.
+    const summary = await this.postFirst(
+      QUOTA_SUMMARY_ENDPOINTS,
+      projectId ? { project: projectId } : {},
+      accessToken,
+      ctx
+    );
+    if (summary.kind === 'ok') {
+      const snapshot = buildSnapshot(collectFromSummary(summary.data));
+      if (hasUsableWindows(snapshot)) {
+        return {
+          result: {
+            ...base,
+            ok: true,
+            status: 'valid',
+            rateLimit: snapshot,
+            quotaCheckedAt: now(),
+            ...carried,
+          },
+          tokenUpdate,
+        };
+      }
+    }
+
+    // Contract B: per-model buckets, for accounts the summary does not answer for.
     const quota: PostOutcome = projectId
       ? await this.postFirst(
           RETRIEVE_USER_QUOTA_ENDPOINTS,
