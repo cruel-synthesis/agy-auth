@@ -49,11 +49,15 @@ const LOAD_CODE_ASSIST_ENDPOINTS = [
 ] as const;
 
 /**
- * The client Antigravity itself presents.
+ * The client string Antigravity itself sends.
  *
- * The service decides tier eligibility per client and says so in
- * `ineligibleTiers[].reasonCode`, so a probe that presents only agy-auth cannot
- * tell a rejected client from an account without a subscription.
+ * These are Antigravity's private endpoints and they answer Antigravity alone.
+ * Asked under any other name they report the individual tier as
+ * `UNSUPPORTED_CLIENT`, name no plan and no project, and then refuse every
+ * quota call with `SUBSCRIPTION_REQUIRED` - not because the account lacks a
+ * subscription but because the caller is not the product it belongs to. These
+ * are Antigravity's own credentials asking after their own account, so they ask
+ * under Antigravity's name.
  */
 const ANTIGRAVITY_USER_AGENT = 'Antigravity/4.1.29 Chrome/132.0.6834.160 Electron/39.2.3';
 
@@ -428,7 +432,7 @@ export class QuotaClient {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           Accept: 'application/json',
-          'User-Agent': USER_AGENT,
+          'User-Agent': ANTIGRAVITY_USER_AGENT,
         },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(budget),
