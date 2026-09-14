@@ -497,11 +497,13 @@ export class QuotaClient {
     );
     if (outcome.kind !== 'ok') return { outcome: outcome.kind };
 
-    // `currentTier` is the tier in force. `paidTier` sits beside it carrying an
-    // upgrade link, so preferring it names a plan the account does not hold.
+    // Two different axes. `currentTier` is the Code Assist tier, which stays
+    // free-tier for someone whose entitlement arrives through a Google One
+    // subscription; `paidTier` is that subscription. The paid one, when the
+    // account holds it, is the plan worth reporting.
     const currentTier = isRecord(outcome.data.currentTier) ? outcome.data.currentTier : undefined;
     const paidTier = isRecord(outcome.data.paidTier) ? outcome.data.paidTier : undefined;
-    const tier = currentTier ?? paidTier;
+    const tier = paidTier ?? currentTier;
     const tierId = nonEmptyString(tier?.id, 128);
 
     return {
