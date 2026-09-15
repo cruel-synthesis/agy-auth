@@ -229,8 +229,15 @@ export class Storage {
           // ignore
         }
       }
-      if (err && typeof err === 'object' && 'code' in err && err.code === 'EEXIST') {
-        return null;
+      if (err && typeof err === 'object' && 'code' in err) {
+        // The lock is held; the caller retries until its own timeout.
+        if (err.code === 'EEXIST') return null;
+        // Windows refuses to open a file another process is deleting or holding,
+        // reporting EPERM from CreateFile rather than EEXIST. That is contention,
+        // not a permission fault: two concurrent mutations otherwise fail one of
+        // them outright with a raw EPERM. A real permission problem still
+        // surfaces, as the timeout naming this path.
+        if (process.platform === 'win32' && err.code === 'EPERM') return null;
       }
       throw err;
     }
