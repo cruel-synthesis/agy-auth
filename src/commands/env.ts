@@ -1,6 +1,5 @@
-import path from 'node:path';
+import { environmentFor } from '../core/env-vars.js';
 import { UsageError } from '../core/errors.js';
-import { Paths } from '../core/paths.js';
 import { RegistryManager } from '../core/registry.js';
 
 interface EnvOptions {
@@ -70,32 +69,7 @@ export async function envCommand(options: EnvOptions = {}): Promise<void> {
     );
   }
 
-  const envVars: Record<string, string | null> = {
-    GEMINI_API_KEY: null,
-    GOOGLE_API_KEY: null,
-    GOOGLE_APPLICATION_CREDENTIALS: null,
-    GOOGLE_CLOUD_PROJECT: null,
-    GOOGLE_CLOUD_LOCATION: null,
-  };
-
-  if (!options.clear && active) {
-    if (active.gcpProject) {
-      envVars.GOOGLE_CLOUD_PROJECT = active.gcpProject;
-    }
-    if (active.gcpLocation) {
-      envVars.GOOGLE_CLOUD_LOCATION = active.gcpLocation;
-    }
-
-    if (active.authType === 'api-key' && active.credentials?.apiKey) {
-      envVars.GEMINI_API_KEY = active.credentials.apiKey;
-      envVars.GOOGLE_API_KEY = active.credentials.apiKey;
-    }
-
-    if (active.authType === 'service-account' && active.credentials?.serviceAccountKey) {
-      const saPath = path.join(Paths.accountsDir, `${path.basename(active.id)}.json`);
-      envVars.GOOGLE_APPLICATION_CREDENTIALS = saPath;
-    }
-  }
+  const envVars = environmentFor(options.clear ? null : active);
 
   if (options.json) {
     console.log(

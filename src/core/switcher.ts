@@ -4,6 +4,7 @@ import { writeAntigravityToken } from './antigravity-store.js';
 import { type AdcDocument, CredentialFiles } from './credential-files.js';
 import { validateServiceAccountKey } from './credential-validation.js';
 import { AntigravitySettings } from './discovery.js';
+import { MANAGED_ENV_VARS, shellEnvChanges } from './env-vars.js';
 import { CliError } from './errors.js';
 import { KeychainManager } from './keychain.js';
 import { Paths } from './paths.js';
@@ -21,14 +22,6 @@ interface FileSnapshot {
   readonly backupDevice: number | null;
   readonly backupInode: number | null;
 }
-
-const MANAGED_ENV_VARS = [
-  'GEMINI_API_KEY',
-  'GOOGLE_API_KEY',
-  'GOOGLE_APPLICATION_CREDENTIALS',
-  'GOOGLE_CLOUD_PROJECT',
-  'GOOGLE_CLOUD_LOCATION',
-];
 
 function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -466,7 +459,7 @@ export class Switcher {
         currentAccount: sanitizeAccount(activated),
         antigravityUpdated,
         adcUpdated,
-        requiresShellUpdate: true,
+        requiresShellUpdate: shellEnvChanges(previous ?? null, activated),
         managedEnvVars: MANAGED_ENV_VARS,
         warnings: warnings.length > 0 ? warnings : undefined,
       };

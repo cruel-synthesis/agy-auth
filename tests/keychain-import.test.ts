@@ -321,7 +321,8 @@ describe('Keychain OAuth Import Module', () => {
 
     const result = Switcher.switchAccount(imported);
     expect(result.currentAccount.id).toBe(imported.id);
-    expect(result.requiresShellUpdate).toBe(true);
+    // An OAuth profile puts nothing in the shell environment.
+    expect(result.requiresShellUpdate).toBe(false);
     expect(writeSpy).toHaveBeenCalled();
   });
 

@@ -249,7 +249,8 @@ describe('Switcher Transactional State Machine & Rollback', () => {
 
     const result = Switcher.switchAccount(oauthAcc);
     expect(result.currentAccount.id).toBe(oauthAcc.id);
-    expect(result.requiresShellUpdate).toBe(true);
+    // An OAuth profile puts nothing in the shell environment.
+    expect(result.requiresShellUpdate).toBe(false);
     expect(writeSpy).toHaveBeenCalled();
   });
 
@@ -350,7 +351,7 @@ describe('Switcher Transactional State Machine & Rollback', () => {
 
       const result = Switcher.switchAccount(oauthAcc);
       expect(result.currentAccount.id).toBe(oauthAcc.id);
-      expect(result.requiresShellUpdate).toBe(true);
+      expect(result.requiresShellUpdate).toBe(false);
       // KeychainManager.writeAgyToken returns false -> switch still succeeds with warning because file store succeeded
       writeSpy.mockReturnValue(false);
       const warnResult = Switcher.switchAccount(oauthAcc);
