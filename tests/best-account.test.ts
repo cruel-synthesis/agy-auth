@@ -114,6 +114,22 @@ describe('choosing the account that wastes the least quota', () => {
     expect(choice.shouldSwitch).toBe(false);
   });
 
+  it('records which families a headroom figure was averaged over', () => {
+    // Only Gemini reported. Averaging over it alone yields a full 5-hour
+    // headroom, which read as a statement about the whole account.
+    const geminiOnly = account('gemini-only', { rateLimit: { gemini: family(1, 1, 72) } });
+    const bothFamilies = account('both', {
+      rateLimit: { gemini: family(1, 1, 72), claude: family(0.5, 1, 72) },
+    });
+
+    const partial = chooseBestAccount([geminiOnly], 'gemini-only', NOW).ranked[0];
+    expect(partial.headroom).toBe(1);
+    expect(partial.families).toEqual(['gemini']);
+
+    const full = chooseBestAccount([bothFamilies], 'both', NOW).ranked[0];
+    expect(full.families).toEqual(['gemini', 'claude']);
+  });
+
   it('reports when every account is out of 5-hour quota, and when each refills', () => {
     const drained = account('drained', { rateLimit: { gemini: family(0, 1, 72, 2) } });
 
