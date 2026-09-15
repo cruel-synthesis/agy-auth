@@ -26,16 +26,18 @@ Please provide:
 
 ## Network Boundary
 
-`agy-auth` contains **no hardcoded OAuth client secret and no bundled third-party OAuth client ID**. It performs no telemetry and runs no background polling or daemons.
+`agy-auth` signs in and renews tokens with **the OAuth client published in Antigravity's own binary** (`src/core/oauth-config.ts`). Google's individual tier answers that client and refuses others, so a client of your own registers and then reports no quota. An installed application cannot keep a secret (RFC 8252 section 8.5), which is why that pair ships readable in Antigravity's binary and here alike: it identifies the application, never you. Set `AGY_OAUTH_CLIENT_ID` (and `AGY_OAUTH_CLIENT_SECRET` if your client requires one) to use your own instead.
+
+`agy-auth` performs no telemetry and installs no daemon. `agy-auth auto --watch` polls only while you leave it running in your terminal.
 
 Outbound requests are limited to:
 
 | Host | Purpose | When |
 |---|---|---|
 | `accounts.google.com` | Browser OAuth user sign-in via PKCE | `agy-auth login --oauth-source browser` |
-| `oauth2.googleapis.com` | Authorization code and refresh-token exchange | During browser OAuth login or when refreshing an expired token with `AGY_OAUTH_CLIENT_ID` |
+| `oauth2.googleapis.com` | Authorization code and refresh-token exchange | During browser OAuth login, and whenever a stored token needs renewing before a quota reading |
 | `www.googleapis.com` | Verified userinfo lookup (`/oauth2/v3/userinfo`) | During Antigravity session import and browser OAuth login |
-| `daily-cloudcode-pa.googleapis.com`, `cloudcode-pa.googleapis.com` | Live plan and quota via the undocumented `v1internal:retrieveUserQuotaSummary`, `v1internal:loadCodeAssist`, and `v1internal:retrieveUserQuota` contracts (**experimental**) | `list`, `list --check`, `current`, `details` for OAuth profiles, unless `--offline` |
+| `daily-cloudcode-pa.googleapis.com`, `cloudcode-pa.googleapis.com` | Live plan and quota via the undocumented `v1internal:retrieveUserQuotaSummary`, `v1internal:loadCodeAssist`, and `v1internal:retrieveUserQuota` contracts (**experimental**) | `list`, `list --check`, `current`, `details`, `auto` for OAuth profiles, unless `--offline` |
 | `generativelanguage.googleapis.com` | Official Gemini models endpoint and connectivity probe | `list --check` for API key profiles; `doctor` unless `--offline` |
 
 Browser OAuth callback servers bind strictly to `127.0.0.1` on an OS-assigned ephemeral port, enforce cryptographically random state parameters and PKCE (S256) challenges, serve generic error responses, apply no-store and no-referrer security headers, and close immediately upon completion or timeout.
