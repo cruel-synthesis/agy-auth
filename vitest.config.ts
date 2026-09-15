@@ -14,9 +14,14 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.ts'],
       exclude: ['src/cli-bin.ts'],
+      // The floor is Windows', the lowest of the supported platforms: the
+      // POSIX side of every `process.platform` branch is unreachable there, so
+      // the same suite reports about a point less than it does on Linux or
+      // macOS. `check` is also `prepublishOnly`, so it has to pass wherever a
+      // release is cut from.
       thresholds: {
-        statements: 84,
-        lines: 84,
+        statements: 83,
+        lines: 83,
         functions: 85,
         branches: 80,
       },
