@@ -178,7 +178,7 @@ describe('Command Modules Behavioral & Regression Suite', () => {
         apiKey: 'key',
         serviceAccount: saFile,
       })
-    ).rejects.toThrow(/exactly one auth/i);
+    ).rejects.toThrow(/at most one credential type/i);
   });
 
   it('executes listCommand in text and JSON modes with active and check filters', async () => {
