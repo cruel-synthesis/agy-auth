@@ -2,7 +2,7 @@
 
 All notable changes to `@cruel-synthesis/agy-auth` will be documented in this file.
 
-## 0.1.0 - 2026-08-23
+## 0.1.0 - Unreleased
 
 ### Added
 
