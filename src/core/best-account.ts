@@ -25,8 +25,9 @@ const MIN_HEADROOM = 0.1;
  */
 const SWITCH_MARGIN = 0.05;
 
-const FAMILIES = ['gemini', 'claude'] as const;
-export type ModelFamily = (typeof FAMILIES)[number];
+/** The model families a reading can cover. */
+export const MODEL_FAMILIES = ['gemini', 'claude'] as const;
+export type ModelFamily = (typeof MODEL_FAMILIES)[number];
 
 /** Statuses that make an account unusable until the user signs in again. */
 const NEEDS_USER_ACTION: ReadonlySet<string> = new Set(['expired', 'invalid', 'needs-reauth']);
@@ -49,6 +50,12 @@ export interface AccountScore {
   score: number;
   /** Mean share of the 5-hour allowance left across the families with a reading. */
   headroom: number;
+  /**
+   * The families `headroom` was actually averaged over. Shorter than
+   * `MODEL_FAMILIES` when a family reported nothing, in which case the figure
+   * describes only part of the account.
+   */
+  families: ModelFamily[];
   /** The allowance that argues loudest for choosing this account. */
   perishing?: PerishingWeekly;
   /** Epoch seconds at which the soonest 5-hour allowance refills, when known. */
@@ -139,7 +146,7 @@ function expiresAt(weekly: PerishingWeekly): number {
 }
 
 function scoreAccount(account: Account, nowMs: number): AccountScore {
-  const base = { account, score: 0, headroom: 0 };
+  const base = { account, score: 0, headroom: 0, families: [] as ModelFamily[] };
 
   if (account.authType !== 'oauth') {
     return { ...base, blocked: 'not an OAuth account' };
@@ -148,7 +155,7 @@ function scoreAccount(account: Account, nowMs: number): AccountScore {
     return { ...base, blocked: 'needs a fresh sign-in' };
   }
 
-  const scored = FAMILIES.map((family) =>
+  const scored = MODEL_FAMILIES.map((family) =>
     scoreFamily(family, account.rateLimit?.[family], nowMs)
   ).filter((entry): entry is FamilyScore => entry !== undefined);
 
@@ -164,6 +171,7 @@ function scoreAccount(account: Account, nowMs: number): AccountScore {
   const refills = scored.map((s) => s.refillsAt).filter((at): at is number => at !== undefined);
   const common = {
     headroom,
+    families: scored.map((s) => s.weekly.family),
     perishing,
     ...(refills.length > 0 ? { refillsAt: Math.min(...refills) } : {}),
   };

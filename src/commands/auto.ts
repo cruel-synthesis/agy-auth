@@ -1,5 +1,5 @@
 import { setTimeout as delay } from 'node:timers/promises';
-import { AccountScore, chooseBestAccount } from '../core/best-account.js';
+import { AccountScore, MODEL_FAMILIES, chooseBestAccount } from '../core/best-account.js';
 import { CancellationError, CliError, UsageError } from '../core/errors.js';
 import { applyQuotaResults } from '../core/quota-apply.js';
 import { QuotaOptions } from '../core/quota.js';
@@ -34,6 +34,17 @@ function formatUntil(resetsAt: number | undefined, nowMs: number): string {
 
 function percent(fraction: number | undefined): string {
   return fraction === undefined ? '-' : `${Math.round(fraction * 100)}%`;
+}
+
+/**
+ * Which families the headroom figure speaks for, when it speaks for fewer than
+ * all of them. A family that reported nothing is left out of the average, so
+ * without this the reading of a single family is indistinguishable from a
+ * reading of the whole account.
+ */
+function coverage(score: AccountScore): string {
+  if (score.families.length === 0 || score.families.length === MODEL_FAMILIES.length) return '';
+  return ` (${score.families.join(' and ')} only)`;
 }
 
 /** One line per account: what it has left, when it expires, and where it ranked. */
@@ -72,7 +83,7 @@ function renderRanking(ranked: AccountScore[], activeId: string | null, nowMs: n
 function explain(best: AccountScore, nowMs: number): string {
   const weekly = best.perishing;
   if (!weekly || weekly.resetsAt === undefined) {
-    return `It has the most room to work: ${percent(best.headroom)} of the 5-hour limit left.`;
+    return `It has the most room to work: ${percent(best.headroom)} of the 5-hour limit left${coverage(best)}.`;
   }
   return (
     `${percent(weekly.remaining)} of its weekly limit is unspent and expires in ` +
@@ -153,7 +164,7 @@ async function watchTick(registry: RegistryManager, options: AutoOptions): Promi
   if (current && current.score > 0) {
     return {
       event: 'holding',
-      detail: `${formatAccountShort(active)} has ${percent(current.headroom)} of its 5-hour limit left`,
+      detail: `${formatAccountShort(active)} has ${percent(current.headroom)} of its 5-hour limit left${coverage(current)}`,
       activeAccountId: active.id,
     };
   }
