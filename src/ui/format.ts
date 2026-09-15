@@ -1,6 +1,10 @@
 import { Account, AccountStatus, AuthType, RateLimitWindow } from '../core/types.js';
 import { colors } from './theme.js';
 
+/** Said the same way wherever a command finds the registry empty. */
+export const NO_ACCOUNTS =
+  'No accounts yet. Run `agy-auth add` to import the account you are signed in to Antigravity with.';
+
 export function formatAccountShort(account: Account): string {
   if (account.alias) {
     return `${account.alias} (${account.email})`;

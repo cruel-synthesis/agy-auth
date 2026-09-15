@@ -291,7 +291,7 @@ describe('First-run and OAuth onboarding behavior', () => {
     );
 
     const emptyTable = renderAccountsTable([], null, 120);
-    expect(emptyTable).toContain("No accounts registered. Run 'agy-auth login' to add one.");
+    expect(emptyTable).toContain('No accounts yet. Run `agy-auth add`');
     expect(emptyTable).not.toContain("Run 'agy-auth add' or 'agy-auth login'");
   });
 

@@ -6,7 +6,7 @@ import { QuotaOptions } from '../core/quota.js';
 import { RegistryManager } from '../core/registry.js';
 import { Switcher } from '../core/switcher.js';
 import { Account } from '../core/types.js';
-import { formatAccountShort } from '../ui/format.js';
+import { NO_ACCOUNTS, formatAccountShort } from '../ui/format.js';
 import { colors } from '../ui/theme.js';
 import { refreshQuota, selectRefreshable, selectStale } from './refresh.js';
 
@@ -271,7 +271,7 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
   const accounts = registry.getAccounts();
 
   if (accounts.length === 0) {
-    throw new UsageError('No accounts registered. Run `agy-auth login` to add an account.');
+    throw new UsageError(NO_ACCOUNTS);
   }
 
   if (options.watch) {

@@ -251,7 +251,7 @@ describe('Command Modules Behavioral & Regression Suite', () => {
 
       // Switch when 0 accounts registered throws UsageError
       fs.rmSync(Paths.registryFile, { force: true });
-      await expect(switchCommand('any')).rejects.toThrow(/No accounts registered/);
+      await expect(switchCommand('any')).rejects.toThrow(/No accounts yet/);
     } finally {
       freshEnv.cleanup();
     }

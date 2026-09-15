@@ -10,7 +10,7 @@ import {
 import { Paths } from '../core/paths.js';
 import { RegistryManager } from '../core/registry.js';
 import { Account, sanitizeAccount } from '../core/types.js';
-import { formatAccountShort } from '../ui/format.js';
+import { NO_ACCOUNTS, formatAccountShort } from '../ui/format.js';
 import { colors } from '../ui/theme.js';
 import { promptSelectAccount } from '../ui/tui.js';
 
@@ -53,7 +53,7 @@ export async function removeCommand(
       );
       return;
     }
-    console.log('No accounts registered in agy-auth.');
+    console.log(NO_ACCOUNTS);
     return;
   }
 

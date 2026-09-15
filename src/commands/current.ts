@@ -3,6 +3,7 @@ import { QuotaOptions, QuotaRefreshSummary, summarizeQuotaRefresh } from '../cor
 import { RegistryManager } from '../core/registry.js';
 import { sanitizeAccount } from '../core/types.js';
 import {
+  NO_ACCOUNTS,
   formatAccountShort,
   formatAuthType,
   formatStatus,
@@ -41,7 +42,11 @@ export async function currentCommand(options: CurrentOptions = {}): Promise<void
       );
       return;
     }
-    console.log('No active account configured. Run `agy-auth add` or `agy-auth switch`.');
+    console.log(
+      registry.getAccounts().length === 0
+        ? NO_ACCOUNTS
+        : 'No active account. Run `agy-auth switch` to choose one.'
+    );
     return;
   }
 

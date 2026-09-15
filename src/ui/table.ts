@@ -1,6 +1,12 @@
 import stringWidth from 'string-width';
 import { Account } from '../core/types.js';
-import { blockingStatusLabel, formatPlan, formatQuotaCell, formatTimeAgo } from './format.js';
+import {
+  NO_ACCOUNTS,
+  blockingStatusLabel,
+  formatPlan,
+  formatQuotaCell,
+  formatTimeAgo,
+} from './format.js';
 import { colors } from './theme.js';
 
 export function pad(str: string, targetWidth: number): string {
@@ -285,7 +291,7 @@ export function renderAccountsTable(
   maxWidthOverride?: number
 ): string {
   if (accounts.length === 0) {
-    return `\n  No accounts registered. Run 'agy-auth login' to add one.\n`;
+    return `\n  ${NO_ACCOUNTS}\n`;
   }
 
   const { headerLine, dividerLine, rows } = getTableComponents(

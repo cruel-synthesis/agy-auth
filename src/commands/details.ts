@@ -4,6 +4,7 @@ import { QuotaOptions, QuotaRefreshSummary, summarizeQuotaRefresh } from '../cor
 import { RegistryManager } from '../core/registry.js';
 import { Account, sanitizeAccount } from '../core/types.js';
 import {
+  NO_ACCOUNTS,
   formatAccountShort,
   formatAuthType,
   formatStatus,
@@ -69,7 +70,7 @@ export async function detailsCommand(query?: string, options: DetailsOptions = {
       );
       return;
     }
-    console.log('No accounts found in registry. Run `agy-auth add` or `agy-auth login` first.');
+    console.log(NO_ACCOUNTS);
     return;
   }
 

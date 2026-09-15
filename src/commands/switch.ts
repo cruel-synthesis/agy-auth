@@ -2,7 +2,7 @@ import { AccountNotFoundError, AmbiguousSelectorError, UsageError } from '../cor
 import { RegistryManager } from '../core/registry.js';
 import { Switcher } from '../core/switcher.js';
 import { Account, SwitchResult } from '../core/types.js';
-import { formatAccountShort } from '../ui/format.js';
+import { NO_ACCOUNTS, formatAccountShort } from '../ui/format.js';
 import { colors } from '../ui/theme.js';
 import { promptSelectAccount } from '../ui/tui.js';
 
@@ -16,7 +16,7 @@ export async function switchCommand(query?: string, options: SwitchOptions = {})
   const active = registry.getActiveAccount();
 
   if (accounts.length === 0) {
-    throw new UsageError('No accounts registered. Run `agy-auth login` to add an account.');
+    throw new UsageError(NO_ACCOUNTS);
   }
 
   let target: Account | null = null;
