@@ -143,8 +143,9 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
       email: 'returning@example.com',
       alias: 'returning-user',
       authType: 'oauth',
-      // A user returning to the same browser-OAuth client they signed in with.
-      credentialSource: 'custom-client',
+      // A user returning to the default browser sign-in, which uses the same
+      // Antigravity client that issued the stored refresh token.
+      credentialSource: 'antigravity',
       credentials: {
         keychainPayload: {
           auth_method: 'consumer',
