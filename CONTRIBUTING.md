@@ -27,7 +27,7 @@ npm run build
 node ./bin/agy-auth.js --help
 ```
 
-These variables do not redirect the macOS Keychain. Do not run OAuth `sync` or `switch` against a real Keychain item during development; use the automated test harness and synthetic fixtures for those paths.
+These variables do not redirect the macOS Keychain. Do not run OAuth `login` or `switch` against a real Keychain item during development; use the automated test harness and synthetic fixtures for those paths.
 
 The test suite blocks native credential stores, browsers and application launches outright: `tests/setup-hermetic.ts` sets `AGY_AUTH_NO_NATIVE=1` for every test file, and `tests/subprocess-guard.mjs` sets it again inside any CLI spawned by a test. No test may unset it, and a spawned CLI must be launched through `guardedNodeArgs()`. Blocking is one-way within a process: once the guard has been seen set, deleting or changing the variable afterwards does not reopen native access. Install an explicit double for the operation instead.
 

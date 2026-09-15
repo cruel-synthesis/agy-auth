@@ -57,8 +57,8 @@
 7. **Recovering an Expired or Under-Scoped Profile**:
    An imported Antigravity session is renewed with Antigravity's own OAuth client, so an access token that has merely expired is usually replaced without you doing anything. A refresh token that Google no longer honours, or a session missing the scopes the quota contracts want, cannot be repaired that way and needs a fresh sign-in.
 
-   - By default, an expired token is reported as `expired`. Sign in again through the Antigravity application, then run `agy-auth sync`.
-   - A token that the quota service rejects for missing scopes is reported as `needs-reauth`. Sign in again through Antigravity, then run `agy-auth login --oauth-source keychain` or `agy-auth sync`.
+   - A refresh token Google no longer honours leaves the profile reported as `expired`. Sign in again through the Antigravity application, then run `agy-auth add`.
+   - A token that the quota service rejects for missing scopes is reported as `needs-reauth`. Sign in again through Antigravity, then run `agy-auth add` or `agy-auth login --oauth-source keychain`.
    - If you have your own OAuth client, set `AGY_OAUTH_CLIENT_ID` (and `AGY_OAUTH_CLIENT_SECRET` if your client requires one) and `agy-auth` will refresh expired tokens itself or authenticate via `agy-auth login --oauth-source browser`, storing a rotated refresh token when Google issues one.
    - Quota refresh never writes Antigravity's token file or Apple Keychain. Only `agy-auth switch` applies stored credentials to external state.
 

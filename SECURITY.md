@@ -47,6 +47,6 @@ Because the quota contracts are undocumented, they may change or be withdrawn wi
 ## Credential Handling During Quota Refresh
 
 - No access token or refresh token appears in a quota result, a log line, an exception message, a `--json` envelope, or any persisted diagnostic. Rotated tokens travel in a dedicated carrier whose serialization is `[redacted]`.
-- Refreshing an expired token requires user-supplied OAuth client configuration (`AGY_OAUTH_CLIENT_ID`, optionally `AGY_OAUTH_CLIENT_SECRET`). Without it, the profile is reported as `expired` and recovery is a fresh Antigravity sign-in followed by `agy-auth sync`.
+- An access token that has merely expired is renewed with the same OAuth client the session was imported from, without any configuration from you. A refresh token Google no longer honours, or a session missing a scope the quota contracts want, cannot be repaired that way: the profile is reported as `expired` or `needs-reauth`, and recovery is a fresh Antigravity sign-in followed by `agy-auth add`.
 - Quota refresh never writes Antigravity's token file or Apple Keychain. Applying credentials to external state is the sole responsibility of `agy-auth switch`.
 - A quota transport or schema failure never overwrites a credential status; only a successful reading, explicit insufficient-scope evidence, or an authentication rejection may.
