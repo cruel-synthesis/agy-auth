@@ -8,7 +8,7 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 
 - Credential profiles for OAuth, API keys, service-account JSON, and Application Default Credentials.
 - Direct Antigravity session import from Apple Keychain or the token file, with identity verification and no required client ID.
-- Browser OAuth 2.0 PKCE onboarding (`--oauth-source browser`) and in-place profile refreshing with user-supplied client configuration.
+- Browser OAuth 2.0 PKCE onboarding (`--oauth-source browser`) and in-place renewal of stored tokens.
 - Journaled profile switching with rollback attempts for Antigravity settings, session stores, service-account files, and ADC.
 - Experimental live plan and quota reporting for OAuth profiles, with bounded requests, cached fallback, and offline mode.
 - A responsive account table shared by `list` and the interactive picker, including Unicode-safe width handling.
@@ -48,7 +48,8 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 - `doctor` warns when either half of the Antigravity session store fails but the other remains usable.
 - `doctor` rejects a symlinked or non-regular Antigravity settings path.
 - OAuth profile discovery ignores a symlinked or non-regular Antigravity settings path.
-- No embedded OAuth client credentials, telemetry, or background process.
+- No telemetry and no background process: `agy-auth auto --watch` polls only while you leave it running.
+- Sign-in and token renewal use the OAuth client published in Antigravity's own binary, which identifies the application and never you; set `AGY_OAUTH_CLIENT_ID` to substitute your own.
 - Local loopback OAuth callback server strictly bound to 127.0.0.1 with PKCE and state validation.
 
 ### Compatibility
