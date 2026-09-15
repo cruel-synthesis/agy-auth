@@ -234,7 +234,7 @@ describe('Plan and quota command behaviour', () => {
     expect(text).toContain('Ultra');
   });
 
-  it('reports a recovery path for expired tokens without a configured client id', async () => {
+  it('tries the built-in client for an expired token, then reports a recovery path', async () => {
     seed([
       oauthAccount({
         credentials: {
@@ -254,7 +254,9 @@ describe('Plan and quota command behaviour', () => {
     const calls: string[] = [];
     await listCommand({ quotaOptions: { fetchFn: quotaFetch(calls), env: {} } });
 
-    expect(calls).toHaveLength(0);
+    // Renewal is attempted with Antigravity's own client, so no client id of the
+    // user's own is needed. It fails here, and nothing else is contacted after.
+    expect(calls).toEqual(['https://oauth2.googleapis.com/token']);
     const text = stdout();
     expect(text).toContain('agy-auth add');
     expect(text).toContain('Antigravity');
