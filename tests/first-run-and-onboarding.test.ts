@@ -175,9 +175,17 @@ describe('First-run and OAuth onboarding behavior', () => {
     expect(promptMockState.passwordCallCount).toBe(0);
   });
 
-  it('requests only public OAuth scopes in browser flow', async () => {
+  it('requests the same scopes as Antigravity in browser flow', async () => {
+    // Asking for less produces a token the quota contracts refuse, and a profile
+    // unlike the one `add` imports. These are Antigravity's own scopes.
     expect(OAUTH_SCOPES).toBe(
-      'openid email profile https://www.googleapis.com/auth/cloud-platform'
+      [
+        'https://www.googleapis.com/auth/cloud-platform',
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
+        'https://www.googleapis.com/auth/cclog',
+        'https://www.googleapis.com/auth/experimentsandconfigs',
+      ].join(' ')
     );
 
     let generatedUrl = '';
