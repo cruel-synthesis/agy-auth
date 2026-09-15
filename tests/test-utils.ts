@@ -2,7 +2,6 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { vi } from 'vitest';
 import { KeychainManager } from '../src/core/keychain.js';
 import { Paths } from '../src/core/paths.js';
@@ -181,7 +180,9 @@ export function installNativeStoreDouble(
  * runner. Every subprocess the suite launches must go through this.
  */
 export function guardedNodeArgs(...args: string[]): string[] {
-  const guard = fileURLToPath(new URL('./subprocess-guard.mjs', import.meta.url));
+  // `--import` takes a URL. A bare Windows path like `D:\...` parses as the
+  // scheme `d:` and the child exits before it loads anything.
+  const guard = new URL('./subprocess-guard.mjs', import.meta.url).href;
   return ['--import', guard, ...args];
 }
 
