@@ -203,6 +203,67 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     }
   });
 
+  it('keeps a refresh token when the same custom client signs in, drops it otherwise', async () => {
+    const registry = new RegistryManager();
+    registry.addOrUpdateAccount({
+      email: 'byo@example.com',
+      authType: 'oauth',
+      credentialSource: 'custom-client',
+      oauthClientId: 'byo-client-id',
+      credentials: {
+        keychainPayload: {
+          auth_method: 'consumer',
+          token: {
+            access_token: 'old-access-token',
+            refresh_token: 'byo-refresh-token',
+            token_type: 'Bearer',
+            expiry: pastExpiry(),
+          },
+        },
+      },
+      status: 'expired',
+    });
+
+    const signIn = async () => ({
+      email: 'byo@example.com',
+      payload: {
+        auth_method: 'consumer' as const,
+        token: {
+          access_token: 'new-access-token',
+          refresh_token: '',
+          token_type: 'Bearer',
+          expiry: futureExpiry(),
+        },
+      },
+    });
+
+    const origTTY = process.stdin.isTTY;
+    const origClient = process.env.AGY_OAUTH_CLIENT_ID;
+    process.stdin.isTTY = true;
+    try {
+      // Signing in again with the same client that issued the token: reusable.
+      process.env.AGY_OAUTH_CLIENT_ID = 'byo-client-id';
+      await loginCommand({}, { authenticateOAuth: signIn });
+      expect(
+        new RegistryManager().getAccounts()[0].credentials?.keychainPayload?.token
+      ).toMatchObject({ access_token: 'new-access-token', refresh_token: 'byo-refresh-token' });
+
+      // A different client. Google would refuse the old token, so it is not kept.
+      process.env.AGY_OAUTH_CLIENT_ID = 'other-client-id';
+      await loginCommand({}, { authenticateOAuth: signIn });
+      expect(
+        new RegistryManager().getAccounts()[0].credentials?.keychainPayload?.token
+      ).toMatchObject({ access_token: 'new-access-token', refresh_token: '' });
+    } finally {
+      process.stdin.isTTY = origTTY;
+      if (origClient === undefined) {
+        delete process.env.AGY_OAUTH_CLIENT_ID;
+      } else {
+        process.env.AGY_OAUTH_CLIENT_ID = origClient;
+      }
+    }
+  });
+
   it('rejects an invalid alias with UsageError', async () => {
     await expect(loginCommand({ alias: 'invalid alias with spaces' })).rejects.toThrow(UsageError);
   });
