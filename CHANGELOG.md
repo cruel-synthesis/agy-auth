@@ -54,5 +54,5 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 
 ### Compatibility
 
-- Registry schema version 2 with automatic migration from version 1.
+- Registry schema version 3 with automatic migration from earlier versions.
 - Node.js 22 or later.

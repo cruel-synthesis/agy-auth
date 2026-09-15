@@ -3,7 +3,7 @@
 ## Core Modules
 
 - `src/core/storage.ts`: Owns atomic file writes, backup rotation (`MAX_BACKUP_RETENTION = 10`), and PID-guarded cross-process locking (`withLockSync`, `withLock`).
-- `src/core/registry.ts`: Schema v2 registry validation, unique email/auth constraints, alias uniqueness, optimistic locking (`expectedUpdatedAt`), and atomic mutations.
+- `src/core/registry.ts`: Schema v3 registry validation, unique email/auth constraints, alias uniqueness, optimistic locking (`expectedUpdatedAt`), and atomic mutations.
 - `src/core/switcher.ts`: Transactional profile switcher with preflight checks and dynamic journal rollbacks across Antigravity session stores, `settings.json`, service account JSON, and ADC credentials.
 - `src/core/credential-files.ts`: File size guards (1 MiB max credential file, 5 MiB max import), symlink traversal prevention, and regular file validation.
 - `src/core/verifier.ts`: Pure credential verifier (0 network calls for OAuth/SA/ADC, official models endpoint check for API keys, capped at 4 concurrent requests).

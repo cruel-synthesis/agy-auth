@@ -1,34 +1,38 @@
-# Registry Migration (Schema v1 to Schema v2)
+# Registry Schema and Migration
 
-`agy-auth` v0.1.0 uses Registry Schema `2` to represent account profiles and settings.
+`agy-auth` stores your profiles in `~/.agy-auth/registry.json` under Registry Schema `3`. Older registries are upgraded when they are opened; you never run a migration yourself.
 
 ---
 
-## What Changed in Schema v2
+## What Schema 3 Holds
 
 1. **Explicit Auth Types**:
-   All account profiles explicitly define `authType: 'oauth' | 'api-key' | 'service-account' | 'adc'`.
+   Every account profile declares `authType: 'oauth' | 'api-key' | 'service-account' | 'adc'`.
 2. **Validated Status Model**:
    Allowed statuses are `valid | rate-limited | expired | invalid | needs-reauth | unverified | unknown`.
-3. **Profile Configuration**:
-   Added first-class fields for `alias`, `gcpProject`, `gcpLocation`, `model`, `reasoningEffort`, and optional `verification` timestamps.
-4. **Validated Plan and Quota Cache**:
+3. **Credential Provenance** (new in schema 3):
+   An OAuth profile records where its credentials came from in `credentialSource: 'antigravity' | 'custom-client' | 'unknown'`. This decides which OAuth client renews its token. Registries written earlier carry no such record and it cannot be reconstructed, so they are marked `unknown` rather than assumed.
+4. **Profile Configuration**:
+   First-class fields for `alias`, `gcpProject`, `gcpLocation`, `model`, `reasoningEffort`, and optional `verification` timestamps.
+5. **Validated Plan and Quota Cache**:
    Optional `plan`, `rateLimit`, and `quotaCheckedAt` fields hold the cached result of the last successful live quota fetch. `rateLimit` is restricted to the `gemini` and `claude` families and the 5-hour and weekly windows, with `usedPercent` bounded to `0..100`.
    The obsolete `primary`, `secondary`, `quotaSnapshot`, and polling-state fields are **not** carried over; they are dropped on migration.
-5. **Standardized Backup & Export**:
-   Export format `2` (`kind: 'agy-auth-export'`) replaces legacy ad-hoc dump arrays.
+6. **Standardized Backup & Export**:
+   Export format `3` (`kind: 'agy-auth-export'`). `agy-auth import` also accepts format `2` and the legacy format `1` (`kind: 'agy-auth-profile-export'`), upgrading both on read.
 
 ---
 
 ## Automatic Migration
 
-When `agy-auth` opens `~/.agy-auth/registry.json` with `schemaVersion: 1` (or no `schemaVersion` field), it automatically upgrades that registry in place:
+When `agy-auth` opens a registry that declares an older `schemaVersion` (or no `schemaVersion` field at all), it upgrades that registry in place:
 
 1. A pre-migration backup is created under `~/.agy-auth/backups/` with the `schema_1_migration_` prefix.
-2. Legacy accounts are mapped to modern Schema v2 structures.
+2. Legacy accounts are mapped to schema 3 structures.
 3. The migrated registry is atomically written to `~/.agy-auth/registry.json` with mode `0600` on POSIX systems.
 
-A separate legacy `~/.agy-auth/accounts.json` file is detected by `agy-auth doctor` but is not imported automatically. Back it up, then copy it to `~/.agy-auth/registry.json` with owner-only permissions before starting `agy-auth`; the normal schema-v1 migration will then validate and upgrade it.
+A registry declaring a schema newer than this build understands is refused rather than downgraded.
+
+A separate legacy `~/.agy-auth/accounts.json` file is detected by `agy-auth doctor` but is not imported automatically. Back it up, then copy it to `~/.agy-auth/registry.json` with owner-only permissions before starting `agy-auth`; the migration will then validate and upgrade it.
 
 ### Plan and quota during migration
 
@@ -39,7 +43,7 @@ A separate legacy `~/.agy-auth/accounts.json` file is detected by `agy-auth doct
 
 ### Already-current registries
 
-A registry that already declares `schemaVersion: 2` loads unchanged, whether or not it carries the plan and quota fields. No migration runs and no backup is created because the new fields are optional and backward-compatible.
+A registry that already declares `schemaVersion: 3` loads unchanged. No migration runs and no backup is created.
 
 ### Routine refreshes create no backups
 

@@ -160,7 +160,7 @@ Invoke-Expression (agy-auth env --shell powershell)
 - [JSON API Contract & Exit Codes](./docs/json-contract.md)
 - [Platform Support](./docs/platform-support.md)
 - [Privacy & Security Model](./PRIVACY.md)
-- [Schema Migration v1 to v2](./docs/migration-v1-to-v2.md)
+- [Registry Schema and Migration](./docs/registry-schema.md)
 - [Command Reference](./docs/commands/README.md)
 - [Third-Party Notices](./THIRD_PARTY_NOTICES.md)
 
