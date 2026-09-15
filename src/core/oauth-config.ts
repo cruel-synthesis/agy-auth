@@ -1,3 +1,5 @@
+import { Account } from './types.js';
+
 export interface OAuthClientConfig {
   clientId: string;
   clientSecret?: string;
@@ -40,3 +42,29 @@ export function getSignInClient(env: NodeJS.ProcessEnv = process.env): OAuthClie
 }
 
 export const OAUTH_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
+
+/**
+ * The refresh token already stored for this profile, when the client now
+ * signing in is the one that issued it. Empty string when it is not.
+ *
+ * Google honours a refresh token only for its own client, so one issued to a
+ * different client is not carried across. A profile of unrecorded origin is
+ * treated as Antigravity's: the only way to hold a session payload was the
+ * Antigravity import, and offering a refresh token to the wrong client is
+ * refused without consequence, whereas discarding it strands the profile with
+ * nothing to renew from.
+ */
+export function reusableRefreshToken(
+  existing: Account | undefined,
+  signInClientId: string
+): string {
+  if (!existing) return '';
+
+  const sameClient =
+    signInClientId === ANTIGRAVITY_OAUTH_CLIENT.clientId
+      ? existing.credentialSource !== 'custom-client'
+      : existing.credentialSource === 'custom-client' &&
+        (!existing.oauthClientId || existing.oauthClientId === signInClientId);
+
+  return sameClient ? existing.credentials?.keychainPayload?.token?.refresh_token || '' : '';
+}

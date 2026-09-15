@@ -1,6 +1,10 @@
 import { UsageError } from '../core/errors.js';
 import type { AgyKeychainPayload } from '../core/keychain.js';
-import { ANTIGRAVITY_OAUTH_CLIENT, getSignInClient } from '../core/oauth-config.js';
+import {
+  ANTIGRAVITY_OAUTH_CLIENT,
+  getSignInClient,
+  reusableRefreshToken,
+} from '../core/oauth-config.js';
 import { type AuthenticateOptions, OAuthFlow, type OAuthResult } from '../core/oauth.js';
 import { RegistryManager } from '../core/registry.js';
 import type { Account } from '../core/types.js';
@@ -73,18 +77,8 @@ export async function loginCommand(
   const source =
     client.clientId === ANTIGRAVITY_OAUTH_CLIENT.clientId ? 'antigravity' : 'custom-client';
 
-  // Google honours a refresh token only for the client that issued it, so one
-  // already stored is reusable only when this sign-in used that same client.
-  const reusableRefreshToken =
-    existing &&
-    existing.credentialSource === source &&
-    (source === 'antigravity' ||
-      !existing.oauthClientId ||
-      existing.oauthClientId === client.clientId)
-      ? existing.credentials?.keychainPayload?.token?.refresh_token || ''
-      : '';
-
-  const refreshToken = result.payload.token.refresh_token || reusableRefreshToken || '';
+  const refreshToken =
+    result.payload.token.refresh_token || reusableRefreshToken(existing, client.clientId);
   const payload: AgyKeychainPayload = {
     auth_method: 'consumer',
     token: {

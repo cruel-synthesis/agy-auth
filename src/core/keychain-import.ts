@@ -2,6 +2,7 @@ import { readAntigravityToken } from './antigravity-store.js';
 import { isEmail } from './credential-validation.js';
 import { Discovery } from './discovery.js';
 import { CliError, UsageError } from './errors.js';
+import { ANTIGRAVITY_OAUTH_CLIENT, reusableRefreshToken } from './oauth-config.js';
 import { RegistryManager } from './registry.js';
 import type { Account, KeychainPayload } from './types.js';
 
@@ -191,14 +192,10 @@ export async function importKeychainOAuth(
     (a) => a.authType === 'oauth' && a.email.toLowerCase() === finalEmail.toLowerCase()
   );
 
-  // A refresh token only works for the client that issued it, so one saved from
-  // a different client is not reattached to this native session.
-  const existingRefreshToken =
-    existing && existing.credentialSource !== 'custom-client'
-      ? existing.credentials?.keychainPayload?.token?.refresh_token || ''
-      : '';
-
-  const refreshToken = payload.token.refresh_token || existingRefreshToken || '';
+  // A native session is always Antigravity's own client.
+  const refreshToken =
+    payload.token.refresh_token ||
+    reusableRefreshToken(existing, ANTIGRAVITY_OAUTH_CLIENT.clientId);
 
   const mergedPayload: KeychainPayload = {
     auth_method: payload.auth_method || 'consumer',
