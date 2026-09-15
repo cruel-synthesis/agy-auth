@@ -205,11 +205,10 @@ describe('First-run and OAuth onboarding behavior', () => {
       // Expected timeout
     }
 
-    expect(generatedUrl).toContain('client_id=test-client-id-123');
-    expect(generatedUrl).toContain('cloud-platform');
-    expect(generatedUrl).not.toContain('cclog');
-    expect(generatedUrl).not.toContain('experimentsandconfigs');
-    expect(generatedUrl).not.toContain('aicode');
+    const params = new URL(generatedUrl).searchParams;
+    expect(params.get('client_id')).toBe('test-client-id-123');
+    // The URL carries the declared set and nothing beyond it.
+    expect(params.get('scope')).toBe(OAUTH_SCOPES);
   });
 
   it('lists all commands on help --all and primary set on bare help', () => {
