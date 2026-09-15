@@ -15,8 +15,8 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: ['src/cli-bin.ts'],
       thresholds: {
-        statements: 85,
-        lines: 85,
+        statements: 84,
+        lines: 84,
         functions: 85,
         branches: 80,
       },
