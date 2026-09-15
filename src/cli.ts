@@ -295,14 +295,11 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
   const isJson = argv.includes('--json') || argv.includes('-j');
   const cli = customCli || createCli();
 
-  // Configure output to silence stderr in JSON mode
+  // Commander writes its own message and then throws it. Swallow the write and
+  // report it once below, in the shape every other failure uses.
   cli.configureOutput({
     writeOut: (str) => process.stdout.write(str),
-    writeErr: (str) => {
-      if (!isJson) {
-        process.stderr.write(str);
-      }
-    },
+    writeErr: () => {},
   });
 
   // Derive command name from raw args
@@ -350,7 +347,9 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
       ) {
         return 0;
       }
-      const message = err instanceof Error ? err.message : String(err);
+      // Commander prefixes its messages with 'error: '; ours adds its own.
+      const raw = err instanceof Error ? err.message : String(err);
+      const message = raw.replace(/^error:\s*/, '');
       if (isJson) {
         console.log(
           JSON.stringify(
