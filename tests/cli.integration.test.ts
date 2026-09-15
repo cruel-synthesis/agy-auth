@@ -124,14 +124,23 @@ describe('Built CLI Integration and Concurrency', () => {
   });
 
   it('outputs structured JSON error on invalid usage and keeps stderr silent in JSON mode', () => {
-    // Invalid usage on empty registry (exit code 2)
-    const emptyUsageRes = runCli(['switch', 'some-user@example.com', '--json']);
-    expect(emptyUsageRes.status).toBe(2);
-    expect(emptyUsageRes.stderr).toBe('');
-    const emptyJson = JSON.parse(emptyUsageRes.stdout);
+    // Flags that contradict each other are a usage error (exit code 2)
+    const badFlagsRes = runCli(['list', '--check', '--offline', '--json']);
+    expect(badFlagsRes.status).toBe(2);
+    expect(badFlagsRes.stderr).toBe('');
+    const badFlagsJson = JSON.parse(badFlagsRes.stdout);
+    expect(badFlagsJson.schemaVersion).toBe(1);
+    expect(badFlagsJson.ok).toBe(false);
+    expect(badFlagsJson.error.code).toBe('invalid_usage');
+
+    // An empty registry is a state the command found, not a bad invocation.
+    const emptyRes = runCli(['switch', 'some-user@example.com', '--json']);
+    expect(emptyRes.status).toBe(1);
+    expect(emptyRes.stderr).toBe('');
+    const emptyJson = JSON.parse(emptyRes.stdout);
     expect(emptyJson.schemaVersion).toBe(1);
     expect(emptyJson.ok).toBe(false);
-    expect(emptyJson.error.code).toBe('invalid_usage');
+    expect(emptyJson.error.code).toBe('no_accounts');
 
     // Add a profile first
     runCli(['add', '--email', 'existing@example.com', '--api-key', 'key123', '--json']);
