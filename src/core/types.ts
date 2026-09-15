@@ -122,7 +122,6 @@ export type AccountCredentials = z.infer<typeof AccountCredentialsSchema>;
  * it is never guessed.
  */
 export const OAuthCredentialSourceSchema = z.enum(['antigravity', 'custom-client', 'unknown']);
-export type OAuthCredentialSource = z.infer<typeof OAuthCredentialSourceSchema>;
 
 export const AccountSchema = z
   .object({
@@ -196,7 +195,6 @@ export const ExportDocumentV2Schema = z
     accounts: z.array(AccountV2Schema),
   })
   .strict();
-export type ExportDocumentV2 = z.infer<typeof ExportDocumentV2Schema>;
 
 export const ExportDocumentV3Schema = z
   .object({
