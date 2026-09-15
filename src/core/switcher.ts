@@ -77,6 +77,9 @@ function captureFile(filePath: string, prefix: string, label: string): FileSnaps
     throw new Error(`Backup for ${label} '${filePath}' is not a regular file. Switch aborted.`);
   }
 
+  // Reopen and compare identity: the backup must be the same file that was just
+  // stat'd, not one swapped in since. `createBackup` already wrote it durably,
+  // so this handle only reads.
   const backupFlags =
     fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
   const backupFd = fs.openSync(backupPath, backupFlags);
@@ -89,7 +92,6 @@ function captureFile(filePath: string, prefix: string, label: string): FileSnaps
     ) {
       throw new Error(`Backup for ${label} '${filePath}' changed while it was being opened.`);
     }
-    fs.fsyncSync(backupFd);
   } finally {
     fs.closeSync(backupFd);
   }
