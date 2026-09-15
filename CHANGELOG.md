@@ -13,6 +13,8 @@ All notable changes to `@cruel-synthesis/agy-auth` will be documented in this fi
 - Experimental live plan and quota reporting for OAuth profiles, with bounded requests, cached fallback, and offline mode.
 - A responsive account table shared by `list` and the interactive picker, including Unicode-safe width handling.
 - Versioned JSON output and exit codes for automation.
+- `agy-auth auto` (alias `best`) ranks profiles by how much quota would otherwise go to waste and switches to the best one, with `--dry-run` to see the ranking without switching.
+- `agy-auth auto --watch` stays in the terminal, reads the account in use every few minutes, and switches when it runs out. It contacts only that one account on an ordinary check.
 - Export, import, migration, diagnostics, and profile configuration commands.
 
 ### Fixed
