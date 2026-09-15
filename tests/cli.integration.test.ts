@@ -212,6 +212,9 @@ describe('Built CLI Integration and Concurrency', () => {
         child.stderr.on('data', (chunk) => {
           output += chunk;
         });
+        // A spawn that never starts emits 'error', not 'close'. Unhandled, it
+        // takes down the runner instead of being reported with the other 39.
+        child.on('error', (err) => resolve({ code: 1, output: `${output}${err}` }));
         child.on('close', (code) => resolve({ code: code ?? 1, output }));
       });
       spawnPromises.push(p);
