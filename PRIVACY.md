@@ -1,6 +1,6 @@
 # Privacy and Security Model
 
-`agy-auth` keeps profile data local and includes no telemetry or background service. Outbound requests are limited to the quota, verification, token-refresh, and diagnostic operations documented below.
+`agy-auth` keeps profile data local and includes no telemetry and installs no background service. Outbound requests are limited to the quota, verification, token-refresh, and diagnostic operations documented below.
 
 `agy-auth` is an independent project. It is **not affiliated with, endorsed by, or supported by Google**.
 
@@ -22,12 +22,13 @@
    - Hosts contacted: `daily-cloudcode-pa.googleapis.com` and `cloudcode-pa.googleapis.com`.
    - Contracts used: `v1internal:retrieveUserQuotaSummary`, `v1internal:loadCodeAssist`, `v1internal:retrieveUserQuota`.
    - What is sent: your OAuth access token as a `Bearer` header, an `agy-auth/<version>` user agent, and, for `retrieveUserQuota`, the GCP project ID associated with the profile. These requests do not include local filenames, hostnames, or registry contents.
-   - Token refresh and browser OAuth login, when configured via `AGY_OAUTH_CLIENT_ID`, contact `accounts.google.com`, `oauth2.googleapis.com`, and `www.googleapis.com`. Antigravity session import contacts `www.googleapis.com` to verify the account email.
+   - Token refresh and browser OAuth login contact `accounts.google.com`, `oauth2.googleapis.com`, and `www.googleapis.com`, using Antigravity's client unless `AGY_OAUTH_CLIENT_ID` names your own. Antigravity session import contacts `www.googleapis.com` to verify the account email.
 
-   `agy-auth` does not embed an OAuth client secret and does not bundle an unverified third-party OAuth client ID.
+   `agy-auth` embeds the OAuth client ID and secret published in Antigravity's own binary, because Google's individual tier answers that client and refuses others. An installed application cannot keep a secret (RFC 8252 section 8.5), so that pair identifies the application, never you. See [SECURITY.md](./SECURITY.md#network-boundary).
 
 4. **No Background Service**:
    `agy-auth` runs only when invoked from your terminal. It installs no background services, launch daemons, or cron jobs.
+   `agy-auth auto --watch` polls for as long as you leave it running and stops when you close it or press Ctrl-C.
 
 5. **Which Commands Use the Network**:
 
@@ -35,10 +36,12 @@
    |---|---|
    | `agy-auth login` | Contacts Google userinfo when importing an Antigravity session. Interactive macOS onboarding may open Antigravity, which performs its own Google sign-in. `--oauth-source browser` contacts Google OAuth and token endpoints. |
    | `agy-auth switch` | **Never** makes a network request. Renders cached plan and quota only. |
-   | `agy-auth list` | Refreshes live plan and quota for the **active OAuth profile**. |
+   | `agy-auth list` | Refreshes live plan and quota for **every OAuth profile whose cached reading is over ten minutes old**. |
    | `agy-auth list --check` | Verifies selected profiles (API keys use Google's official models endpoint) and refreshes live plan and quota for **every selected OAuth profile** (at most 4 concurrent requests). |
    | `agy-auth current` | Refreshes live plan and quota for the active OAuth profile. |
    | `agy-auth details <profile>` | Refreshes live plan and quota for the selected OAuth profile. |
+   | `agy-auth auto` | Refreshes live plan and quota for every OAuth profile whose cached reading is over ten minutes old, then may switch. |
+   | `agy-auth auto --watch` | Each check refreshes the profile in use; refreshes the others only when it runs out. |
    | `agy-auth doctor` | Optional reachability probe; suppressed with `--offline`. |
    | every other command | No network request. |
 
@@ -52,7 +55,7 @@
    The quota endpoints may return `429 RESOURCE_EXHAUSTED` while `loadCodeAssist` returns HTTP 200 without a recognized quota window. When any related contract returns a valid HTTP 200 but no quota window can be parsed, `agy-auth` reports `quota-unavailable`, preserves the cached quota and credential status, and displays `-` when no quota cache exists. An explicit current plan or project returned by `loadCodeAssist` may still update that profile metadata.
 
 7. **Recovering an Expired or Under-Scoped Profile**:
-   `agy-auth` ships no OAuth client ID and no client secret, so it cannot mint a new access token on its own without user-supplied client configuration.
+   An imported Antigravity session is renewed with Antigravity's own OAuth client, so an access token that has merely expired is usually replaced without you doing anything. A refresh token that Google no longer honours, or a session missing the scopes the quota contracts want, cannot be repaired that way and needs a fresh sign-in.
 
    - By default, an expired token is reported as `expired`. Sign in again through the Antigravity application, then run `agy-auth sync`.
    - A token that the quota service rejects for missing scopes is reported as `needs-reauth`. Sign in again through Antigravity, then run `agy-auth login --oauth-source keychain` or `agy-auth sync`.
