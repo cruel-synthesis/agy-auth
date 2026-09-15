@@ -1,4 +1,9 @@
-import { AccountNotFoundError, AmbiguousSelectorError, UsageError } from '../core/errors.js';
+import {
+  AccountNotFoundError,
+  AmbiguousSelectorError,
+  CliError,
+  UsageError,
+} from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
 import { Switcher } from '../core/switcher.js';
 import { Account, SwitchResult } from '../core/types.js';
@@ -16,7 +21,7 @@ export async function switchCommand(query?: string, options: SwitchOptions = {})
   const active = registry.getActiveAccount();
 
   if (accounts.length === 0) {
-    throw new UsageError(NO_ACCOUNTS);
+    throw new CliError(NO_ACCOUNTS, 'no_accounts');
   }
 
   let target: Account | null = null;
@@ -24,7 +29,7 @@ export async function switchCommand(query?: string, options: SwitchOptions = {})
   if (query === '-') {
     const prev = registry.getPreviousAccount();
     if (!prev) {
-      throw new UsageError('No previous account recorded in registry.');
+      throw new CliError('No previous account recorded.', 'no_previous_account');
     }
     target = prev;
   } else if (query?.trim()) {

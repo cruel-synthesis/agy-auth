@@ -271,7 +271,7 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
   const accounts = registry.getAccounts();
 
   if (accounts.length === 0) {
-    throw new UsageError(NO_ACCOUNTS);
+    throw new CliError(NO_ACCOUNTS, 'no_accounts');
   }
 
   if (options.watch) {
