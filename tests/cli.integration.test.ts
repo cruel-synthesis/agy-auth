@@ -188,28 +188,40 @@ describe('Built CLI Integration and Concurrency', () => {
       NO_COLOR: '1',
     };
 
-    const spawnPromises: Promise<number>[] = [];
+    // Keep what a failing process reported. A bare exit code cannot distinguish
+    // a lock timeout from a corrupted write, and this contention only shows up
+    // on machines slow enough to serialize 40 processes near the lock timeout.
+    // `--json` puts the error on stdout, so both streams are kept.
+    const spawnPromises: Promise<{ code: number; output: string }>[] = [];
 
     for (let i = 0; i < processCount; i++) {
       const email = `concurrent-user-${i}@example.com`;
-      const p = new Promise<number>((resolve) => {
+      const p = new Promise<{ code: number; output: string }>((resolve) => {
         const child = spawn(
           'node',
           guardedNodeArgs(cliPath, 'add', '--email', email, '--api-key', `key-${i}`, '--json'),
           {
             env: subEnv,
-            stdio: 'ignore',
+            stdio: ['ignore', 'pipe', 'pipe'],
           }
         );
-        child.on('close', (code) => resolve(code ?? 1));
+        let output = '';
+        child.stdout.on('data', (chunk) => {
+          output += chunk;
+        });
+        child.stderr.on('data', (chunk) => {
+          output += chunk;
+        });
+        child.on('close', (code) => resolve({ code: code ?? 1, output }));
       });
       spawnPromises.push(p);
     }
 
-    const exitCodes = await Promise.all(spawnPromises);
-    for (const code of exitCodes) {
-      expect(code).toBe(0);
-    }
+    const results = await Promise.all(spawnPromises);
+    const failures = results.filter((r) => r.code !== 0);
+    expect(
+      failures.map((f) => `exit ${f.code}: ${f.output.trim() || '(no output)'}`).join('\n')
+    ).toBe('');
 
     // Verify all 40 accounts are present in registry
     const listRes = runCli(['list', '--json']);
