@@ -292,7 +292,12 @@ export function createCli(): Command {
 }
 
 export async function runCli(argv = process.argv, customCli?: Command): Promise<number> {
-  const isJson = argv.includes('--json') || argv.includes('-j');
+  // Commander expands a short-flag cluster, so `-yj` runs the command in JSON
+  // mode. Matching only the bare tokens left the error path reporting that run
+  // in prose, which is the one shape a caller parsing --json cannot read.
+  const isJson = argv.some(
+    (arg) => arg === '--json' || (/^-[a-zA-Z]+$/.test(arg) && arg.includes('j'))
+  );
   const cli = customCli || createCli();
 
   // Commander writes its own message and then throws it. Swallow the write and
