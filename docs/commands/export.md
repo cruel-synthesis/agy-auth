@@ -1,6 +1,6 @@
 # export
 
-Export stored profiles to a backup file on disk.
+Export stored accounts to a backup file on disk.
 
 ```shell
 agy-auth export [options] [output]

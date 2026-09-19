@@ -86,9 +86,7 @@ export async function exportCommand(options: ExportOptions = {}): Promise<void> 
     return;
   }
 
-  console.log(
-    `\n  ${colors.green('[ok]')} Exported ${exportedAccounts.length} account profile(s) to:`
-  );
+  console.log(`\n  ${colors.green('[ok]')} Exported ${exportedAccounts.length} account(s) to:`);
   console.log(`    ${colors.cyan(targetPath)}`);
   if (options.includeSecrets) {
     const protection =

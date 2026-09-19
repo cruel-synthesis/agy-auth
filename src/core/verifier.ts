@@ -106,7 +106,7 @@ export class Verifier {
             verification: {
               checkedAt: now,
               source: 'local',
-              message: `Service account email '${key.client_email}' does not match profile email '${account.email}'`,
+              message: `Service account email '${key.client_email}' does not match account email '${account.email}'`,
             },
             observedUpdatedAt,
           };

@@ -1,6 +1,6 @@
 # details
 
-Show detailed metadata for a profile.
+Show detailed metadata for an account.
 
 ```shell
 agy-auth details [options] [query]

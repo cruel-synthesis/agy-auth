@@ -230,7 +230,7 @@ export class Switcher {
       const apiKey = canonical.credentials?.apiKey;
       if (!apiKey || !apiKey.trim()) {
         throw new CliError(
-          `API key profile '${canonical.email}' is missing its API key.`,
+          `API key account '${canonical.email}' is missing its API key.`,
           'invalid_profile_credentials',
           1
         );
@@ -241,7 +241,7 @@ export class Switcher {
       const payload = canonical.credentials?.keychainPayload;
       if (!payload || !payload.token?.access_token || !payload.token?.access_token.trim()) {
         throw new CliError(
-          `OAuth profile '${canonical.email}' has invalid or missing access token.`,
+          `OAuth account '${canonical.email}' has invalid or missing access token.`,
           'invalid_profile_credentials',
           1
         );
@@ -252,7 +252,7 @@ export class Switcher {
       const saKey = canonical.credentials?.serviceAccountKey;
       if (!saKey) {
         throw new CliError(
-          `Service account profile '${canonical.email}' is missing its key payload.`,
+          `Service account '${canonical.email}' is missing its key payload.`,
           'invalid_profile_credentials',
           1
         );
@@ -260,7 +260,7 @@ export class Switcher {
       const validation = validateServiceAccountKey(saKey);
       if (!validation.ok) {
         throw new CliError(
-          `Service account profile '${canonical.email}' has invalid credentials: ${validation.reason}`,
+          `Service account '${canonical.email}' has invalid credentials: ${validation.reason}`,
           'invalid_profile_credentials',
           1
         );
@@ -274,7 +274,7 @@ export class Switcher {
         validatedAdc = CredentialFiles.loadAdcFile(adcPath);
       } catch (err) {
         throw new CliError(
-          `Invalid ADC credentials for profile '${canonical.email}': ${formatError(err)}`,
+          `Invalid ADC credentials for account '${canonical.email}': ${formatError(err)}`,
           'invalid_profile_credentials',
           1
         );
@@ -295,7 +295,7 @@ export class Switcher {
         const payload = canonical.credentials?.keychainPayload;
         if (!payload) {
           throw new CliError(
-            `OAuth profile '${canonical.email}' is missing its credential payload.`,
+            `OAuth account '${canonical.email}' is missing its credential payload.`,
             'invalid_profile_credentials',
             1
           );
@@ -452,7 +452,7 @@ export class Switcher {
       const activated = registry.setActiveAccount(canonical.id, canonical.updatedAt);
       if (!activated) {
         throw new Error(
-          `Profile '${canonical.email}' changed or was removed during the switch; external changes were rolled back.`
+          `Account '${canonical.email}' changed or was removed during the switch; external changes were rolled back.`
         );
       }
 

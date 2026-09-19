@@ -1,6 +1,6 @@
 # import
 
-Import profiles from a backup file.
+Import accounts from a backup file.
 
 ```shell
 agy-auth import [options] <file>

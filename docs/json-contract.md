@@ -112,7 +112,7 @@ The account object returned by `list`, `current`, `details`, and `switch` carrie
 
 | Field | Meaning |
 |---|---|
-| `attempted` | `true` when at least one profile was contacted. |
+| `attempted` | `true` when at least one account was contacted. |
 | `offline` | `true` when `--offline` suppressed the refresh. |
 | `accounts[].reason` | Present only on failure. One of `not-applicable`, `token-expired`, `scope-insufficient`, `auth-failed`, `quota-unavailable`, `network-error`. |
 
@@ -122,9 +122,9 @@ A failed refresh does **not** fail the command: `ok` stays `true`, the cached va
 
 ## Redaction and Sanitization
 
-Profile, list, switch, details, and diagnostic JSON strips private keys, API keys, and OAuth tokens. Two commands are intentionally different:
+Account, list, switch, details, and diagnostic JSON strips private keys, API keys, and OAuth tokens. Two commands are intentionally different:
 
-- `agy-auth env --json` returns environment values and marks the response with `data.containsSecrets: true`; an API-key profile exposes its API key there by design.
+- `agy-auth env --json` returns environment values and marks the response with `data.containsSecrets: true`; an API-key account exposes its API key there by design.
 - `agy-auth export --include-secrets` writes credentials to the requested file; its JSON envelope returns destination metadata, not the credentials themselves.
 
 No access token or refresh token ever appears in a JSON envelope, including on the quota refresh paths. A rotated OAuth token is persisted to the registry but is never emitted: its in-memory carrier serializes to `[redacted]`.

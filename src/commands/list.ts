@@ -86,7 +86,7 @@ export async function listCommand(options: ListOptions): Promise<void> {
   // renderer sees only the filtered list, so it reports one as the other.
   if (options.active && displayAccounts.length === 0 && freshAccounts.length > 0) {
     console.log(
-      `\n  No active profile. Run ${colors.cyan('agy-auth switch <profile>')} to select one.\n`
+      `\n  No active account. Run ${colors.cyan('agy-auth switch <account>')} to select one.\n`
     );
     return;
   }

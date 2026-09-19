@@ -121,7 +121,7 @@ describe('Command Modules Behavioral & Regression Suite', () => {
       addCommand({
         apiKey: 'AIzaSyNoEmailOrAlias',
       })
-    ).rejects.toThrow(/API key profile requires --email/);
+    ).rejects.toThrow(/Adding an API key requires --email/);
 
     // 6. Service Account with mismatched email throws UsageError
     await expect(
@@ -170,7 +170,7 @@ describe('Command Modules Behavioral & Regression Suite', () => {
       addCommand({
         adc: adcFile,
       })
-    ).rejects.toThrow(/ADC profile requires --email/);
+    ).rejects.toThrow(/Adding ADC credentials requires --email/);
 
     // 9. Reject conflicting options
     await expect(
@@ -342,7 +342,7 @@ describe('Command Modules Behavioral & Regression Suite', () => {
         draft.activeAccountId = null;
       });
       await expect(detailsCommand(undefined, { json: true })).rejects.toThrow(
-        /No profile is selected/
+        /No account is selected/
       );
       expect(logSpy).toHaveBeenCalled();
     } finally {
@@ -385,7 +385,7 @@ describe('Command Modules Behavioral & Regression Suite', () => {
       registry.syncMutate((draft) => {
         draft.activeAccountId = null;
       });
-      await expect(envCommand({ clear: false })).rejects.toThrow(/No active profile configured/);
+      await expect(envCommand({ clear: false })).rejects.toThrow(/No active account configured/);
 
       expect(logSpy).toHaveBeenCalled();
     } finally {
@@ -449,7 +449,7 @@ describe('Command Modules Behavioral & Regression Suite', () => {
 
     try {
       await expect(removeCommand(['sa-rem1'], { yes: true, json: true })).rejects.toThrow(
-        /Profile metadata was removed, but one or more credential key files could not be deleted/
+        /Account metadata was removed, but one or more credential key files could not be deleted/
       );
     } finally {
       unlinkSpy.mockRestore();

@@ -9,7 +9,7 @@ import {
 import { Account, needsSignIn } from '../core/types.js';
 
 const REASON_TEXT: Record<QuotaFailureReason, string> = {
-  'not-applicable': 'no usable OAuth token on the profile',
+  'not-applicable': 'no usable OAuth token on the account',
   'native-refresh-required':
     'Antigravity owns this session; sign in through Antigravity, then run `agy-auth add`',
   'token-expired': 'token expired; sign in through Antigravity, then run `agy-auth add`',
@@ -86,7 +86,7 @@ export async function refreshQuota(
       '; '
     );
     warning =
-      `Warning: could not refresh live quota for ${failed.length} of ${refreshes.length} profiles ` +
+      `Warning: could not refresh live quota for ${failed.length} of ${refreshes.length} accounts ` +
       `(${reasons}). Showing cached quota where available.`;
   }
 

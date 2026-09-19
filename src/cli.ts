@@ -26,7 +26,7 @@ export function createCli(): Command {
 
   program
     .name('agy-auth')
-    .description('Manage local Antigravity and Google AI credential profiles')
+    .description('Manage local Antigravity and Google AI accounts')
     .version(VERSION, '-V, --version', 'Show version')
     .helpOption('-h, --help', 'Show this help')
     .exitOverride();
@@ -63,12 +63,9 @@ export function createCli(): Command {
   program
     .command('list')
     .alias('ls')
-    .description('List registered credential profiles')
-    .option('-a, --active', 'Show only currently active profile')
-    .option(
-      '-c, --check',
-      'Verify listed profiles and refresh live quota for listed OAuth profiles'
-    )
+    .description('List registered accounts')
+    .option('-a, --active', 'Show only the active account')
+    .option('-c, --check', 'Verify listed accounts and refresh live quota for OAuth accounts')
     .option('--offline', 'Skip the live plan and quota refresh; show cached data only', false)
     .option('-j, --json', 'Output results as JSON')
     .action(async (options) => {
@@ -79,8 +76,8 @@ export function createCli(): Command {
   program
     .command('switch')
     .alias('sw')
-    .description('Switch active credential profile from cached data (makes no network request)')
-    .argument('[query]', 'Profile selector (number, alias, email, id, or - for previous)')
+    .description('Switch the active account from cached data (makes no network request)')
+    .argument('[query]', 'Account selector (number, alias, email, id, or - for previous)')
     .option('-j, --json', 'Machine-readable output')
     .action(async (query, options) => {
       await switchCommand(query, options);
@@ -104,7 +101,7 @@ export function createCli(): Command {
   program
     .command('current')
     .alias('whoami')
-    .description('Show active credential profile')
+    .description('Show the active account')
     .option('--offline', 'Skip the live plan and quota refresh; show cached data only', false)
     .option('-j, --json', 'Output as JSON')
     .action(async (options) => {
@@ -115,7 +112,7 @@ export function createCli(): Command {
   program
     .command('details')
     .alias('info')
-    .description('Show detailed metadata for a profile')
+    .description('Show detailed metadata for an account')
     .argument('[query]', 'Account selector (number, alias, email, ID)')
     .option('--offline', 'Skip the live plan and quota refresh; show cached data only', false)
     .option('-j, --json', 'Output as JSON')
@@ -127,7 +124,7 @@ export function createCli(): Command {
   program
     .command('login')
     .description('Sign in to a Google account in the browser')
-    .option('--alias <alias>', 'Profile alias')
+    .option('--alias <alias>', 'Account alias')
     .option('--project <id>', 'GCP project ID')
     .option('--location <location>', 'Compute region/location')
     .option('--model <model>', 'Preferred model name')
@@ -157,8 +154,8 @@ export function createCli(): Command {
   program
     .command('remove')
     .alias('rm')
-    .description('Remove one or more profiles from agy-auth')
-    .argument('[selectors...]', 'Profile selectors to remove')
+    .description('Remove one or more accounts from agy-auth')
+    .argument('[selectors...]', 'Account selectors to remove')
     .option('--all', 'Remove all accounts', false)
     .option('-y, --yes', 'Skip confirmation prompt', false)
     .option('-j, --json', 'Output as JSON')
@@ -167,7 +164,7 @@ export function createCli(): Command {
     });
 
   // alias
-  const aliasCmd = program.command('alias').description('Manage profile aliases');
+  const aliasCmd = program.command('alias').description('Manage account aliases');
 
   // Commander answers a group invoked with no subcommand by doing nothing and
   // exiting 0, which reads as success for a command that did not run.
@@ -250,7 +247,7 @@ export function createCli(): Command {
   // env
   program
     .command('env')
-    .description('Print shell export commands for active profile')
+    .description('Print shell export commands for the active account')
     .option('--shell <posix|powershell>', 'Shell output format')
     .option('--clear', 'Print unset statements to reset environment', false)
     .option('-j, --json', 'Output as JSON')
@@ -261,7 +258,7 @@ export function createCli(): Command {
   // export
   program
     .command('export')
-    .description('Export profiles to a backup file')
+    .description('Export accounts to a backup file')
     .argument('[output]', 'Output destination file path or directory')
     .option('--include-secrets', 'Include API keys and tokens in plaintext', false)
     .option('-y, --yes', 'Skip plaintext warning confirmation', false)
@@ -273,7 +270,7 @@ export function createCli(): Command {
   // import
   program
     .command('import')
-    .description('Import profiles from a backup file')
+    .description('Import accounts from a backup file')
     .argument('<file>', 'Path to export JSON file')
     .option('--overwrite', 'Overwrite existing accounts with imported metadata', false)
     .option('-j, --json', 'Output as JSON')

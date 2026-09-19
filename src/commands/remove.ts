@@ -25,7 +25,7 @@ export async function removeCommand(
   options: RemoveOptions = {}
 ): Promise<void> {
   if (options.all && selectors.length > 0) {
-    throw new UsageError('Do not combine profile selectors with --all.');
+    throw new UsageError('Do not combine account selectors with --all.');
   }
 
   const registry = new RegistryManager();
@@ -59,17 +59,17 @@ export async function removeCommand(
 
   // Enforcement: JSON and non-TTY removal require --yes
   if (options.json && !options.yes) {
-    throw new UsageError('Removing profiles in JSON mode requires --yes.');
+    throw new UsageError('Removing accounts in JSON mode requires --yes.');
   }
   if (!process.stdin.isTTY && !options.yes) {
-    throw new UsageError('Removing profiles in non-interactive mode requires --yes.');
+    throw new UsageError('Removing accounts in non-interactive mode requires --yes.');
   }
 
   // Case 1: --all
   if (options.all) {
     if (!options.yes && process.stdin.isTTY) {
       const proceed = await confirm({
-        message: `Are you sure you want to remove ALL ${accounts.length} account profile(s) from agy-auth?`,
+        message: `Are you sure you want to remove ALL ${accounts.length} account(s) from agy-auth?`,
         default: false,
       });
       if (!proceed) {
@@ -109,7 +109,7 @@ export async function removeCommand(
 
     if (cleanupErrors.length > 0) {
       throw new CliError(
-        'Profile metadata was removed, but one or more credential key files could not be deleted from disk.',
+        'Account metadata was removed, but one or more credential key files could not be deleted from disk.',
         'cleanup_failed',
         1,
         {
@@ -141,10 +141,10 @@ export async function removeCommand(
     }
 
     console.log(
-      `\n  ${colors.green('[ok]')} Removed all ${removedAccounts.length} account profile(s) from agy-auth.`
+      `\n  ${colors.green('[ok]')} Removed all ${removedAccounts.length} account(s) from agy-auth.`
     );
     console.log(
-      `  ${colors.dim('Note: This removed local profile metadata. External tokens and Antigravity credentials remain unchanged.')}\n`
+      `  ${colors.dim('Note: This removed local account metadata. External tokens and Antigravity credentials remain unchanged.')}\n`
     );
     console.log(
       `  ${colors.dim('A managed recovery backup retains the pre-removal registry. Run `agy-auth clean --all` to delete managed backups.')}\n`
@@ -157,13 +157,13 @@ export async function removeCommand(
     const selected = await promptSelectAccount(
       accounts,
       active?.id || null,
-      'Select account profile to remove:'
+      'Select account to remove:'
     );
     if (!selected) return;
 
     if (!options.yes) {
       const proceed = await confirm({
-        message: `Remove profile '${formatAccountShort(selected)}'?`,
+        message: `Remove account '${formatAccountShort(selected)}'?`,
         default: true,
       });
       if (!proceed) {
@@ -199,7 +199,7 @@ export async function removeCommand(
 
   if (!options.yes && process.stdin.isTTY && targetsToRemove.length > 0) {
     const proceed = await confirm({
-      message: `Remove ${targetsToRemove.length} account profile(s)?`,
+      message: `Remove ${targetsToRemove.length} account(s)?`,
       default: true,
     });
     if (!proceed) {
@@ -248,7 +248,7 @@ export async function removeCommand(
 
   if (cleanupErrors.length > 0) {
     throw new CliError(
-      'Profile metadata was removed, but one or more credential key files could not be deleted from disk.',
+      'Account metadata was removed, but one or more credential key files could not be deleted from disk.',
       'cleanup_failed',
       1,
       {
@@ -281,12 +281,12 @@ export async function removeCommand(
     return;
   }
 
-  console.log(`\n  ${colors.green('[ok]')} Removed ${targetsToRemove.length} profile(s):`);
+  console.log(`\n  ${colors.green('[ok]')} Removed ${targetsToRemove.length} account(s):`);
   for (const t of targetsToRemove) {
     console.log(`    - ${formatAccountShort(t)}`);
   }
   if (!freshRegistry.activeAccountId) {
-    console.log(`\n  ${colors.dim('No active profile configured in registry.')}`);
+    console.log(`\n  ${colors.dim('No active account configured in registry.')}`);
   }
   console.log(
     `  ${colors.dim('Note: agy-auth remove does not sign out of Google or delete external files.')}\n`

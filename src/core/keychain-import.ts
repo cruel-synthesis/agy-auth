@@ -225,7 +225,7 @@ export async function importKeychainOAuth(
 
       throw new CliError(
         `Could not confirm that the active Antigravity session belongs to ${finalEmail}, ` +
-          `so the saved profile was left unchanged (${cause}). ` +
+          `so the saved account was left unchanged (${cause}). ` +
           'Retry when the identity can be checked.',
         'verification_required',
         1,

@@ -1,6 +1,6 @@
 # model
 
-Manage preferred Gemini model settings for profiles.
+Manage preferred Gemini model settings for accounts.
 
 ```shell
 agy-auth model set <account> <model> [options]

@@ -32,7 +32,7 @@ export async function importCommand(filePath: string, options: ImportOptions = {
 
     if (existingById && existingByIdentity && existingById.id !== existingByIdentity.id) {
       throw new UsageError(
-        `Import conflict: account ID '${rawAcc.id}' matches one profile but identity '${rawAcc.email}' (${rawAcc.authType}) matches another.`
+        `Import conflict: account ID '${rawAcc.id}' matches one account but identity '${rawAcc.email}' (${rawAcc.authType}) matches another.`
       );
     }
 

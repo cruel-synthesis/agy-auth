@@ -1,6 +1,6 @@
 # env
 
-Print shell export commands for active profile.
+Print shell export commands for active account.
 
 ```shell
 agy-auth env [options]

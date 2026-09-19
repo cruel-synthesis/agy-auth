@@ -315,7 +315,7 @@ export class OAuthFlow {
               renderHtml(
                 'Authentication Failed',
                 'Profile Lookup Failed',
-                'Could not retrieve a verified email address from Google profile.',
+                'Could not retrieve a verified email address from your Google profile.',
                 true
               )
             );

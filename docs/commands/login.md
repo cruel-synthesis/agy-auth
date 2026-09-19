@@ -8,7 +8,7 @@ agy-auth login [options]
 
 Options:
 
-- `--alias <alias>`: Profile alias
+- `--alias <alias>`: Account alias
 - `--project <id>`: GCP project ID
 - `--location <location>`: Compute region/location
 - `--model <model>`: Preferred model name

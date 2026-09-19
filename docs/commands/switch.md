@@ -1,6 +1,6 @@
 # switch
 
-Switch the active credential profile from cached data (makes no network request).
+Switch the active account from cached data (makes no network request).
 
 ```shell
 agy-auth switch [options] [query]
@@ -10,7 +10,7 @@ agy-auth -
 
 Arguments:
 
-- `query`: Profile selector (number, alias, email, ID, or `-` for previous active profile)
+- `query`: Account selector (number, alias, email, ID, or `-` for previous active account)
 
 Options:
 

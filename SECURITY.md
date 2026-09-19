@@ -21,7 +21,7 @@ Please provide:
 - On POSIX systems, registry and credential files are created with mode `0600` (`rw-------`). Windows protection depends on the user's filesystem ACLs because POSIX mode bits are not enforced there.
 - Registry and switch mutations use lock files to serialize concurrent `agy-auth` processes.
 - Credential file readers strictly reject symlinks, irregular files, and files exceeding size limits (1 MiB for credentials, 5 MiB for imports).
-- Profile and status JSON redact credentials. `agy-auth env` deliberately emits shell values and its JSON form is marked `containsSecrets`; `agy-auth export --include-secrets` deliberately writes credentials to a file.
+- Account and status JSON redact credentials. `agy-auth env` deliberately emits shell values and its JSON form is marked `containsSecrets`; `agy-auth export --include-secrets` deliberately writes credentials to a file.
 - Managed recovery snapshots can contain a pre-mutation registry, ADC file, service-account key, or Antigravity settings. `agy-auth clean --all` deletes all managed snapshots.
 
 ## Network Boundary
@@ -37,8 +37,8 @@ Outbound requests are limited to:
 | `accounts.google.com` | Browser OAuth user sign-in via PKCE | `agy-auth login` |
 | `oauth2.googleapis.com` | Authorization code and refresh-token exchange | During browser OAuth login, and whenever a stored token needs renewing before a quota reading |
 | `www.googleapis.com` | Verified userinfo lookup (`/oauth2/v3/userinfo`) | During Antigravity session import and browser OAuth login |
-| `daily-cloudcode-pa.googleapis.com`, `cloudcode-pa.googleapis.com` | Live plan and quota via the undocumented `v1internal:retrieveUserQuotaSummary`, `v1internal:loadCodeAssist`, and `v1internal:retrieveUserQuota` contracts (**experimental**) | `list`, `list --check`, `current`, `details`, `auto` for OAuth profiles, unless `--offline` |
-| `generativelanguage.googleapis.com` | Official Gemini models endpoint and connectivity probe | `list --check` for API key profiles; `doctor` unless `--offline` |
+| `daily-cloudcode-pa.googleapis.com`, `cloudcode-pa.googleapis.com` | Live plan and quota via the undocumented `v1internal:retrieveUserQuotaSummary`, `v1internal:loadCodeAssist`, and `v1internal:retrieveUserQuota` contracts (**experimental**) | `list`, `list --check`, `current`, `details`, `auto` for OAuth accounts, unless `--offline` |
+| `generativelanguage.googleapis.com` | Official Gemini models endpoint and connectivity probe | `list --check` for API key accounts; `doctor` unless `--offline` |
 
 Browser OAuth callback servers bind strictly to `127.0.0.1` on an OS-assigned ephemeral port, enforce cryptographically random state parameters and PKCE (S256) challenges, serve generic error responses, apply no-store and no-referrer security headers, and close immediately upon completion or timeout.
 
@@ -47,6 +47,6 @@ Because the quota contracts are undocumented, they may change or be withdrawn wi
 ## Credential Handling During Quota Refresh
 
 - No access token or refresh token appears in a quota result, a log line, an exception message, a `--json` envelope, or any persisted diagnostic. Rotated tokens travel in a dedicated carrier whose serialization is `[redacted]`.
-- An access token that has merely expired is renewed with the same OAuth client the session was imported from, without any configuration from you. A refresh token Google no longer honours, or a session missing a scope the quota contracts want, cannot be repaired that way: the profile is reported as `expired` or `needs-reauth`, and recovery is a fresh Antigravity sign-in followed by `agy-auth add`.
+- An access token that has merely expired is renewed with the same OAuth client the session was imported from, without any configuration from you. A refresh token Google no longer honours, or a session missing a scope the quota contracts want, cannot be repaired that way: the account is reported as `expired` or `needs-reauth`, and recovery is a fresh Antigravity sign-in followed by `agy-auth add`.
 - Quota refresh never writes Antigravity's token file or Apple Keychain. Applying credentials to external state is the sole responsibility of `agy-auth switch`.
 - A quota transport or schema failure never overwrites a credential status; only a successful reading, explicit insufficient-scope evidence, or an authentication rejection may.

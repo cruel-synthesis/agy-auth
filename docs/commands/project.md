@@ -1,6 +1,6 @@
 # project
 
-Manage Google Cloud Project settings for account profiles.
+Manage Google Cloud Project settings for accounts.
 
 ```shell
 agy-auth project set <account> <project> [location] [options]

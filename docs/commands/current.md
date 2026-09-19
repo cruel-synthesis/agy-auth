@@ -1,6 +1,6 @@
 # current
 
-Show details for the currently active credential profile.
+Show details for the currently active account.
 
 ```shell
 agy-auth current [options]

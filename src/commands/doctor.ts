@@ -148,7 +148,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
         name: 'Storage Directories',
         status: 'ok',
         message:
-          'Storage directory ~/.agy-auth not yet initialized (will be created on first profile add).',
+          'Storage directory ~/.agy-auth not yet initialized (will be created on first account add).',
       });
     } else {
       const stat = fs.lstatSync(Paths.authHome);

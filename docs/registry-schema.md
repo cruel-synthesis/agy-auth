@@ -1,6 +1,6 @@
 # Registry Schema and Migration
 
-`agy-auth` stores your profiles in `~/.agy-auth/registry.json` under Registry Schema `3`. Older registries are upgraded when they are opened; you never run a migration yourself.
+`agy-auth` stores your accounts in `~/.agy-auth/registry.json` under Registry Schema `3`. Older registries are upgraded when they are opened; you never run a migration yourself.
 
 ---
 
@@ -21,12 +21,12 @@
 ## What Schema 3 Holds
 
 1. **Explicit Auth Types**:
-   Every account profile declares `authType: 'oauth' | 'api-key' | 'service-account' | 'adc'`.
+   Every account declares `authType: 'oauth' | 'api-key' | 'service-account' | 'adc'`.
 2. **Validated Status Model**:
    Allowed statuses are `valid | rate-limited | expired | invalid | needs-reauth | unverified | unknown`.
 3. **Credential Provenance** (new in schema 3):
-   An OAuth profile records where its credentials came from in `credentialSource: 'antigravity' | 'custom-client' | 'unknown'`. This decides which OAuth client renews its token. Registries written earlier carry no such record and it cannot be reconstructed, so they are marked `unknown` rather than assumed.
-4. **Profile Configuration**:
+   An OAuth account records where its credentials came from in `credentialSource: 'antigravity' | 'custom-client' | 'unknown'`. This decides which OAuth client renews its token. Registries written earlier carry no such record and it cannot be reconstructed, so they are marked `unknown` rather than assumed.
+4. **Account Configuration**:
    First-class fields for `alias`, `gcpProject`, `gcpLocation`, `model`, `reasoningEffort`, and optional `verification` timestamps.
 5. **Validated Plan and Quota Cache**:
    Optional `plan`, `rateLimit`, and `quotaCheckedAt` fields hold the cached result of the last successful live quota fetch. `rateLimit` is restricted to the `gemini` and `claude` families and the 5-hour and weekly windows, with `usedPercent` bounded to `0..100`.

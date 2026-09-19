@@ -9,7 +9,7 @@ type CommandRow = [command: string, description: string, common?: true];
 
 const ALL_ACCOUNT_COMMANDS: CommandRow[] = [
   ['add', 'Add the account signed in to Antigravity', true],
-  ['add --api-key', 'Add an API key, service-account, or ADC profile'],
+  ['add --api-key', 'Add an API key, service account, or ADC credential'],
   ['login', 'Sign in to another Google account in a browser'],
   ['list', 'Show saved accounts, plan and quota', true],
   ['switch [account]', 'Switch to a saved account', true],

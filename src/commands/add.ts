@@ -109,7 +109,7 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
     } else if (alias) {
       email = `${alias.toLowerCase()}@local.invalid`;
     } else {
-      throw new UsageError('API key profile requires --email <email> or --alias <alias>.');
+      throw new UsageError('Adding an API key requires --email <email> or --alias <alias>.');
     }
   } else if (options.serviceAccount) {
     authType = 'service-account';
@@ -156,7 +156,7 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
     } else if (alias) {
       email = `${alias.toLowerCase()}@local.invalid`;
     } else {
-      throw new UsageError('ADC profile requires --email <email> or --alias <alias>.');
+      throw new UsageError('Adding ADC credentials requires --email <email> or --alias <alias>.');
     }
   }
 
@@ -191,10 +191,10 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
   }
 
   console.log(
-    `\n  ${colors.green('[ok]')} Profile added: ${colors.green(formatAccountShort(account))}`
+    `\n  ${colors.green('[ok]')} Account added: ${colors.green(formatAccountShort(account))}`
   );
   console.log(
-    `  Run ${colors.cyan(`agy-auth switch "${account.alias || account.email}"`)} to activate this profile.\n`
+    `  Run ${colors.cyan(`agy-auth switch "${account.alias || account.email}"`)} to activate this account.\n`
   );
 }
 

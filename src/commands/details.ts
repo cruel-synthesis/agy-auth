@@ -91,7 +91,7 @@ export async function detailsCommand(query?: string, options: DetailsOptions = {
       target = await promptSelectAccount(
         matches,
         active?.id || null,
-        `Multiple profiles matched '${query}'. Select one:`
+        `Multiple accounts matched '${query}'. Select one:`
       );
       if (!target) return;
     } else {
@@ -99,7 +99,7 @@ export async function detailsCommand(query?: string, options: DetailsOptions = {
     }
   } else if (!process.stdout.isTTY || options.json) {
     if (!active) {
-      throw new UsageError('No profile is selected; provide an account selector.');
+      throw new UsageError('No account is selected; provide an account selector.');
     }
     target = active;
   } else {

@@ -34,7 +34,7 @@ export function validateAliasInput(value: string): boolean | string {
 }
 
 function printSavedAccount(account: Account, isNew: boolean, isActive: boolean): void {
-  const action = isNew ? 'Profile added successfully' : 'Profile updated successfully';
+  const action = isNew ? 'Account added successfully' : 'Account updated successfully';
   console.log(
     `\n  ${colors.green('[ok]')} ${action}: ${colors.green(formatAccountShort(account))}`
   );

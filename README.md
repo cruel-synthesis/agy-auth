@@ -1,6 +1,6 @@
 # agy-auth
 
-`agy-auth` is a local credential profile manager and account switcher for Google Antigravity and Google AI development. It enables switching between multiple profiles for Antigravity OAuth sessions (Apple Keychain or Antigravity's token file), Gemini API keys (`GEMINI_API_KEY`), Service Account keys (`GOOGLE_APPLICATION_CREDENTIALS`), and Google Cloud Application Default Credentials (ADC).
+`agy-auth` is a local account manager and switcher for Google Antigravity and Google AI development. It enables switching between multiple accounts for Antigravity OAuth sessions (Apple Keychain or Antigravity's token file), Gemini API keys (`GEMINI_API_KEY`), Service Account keys (`GOOGLE_APPLICATION_CREDENTIALS`), and Google Cloud Application Default Credentials (ADC).
 
 > `agy-auth` is an independent project. It is **not affiliated with, endorsed by, or supported by Google**.
 
@@ -14,7 +14,7 @@
 - **Local-First Architecture**: Local metadata management under `~/.agy-auth/`. No telemetry, and nothing installed that runs on its own - `agy-auth auto --watch` keeps running only as long as you leave it running. Network access is limited to the quota, verification, token-refresh, and diagnostic requests documented below.
 - **Machine Interface**: Non-interactive commands support `--json` with structured envelopes (`schemaVersion: 1`) and standard exit codes (0, 1, 2, 130).
 - **Journaled Switching**: Validates inputs, snapshots affected state, and attempts compensating rollback for Antigravity settings, session stores, ADC, and service-account files. Rollback failures are reported.
-- **Privacy & File Security**: Restricted POSIX file modes (`0700` directories, `0600` files), file-lock concurrency guards, symlink rejection, and redacted profile/status JSON. The `env` command deliberately emits shell values and can contain an API key.
+- **Privacy & File Security**: Restricted POSIX file modes (`0700` directories, `0600` files), file-lock concurrency guards, symlink rejection, and redacted account/status JSON. The `env` command deliberately emits shell values and can contain an API key.
 
 ---
 
@@ -57,19 +57,19 @@ agy-auth add --api-key --email work@example.com --alias work
 
 For automation, `--api-key <key>` remains available, but command-line values can be retained in shell history or exposed to local process inspection.
 
-### 3. List and Switch Profiles
-List your registered profiles and switch between them:
+### 3. List and Switch Accounts
+List your registered accounts and switch between them:
 
 ```bash
-agy-auth list              # refreshes live quota for any profile whose reading has aged out
+agy-auth list              # refreshes live quota for any account whose reading has aged out
 agy-auth list --offline    # cached data only, no network request
-agy-auth list --check      # verify profiles and refresh quota for every OAuth profile
+agy-auth list --check      # verify accounts and refresh quota for every OAuth account
 agy-auth switch work       # cached data only; never makes a network request
 agy-auth switch 2
 agy-auth auto              # switch to whichever account wastes the least quota
 agy-auth auto --dry-run    # show the ranking and the choice without switching
 agy-auth auto --watch      # keep running; switch whenever the account in use runs out
-agy-auth -                 # Switch to previous profile
+agy-auth -                 # Switch to previous account
 agy-auth current
 ```
 
@@ -91,9 +91,9 @@ Percentages are quota **remaining**. `-` means no cached value; `stale` means th
 This feature is **experimental** because it depends on undocumented upstream contracts.
 
 - It calls **undocumented Antigravity `v1internal` endpoints** on `daily-cloudcode-pa.googleapis.com` and `cloudcode-pa.googleapis.com`. Google does not document or support them, and they may change or disappear at any time. When that happens `agy-auth` reports the quota as unavailable and keeps showing your last cached values; it never invents a number.
-- The quota endpoints may return `429 RESOURCE_EXHAUSTED` while `loadCodeAssist` returns HTTP 200 without a recognized quota window. When any related contract returns a valid HTTP 200 but no quota window can be parsed, `agy-auth` reports `quota-unavailable` and preserves the cached quota instead of guessing. An explicit current plan or project returned by `loadCodeAssist` may still update that profile metadata.
-- Each request sends your OAuth access token as a `Bearer` header plus, for `retrieveUserQuota`, the profile's GCP project ID. Quota payloads do not include local filenames, hostnames, or registry contents, and there is no telemetry or background polling.
-- Only OAuth profiles are probed. API key, service account, and ADC profiles are never quota-probed.
+- The quota endpoints may return `429 RESOURCE_EXHAUSTED` while `loadCodeAssist` returns HTTP 200 without a recognized quota window. When any related contract returns a valid HTTP 200 but no quota window can be parsed, `agy-auth` reports `quota-unavailable` and preserves the cached quota instead of guessing. An explicit current plan or project returned by `loadCodeAssist` may still update that account metadata.
+- Each request sends your OAuth access token as a `Bearer` header plus, for `retrieveUserQuota`, the account's GCP project ID. Quota payloads do not include local filenames, hostnames, or registry contents, and there is no telemetry or background polling.
+- Only OAuth accounts are probed. API key, service account, and ADC accounts are never quota-probed.
 - `agy-auth switch` never makes a network request.
 
 ### OAuth Onboarding and Token Refresh
@@ -112,10 +112,10 @@ export AGY_OAUTH_CLIENT_ID='your-client-id.apps.googleusercontent.com'
 export AGY_OAUTH_CLIENT_SECRET='only-if-your-client-requires-one'   # optional
 ```
 
-Token refresh (exchanging an existing refresh token for an access token), browser authorization (interactive sign-in via PKCE loopback callback), and Antigravity session import are distinct operations. Quota refresh and login never write Antigravity's token file or Apple Keychain; only `agy-auth switch` applies credentials to external state. When renewal fails, the profile is listed as `expired`; sign in again through Antigravity and run `agy-auth add`.
+Token refresh (exchanging an existing refresh token for an access token), browser authorization (interactive sign-in via PKCE loopback callback), and Antigravity session import are distinct operations. Quota refresh and login never write Antigravity's token file or Apple Keychain; only `agy-auth switch` applies credentials to external state. When renewal fails, the account is listed as `expired`; sign in again through Antigravity and run `agy-auth add`.
 
 ### 4. Apply Shell Environment Variables
-When using API key or Service Account profiles, apply environment variables to your current POSIX shell session:
+When using API key or service account credentials, apply environment variables to your current POSIX shell session:
 
 ```bash
 eval "$(agy-auth env)"
@@ -133,21 +133,21 @@ Invoke-Expression (agy-auth env --shell powershell)
 
 | Command | Purpose |
 |---|---|
-| `agy-auth list` (or `ls`) | List profiles with plan and quota (`--active`, `--check`, `--offline`, `--json`); refreshes any OAuth profile whose reading is over ten minutes old |
-| `agy-auth switch [selector]` | Switch active profile by number, alias, email, or interactive picker (cached data only, no network request) |
-| `agy-auth -` | Switch to the previously active profile |
+| `agy-auth list` (or `ls`) | List accounts with plan and quota (`--active`, `--check`, `--offline`, `--json`); refreshes any OAuth account whose reading is over ten minutes old |
+| `agy-auth switch [selector]` | Switch active account by number, alias, email, or interactive picker (cached data only, no network request) |
+| `agy-auth -` | Switch to the previously active account |
 | `agy-auth auto` (or `best`) | Switch to the account whose quota is most at risk of going to waste (`--dry-run`, `--watch`, `--interval`, `--offline`, `--json`) |
-| `agy-auth current` | Display details for the currently active profile (`--offline`, `--json`); refreshes live quota by default |
-| `agy-auth details [selector]` | Display in-depth profile, model, project, plan, and quota configuration (`--offline`, `--json`) |
+| `agy-auth current` | Display details for the currently active account (`--offline`, `--json`); refreshes live quota by default |
+| `agy-auth details [selector]` | Display in-depth account, model, project, plan, and quota configuration (`--offline`, `--json`) |
 | `agy-auth login` | Add or refresh a Google OAuth account |
 | `agy-auth add` | Add the account signed in to Antigravity, or another credential (`--api-key`, `--service-account`, `--adc`) |
-| `agy-auth remove [selector...]` | Remove profiles (`--all`, `--yes`, `--json`) |
-| `agy-auth alias <set\|clear>` | Assign or remove friendly nicknames for profiles |
+| `agy-auth remove [selector...]` | Remove accounts (`--all`, `--yes`, `--json`) |
+| `agy-auth alias <set\|clear>` | Assign or remove friendly nicknames for accounts |
 | `agy-auth project <set\|clear>` | Configure Google Cloud Project ID and compute region |
 | `agy-auth model <set\|clear>` | Configure preferred Gemini model setting |
 | `agy-auth env` | Print shell environment exports and unsets (`--shell posix\|powershell`, `--clear`) |
-| `agy-auth export [file]` | Export sanitized profile backup (`--include-secrets`, `--yes`, `--json`) |
-| `agy-auth import <file>` | Import profiles with schema migration (`--overwrite`, `--json`) |
+| `agy-auth export [file]` | Export sanitized account backup (`--include-secrets`, `--yes`, `--json`) |
+| `agy-auth import <file>` | Import accounts with schema migration (`--overwrite`, `--json`) |
 | `agy-auth clean` | Prune managed recovery snapshots (`~/.agy-auth/backups/`) |
 | `agy-auth doctor` | Run environment and configuration diagnostics (`--offline`, `--json`) |
 

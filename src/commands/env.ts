@@ -65,7 +65,7 @@ export async function envCommand(options: EnvOptions = {}): Promise<void> {
 
   if (!options.clear && !active) {
     throw new UsageError(
-      'No active profile configured. Run `agy-auth switch <profile>` to select an active profile or `agy-auth env --clear` to reset environment variables.'
+      'No active account configured. Run `agy-auth switch <account>` to select an active account or `agy-auth env --clear` to reset environment variables.'
     );
   }
 

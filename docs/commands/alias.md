@@ -1,6 +1,6 @@
 # alias
 
-Manage profile aliases.
+Manage account aliases.
 
 ```shell
 agy-auth alias set <account> <alias> [options]
@@ -20,7 +20,7 @@ Options:
 Examples:
 
 ```shell
-# Set alias for profile #1
+# Set alias for account #1
 agy-auth alias set 1 work
 
 # Clear alias
