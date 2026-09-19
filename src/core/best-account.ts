@@ -4,6 +4,7 @@ import {
   RateLimitWindow,
   WINDOW_MINUTES_5H,
   WINDOW_MINUTES_WEEKLY,
+  needsSignIn,
 } from './types.js';
 
 /** One 5-hour window: the unit the weekly allowance is necessarily spent in. */
@@ -28,9 +29,6 @@ const SWITCH_MARGIN = 0.05;
 /** The model families a reading can cover. */
 export const MODEL_FAMILIES = ['gemini', 'claude'] as const;
 export type ModelFamily = (typeof MODEL_FAMILIES)[number];
-
-/** Statuses that make an account unusable until the user signs in again. */
-const NEEDS_USER_ACTION: ReadonlySet<string> = new Set(['expired', 'invalid', 'needs-reauth']);
 
 /** The weekly allowance nearest to expiring, and what it is worth. */
 export interface PerishingWeekly {
@@ -158,7 +156,7 @@ function scoreAccount(account: Account, nowMs: number): AccountScore {
   if (account.authType !== 'oauth') {
     return { ...base, blocked: 'not an OAuth account' };
   }
-  if (NEEDS_USER_ACTION.has(account.status)) {
+  if (needsSignIn(account)) {
     return { ...base, blocked: 'needs a fresh sign-in' };
   }
 

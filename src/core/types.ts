@@ -156,6 +156,14 @@ export const AccountSchema = z
   .strict();
 export type Account = z.infer<typeof AccountSchema>;
 
+/** Statuses that cannot improve until the user signs in again. */
+const NEEDS_SIGN_IN: ReadonlySet<AccountStatus> = new Set(['expired', 'invalid', 'needs-reauth']);
+
+/** True when the account cannot serve work until the user signs in again. */
+export function needsSignIn(account: Account): boolean {
+  return NEEDS_SIGN_IN.has(account.status);
+}
+
 export const RegistrySettingsSchema = z
   .object({
     defaultLocation: z.string().max(64).optional(),
