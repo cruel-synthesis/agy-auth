@@ -33,6 +33,11 @@ by the same scoring described below.
   14:47  spare@example.com has 94% of its 5-hour limit left
 ```
 
+A check that cannot reach the service changes nothing: the watcher keeps the
+account in use rather than moving off it because the network failed. A rejected
+credential is different - the answer is decisive, so the watcher treats the
+account as spent and looks for another.
+
 Only the account in use is contacted on an ordinary check, so leaving the watcher
 running costs one account's traffic per interval rather than everyone's. With
 `--json` each check prints one JSON object per line. With `--dry-run` it reports

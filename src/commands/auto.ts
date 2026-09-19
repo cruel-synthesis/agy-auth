@@ -5,7 +5,7 @@ import { applyQuotaResults } from '../core/quota-apply.js';
 import { QuotaOptions } from '../core/quota.js';
 import { RegistryManager } from '../core/registry.js';
 import { Switcher } from '../core/switcher.js';
-import { Account } from '../core/types.js';
+import { Account, needsSignIn } from '../core/types.js';
 import { NO_ACCOUNTS, formatAccountShort } from '../ui/format.js';
 import { colors } from '../ui/theme.js';
 import { refreshQuota, selectRefreshable, selectStale } from './refresh.js';
@@ -142,10 +142,14 @@ async function watchTick(registry: RegistryManager, options: AutoOptions): Promi
   }
 
   const activeRefresh = await refreshAndApply(registry, selectRefreshable([active]), options);
-  if (activeRefresh.failed.has(active.id)) {
+  const afterRefresh = registry.getActiveAccount();
+  const signInNeeded = afterRefresh !== null && needsSignIn(afterRefresh);
+  if (activeRefresh.failed.has(active.id) && !signInNeeded) {
     // A failed reading is not a reading. Deciding "exhausted" from it would act
     // on data no fresher than what was already on hand, and could switch away
     // from an account that still has quota simply because the network didn't.
+    // A rejected credential is the exception: that answer is decisive, and
+    // holding on it would wait for a token that cannot come back on its own.
     return {
       event: 'holding',
       detail: `${formatAccountShort(active)}: ${activeRefresh.warning ?? 'could not refresh quota this check'}; using the last known reading`,
