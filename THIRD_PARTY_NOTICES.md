@@ -9,7 +9,7 @@ This project references the following MIT-licensed projects. The notes identify 
 - **Source**: `https://github.com/erennyuksell/ag-multi-account-switchboard`
 - **Reference Commit**: `1cbe6abcb17321c5e945962c9eeb710604d3b9d4`
 - **License**: MIT License
-- **Nature of use**: The Antigravity Cloud Code endpoint set and host-fallback order used by `src/core/quota.ts`, and the `loadCodeAssist` plan/project-discovery step, were derived from this project. The implementation is independent: `agy-auth` never substitutes a default project ID, ships no OAuth client ID or client secret, enforces a bounded per-account deadline, validates payload shapes strictly, and treats an unrecognized response as a failure rather than as zero quota.
+- **Nature of use**: The Antigravity Cloud Code endpoint set and host-fallback order used by `src/core/quota.ts`, and the `loadCodeAssist` plan/project-discovery step, were derived from this project. The implementation is independent: `agy-auth` never substitutes a default project ID, enforces a bounded per-account deadline, validates payload shapes strictly, and treats an unrecognized response as a failure rather than as zero quota. Like Antigravity itself, it signs in with the OAuth client published in Antigravity's own binary; `src/core/oauth-config.ts` records why, and `AGY_OAUTH_CLIENT_ID` substitutes a client of your own.
 
 ### MIT License Text
 ```text
