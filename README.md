@@ -112,7 +112,7 @@ export AGY_OAUTH_CLIENT_ID='your-client-id.apps.googleusercontent.com'
 export AGY_OAUTH_CLIENT_SECRET='only-if-your-client-requires-one'   # optional
 ```
 
-Token refresh (exchanging an existing refresh token for an access token), browser authorization (interactive sign-in via PKCE loopback callback), and Antigravity session import are distinct operations. Quota refresh and login never write Antigravity's token file or Apple Keychain; only `agy-auth switch` applies credentials to external state.
+Token refresh (exchanging an existing refresh token for an access token), browser authorization (interactive sign-in via PKCE loopback callback), and Antigravity session import are distinct operations. Quota refresh and login never write Antigravity's token file or Apple Keychain; only `agy-auth switch` applies credentials to external state. When renewal fails, the profile is listed as `expired`; sign in again through Antigravity and run `agy-auth add`.
 
 ### 4. Apply Shell Environment Variables
 When using API key or Service Account profiles, apply environment variables to your current POSIX shell session:
@@ -155,7 +155,6 @@ Invoke-Expression (agy-auth env --shell powershell)
 
 ## Documentation
 
-- [Quickstart Guide](./docs/quickstart.md)
 - [JSON API Contract & Exit Codes](./docs/json-contract.md)
 - [Platform Support](./docs/platform-support.md)
 - [Privacy & Security Model](./PRIVACY.md)
