@@ -37,6 +37,12 @@ export interface PerishingWeekly {
   family: ModelFamily;
   /** Share of the weekly allowance still unspent, 0 to 1. */
   remaining: number;
+  /**
+   * False when the window reported nothing and `remaining` is the untouched
+   * week the score assumes in its place. Callers that show the figure must not
+   * present that assumption as a reading.
+   */
+  measured: boolean;
   /** Epoch seconds at which it resets, when the window reports one. */
   resetsAt?: number;
 }
@@ -135,6 +141,7 @@ function scoreFamily(
     weekly: {
       family,
       remaining: weeklyRemaining,
+      measured: weeklyRead !== undefined,
       ...(resetsAt !== undefined ? { resetsAt } : {}),
     },
   };

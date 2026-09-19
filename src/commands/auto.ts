@@ -54,7 +54,9 @@ function renderRanking(ranked: AccountScore[], activeId: string | null, nowMs: n
     name: formatAccountShort(entry.account),
     // No scored family means nothing was measured; 0% would claim otherwise.
     headroom: entry.perishing ? percent(entry.headroom) : '-',
-    weekly: percent(entry.perishing?.remaining),
+    // An unread weekly window is scored as an untouched one; printing that
+    // assumption as 100% would pass it off as a reading.
+    weekly: entry.perishing?.measured ? percent(entry.perishing.remaining) : '-',
     expires: formatUntil(entry.perishing?.resetsAt, nowMs),
     note: entry.blocked ?? entry.score.toFixed(3),
   }));
@@ -346,7 +348,7 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
               email: entry.account.email,
               score: entry.score,
               headroom: entry.headroom,
-              weeklyRemaining: entry.perishing?.remaining,
+              weeklyRemaining: entry.perishing?.measured ? entry.perishing.remaining : undefined,
               weeklyResetsAt: entry.perishing?.resetsAt,
               blocked: entry.blocked,
             })),

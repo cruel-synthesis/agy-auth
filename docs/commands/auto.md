@@ -57,12 +57,16 @@ still be spent later. Multiplying by the 5-hour allowance left keeps the choice 
 an account that can actually take work now. Both model families are scored and
 averaged.
 
+A family whose weekly window reported nothing, or whose weekly reset has already
+passed, is scored as an untouched week: below anything visibly about to expire
+and above anything visibly spent. The ranking shows `-` rather than a percentage
+there, because nothing was measured.
+
 Excluded from the running:
 
 - accounts needing a fresh sign-in, and anything that is not an OAuth account
-- accounts with no current reading, including windows whose reset has already
-  passed - a lapsed window says nothing about present usage and is never assumed
-  to be full
+- accounts with no current 5-hour reading, including windows whose reset has
+  already passed - a lapsed window says nothing about present usage
 - accounts with less than 10% of the 5-hour allowance left, which cannot carry a
   working stint however urgent their week
 
