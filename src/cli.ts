@@ -168,6 +168,12 @@ export function createCli(): Command {
   // alias
   const aliasCmd = program.command('alias').description('Manage profile aliases');
 
+  // Commander answers a group invoked with no subcommand by doing nothing and
+  // exiting 0, which reads as success for a command that did not run.
+  aliasCmd.action(() => {
+    throw new UsageError('`alias` needs a subcommand: `set` or `clear`.');
+  });
+
   aliasCmd
     .command('set')
     .description('Set an alias for an account')
@@ -189,6 +195,10 @@ export function createCli(): Command {
 
   // project
   const projectCmd = program.command('project').description('Manage GCP project settings');
+
+  projectCmd.action(() => {
+    throw new UsageError('`project` needs a subcommand: `set` or `clear`.');
+  });
 
   projectCmd
     .command('set')
@@ -212,6 +222,10 @@ export function createCli(): Command {
 
   // model
   const modelCmd = program.command('model').description('Manage model preferences');
+
+  modelCmd.action(() => {
+    throw new UsageError('`model` needs a subcommand: `set` or `clear`.');
+  });
 
   modelCmd
     .command('set')
