@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CliError } from '../core/errors.js';
 import { Paths } from '../core/paths.js';
-import { MAX_BACKUP_RETENTION, isManagedBackupFileName } from '../core/storage.js';
+import { MAX_BACKUP_RETENTION, managedBackupPrefix } from '../core/storage.js';
 import { colors } from '../ui/theme.js';
 
 interface CleanOptions {
@@ -61,11 +61,13 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
     );
   }
 
-  const managedFiles: Array<{ name: string; fullPath: string; mtimeMs: number }> = [];
+  const managedFiles: Array<{ name: string; fullPath: string; mtimeMs: number; prefix: string }> =
+    [];
   const inspectionFailures: string[] = [];
 
   for (const name of entries) {
-    if (!isManagedBackupFileName(name)) continue;
+    const prefix = managedBackupPrefix(name);
+    if (!prefix) continue;
 
     const fullPath = path.join(backupsDir, name);
     try {
@@ -75,6 +77,7 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
           name,
           fullPath,
           mtimeMs: stat.mtimeMs,
+          prefix,
         });
       }
     } catch {
@@ -93,9 +96,23 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
 
   managedFiles.sort((a, b) => b.mtimeMs - a.mtimeMs);
 
+  // The quota is per backup kind, matching Storage.rotateBackups, so that
+  // clearing out switch churn cannot also take the one copy of a profile
+  // written just before it was removed.
   const maxToKeep = options.all ? 0 : MAX_BACKUP_RETENTION;
-  const kept = managedFiles.slice(0, maxToKeep);
-  const toRemove = managedFiles.slice(maxToKeep);
+  const keptPerPrefix = new Map<string, number>();
+  const kept: typeof managedFiles = [];
+  const toRemove: typeof managedFiles = [];
+
+  for (const file of managedFiles) {
+    const keptSoFar = keptPerPrefix.get(file.prefix) ?? 0;
+    if (keptSoFar < maxToKeep) {
+      keptPerPrefix.set(file.prefix, keptSoFar + 1);
+      kept.push(file);
+    } else {
+      toRemove.push(file);
+    }
+  }
 
   const removedNames: string[] = [];
   const failedNames: string[] = [];

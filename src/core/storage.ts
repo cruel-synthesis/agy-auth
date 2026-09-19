@@ -31,6 +31,21 @@ export function isManagedBackupFileName(fileName: string): boolean {
   );
 }
 
+/**
+ * The kind of backup a managed file name records, or null if it is not one.
+ * Longest match wins so `remove_all_...` is not read as a `remove` backup.
+ */
+export function managedBackupPrefix(fileName: string): ManagedBackupPrefix | null {
+  if (!isManagedBackupFileName(fileName)) return null;
+  let match: ManagedBackupPrefix | null = null;
+  for (const prefix of MANAGED_BACKUP_PREFIXES) {
+    if (fileName.startsWith(`${prefix}_`) && (!match || prefix.length > match.length)) {
+      match = prefix;
+    }
+  }
+  return match;
+}
+
 interface LockOwner {
   pid: number;
   token: string;
@@ -404,24 +419,38 @@ export class Storage {
   }
 
   /**
-   * Rotate backups to keep only the latest N managed backup files
+   * Keep the latest N backups of each kind and delete the rest.
+   *
+   * The quota is per kind because the kinds are written at wildly different
+   * rates: one switch writes up to four backups and every read of a corrupt
+   * registry writes another, while the copy of a profile taken just before
+   * `remove` is written once and holds the only remaining refresh token. A
+   * single shared quota lets the noisy kinds evict that copy within a few
+   * commands.
    */
   static rotateBackups(dir: string, maxFiles = MAX_BACKUP_RETENTION, protectedPath?: string): void {
     try {
       if (!fs.existsSync(dir)) return;
-      const files = fs
-        .readdirSync(dir)
-        .filter((name) => isManagedBackupFileName(name))
-        .map((f) => path.join(dir, f))
-        .filter((f) => {
-          try {
-            const stat = fs.lstatSync(f);
-            return stat.isFile() && !stat.isSymbolicLink();
-          } catch {
-            return false;
-          }
-        })
-        .sort((a, b) => {
+
+      const byPrefix = new Map<ManagedBackupPrefix, string[]>();
+      for (const name of fs.readdirSync(dir)) {
+        const prefix = managedBackupPrefix(name);
+        if (!prefix) continue;
+        const fullPath = path.join(dir, name);
+        try {
+          const stat = fs.lstatSync(fullPath);
+          if (!stat.isFile() || stat.isSymbolicLink()) continue;
+        } catch {
+          continue;
+        }
+        const group = byPrefix.get(prefix);
+        if (group) group.push(fullPath);
+        else byPrefix.set(prefix, [fullPath]);
+      }
+
+      for (const files of byPrefix.values()) {
+        if (files.length <= maxFiles) continue;
+        files.sort((a, b) => {
           if (a === protectedPath) return -1;
           if (b === protectedPath) return 1;
           try {
@@ -431,8 +460,6 @@ export class Storage {
             return b.localeCompare(a);
           }
         });
-
-      if (files.length > maxFiles) {
         for (let i = maxFiles; i < files.length; i++) {
           try {
             fs.unlinkSync(files[i]);
