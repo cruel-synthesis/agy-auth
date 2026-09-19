@@ -156,7 +156,6 @@ Invoke-Expression (agy-auth env --shell powershell)
 ## Documentation
 
 - [Quickstart Guide](./docs/quickstart.md)
-- [Architecture & Design](./docs/architecture.md)
 - [JSON API Contract & Exit Codes](./docs/json-contract.md)
 - [Platform Support](./docs/platform-support.md)
 - [Privacy & Security Model](./PRIVACY.md)

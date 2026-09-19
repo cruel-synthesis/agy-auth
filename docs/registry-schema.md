@@ -4,6 +4,20 @@
 
 ---
 
+## Where It Lives
+
+```text
+~/.agy-auth/
+├── registry.json       # Registry state (schema 3)
+├── registry.lock       # Atomic mutation mutex
+├── accounts/           # Materialized service account keys (mode 0600 on POSIX)
+└── backups/            # Pre-mutation recovery snapshots
+```
+
+`AGY_AUTH_HOME` overrides the `~/.agy-auth/` base directory.
+
+---
+
 ## What Schema 3 Holds
 
 1. **Explicit Auth Types**:
