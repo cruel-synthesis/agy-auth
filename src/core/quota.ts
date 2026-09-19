@@ -516,9 +516,9 @@ export class QuotaClient {
   }
 
   /**
-   * Exchange a refresh token for a fresh access token using environment-supplied
-   * OAuth client configuration only. Returns null when the environment does not
-   * provide a client ID, which is the normal case for a default install.
+   * Exchange a refresh token for a fresh access token, using whichever OAuth
+   * client is entitled to refresh this account. Returns null when there is no
+   * such client, no refresh token, or no time left in the deadline.
    */
   private static async refreshAccessToken(
     stored: RefreshedToken,
@@ -958,8 +958,8 @@ export async function probeQuotaEndpoints(
 
   let summaryPayload: unknown;
 
-  // Two axes, because the last probe left two candidates for the 403: the
-  // client agy-auth presents as, and the project it names.
+  // A rejection can come from either the client agy-auth presents as or the
+  // project it names, so the probe walks both rather than reporting one guess.
   for (const userAgent of [USER_AGENT, ANTIGRAVITY_USER_AGENT]) {
     const data = await call(
       LOAD_CODE_ASSIST_ENDPOINTS[0],
