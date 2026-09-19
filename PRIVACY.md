@@ -26,6 +26,21 @@
 
    `agy-auth` embeds the OAuth client ID and secret published in Antigravity's own binary, because Google's individual tier answers that client and refuses others. An installed application cannot keep a secret (RFC 8252 section 8.5), so that pair identifies the application, never you. See [SECURITY.md](./SECURITY.md#network-boundary).
 
+   Signing in requests these five scopes, the set Antigravity's client is
+   registered for and the quota endpoints expect:
+
+   - `https://www.googleapis.com/auth/cloud-platform`
+   - `https://www.googleapis.com/auth/userinfo.email`
+   - `https://www.googleapis.com/auth/userinfo.profile`
+   - `https://www.googleapis.com/auth/cclog`
+   - `https://www.googleapis.com/auth/experimentsandconfigs`
+
+   `cloud-platform` is broad. It reaches every Google Cloud resource the account
+   can reach, not only the quota endpoints listed above. A stored refresh token
+   carries that reach until you revoke it at
+   [myaccount.google.com/permissions](https://myaccount.google.com/permissions),
+   so keep it as you would keep your password.
+
 4. **No Background Service**:
    `agy-auth` runs only when invoked from your terminal. It installs no background services, launch daemons, or cron jobs.
    `agy-auth auto --watch` polls for as long as you leave it running and stops when you close it or press Ctrl-C.
