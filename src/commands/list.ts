@@ -82,6 +82,15 @@ export async function listCommand(options: ListOptions): Promise<void> {
     return;
   }
 
+  // An --active filter matching nothing is not an empty registry, and the table
+  // renderer sees only the filtered list, so it reports one as the other.
+  if (options.active && displayAccounts.length === 0 && freshAccounts.length > 0) {
+    console.log(
+      `\n  No active profile. Run ${colors.cyan('agy-auth switch <profile>')} to select one.\n`
+    );
+    return;
+  }
+
   if (warning) {
     console.log(colors.yellow(`  ${warning}`));
   }
