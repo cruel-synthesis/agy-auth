@@ -34,7 +34,7 @@
 
    | Command | Default behaviour |
    |---|---|
-   | `agy-auth login` | Contacts Google userinfo when importing an Antigravity session. Interactive macOS onboarding may open Antigravity, which performs its own Google sign-in. `--oauth-source browser` contacts Google OAuth and token endpoints. |
+   | `agy-auth login` | Contacts Google userinfo when importing an Antigravity session. Interactive macOS onboarding may open Antigravity, which performs its own Google sign-in. Browser sign-in contacts Google's OAuth and token endpoints. |
    | `agy-auth switch` | **Never** makes a network request. Renders cached plan and quota only. |
    | `agy-auth list` | Refreshes live plan and quota for **every OAuth profile whose cached reading is over ten minutes old**. |
    | `agy-auth list --check` | Verifies selected profiles (API keys use Google's official models endpoint) and refreshes live plan and quota for **every selected OAuth profile** (at most 4 concurrent requests). |
@@ -58,8 +58,8 @@
    An imported Antigravity session is renewed with Antigravity's own OAuth client, so an access token that has merely expired is usually replaced without you doing anything. A refresh token that Google no longer honours, or a session missing the scopes the quota contracts want, cannot be repaired that way and needs a fresh sign-in.
 
    - A refresh token Google no longer honours leaves the profile reported as `expired`. Sign in again through the Antigravity application, then run `agy-auth add`.
-   - A token that the quota service rejects for missing scopes is reported as `needs-reauth`. Sign in again through Antigravity, then run `agy-auth add` or `agy-auth login --oauth-source keychain`.
-   - If you have your own OAuth client, set `AGY_OAUTH_CLIENT_ID` (and `AGY_OAUTH_CLIENT_SECRET` if your client requires one) and `agy-auth` will refresh expired tokens itself or authenticate via `agy-auth login --oauth-source browser`, storing a rotated refresh token when Google issues one.
+   - A token that the quota service rejects for missing scopes is reported as `needs-reauth`. Sign in again through Antigravity, then run `agy-auth add`.
+   - If you have your own OAuth client, set `AGY_OAUTH_CLIENT_ID` (and `AGY_OAUTH_CLIENT_SECRET` if your client requires one) and `agy-auth` will refresh expired tokens itself or authenticate via `agy-auth login`, storing a rotated refresh token when Google issues one.
    - Quota refresh never writes Antigravity's token file or Apple Keychain. Only `agy-auth switch` applies stored credentials to external state.
 
 8. **Safe Export and Sanitization**:

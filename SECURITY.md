@@ -34,7 +34,7 @@ Outbound requests are limited to:
 
 | Host | Purpose | When |
 |---|---|---|
-| `accounts.google.com` | Browser OAuth user sign-in via PKCE | `agy-auth login --oauth-source browser` |
+| `accounts.google.com` | Browser OAuth user sign-in via PKCE | `agy-auth login` |
 | `oauth2.googleapis.com` | Authorization code and refresh-token exchange | During browser OAuth login, and whenever a stored token needs renewing before a quota reading |
 | `www.googleapis.com` | Verified userinfo lookup (`/oauth2/v3/userinfo`) | During Antigravity session import and browser OAuth login |
 | `daily-cloudcode-pa.googleapis.com`, `cloudcode-pa.googleapis.com` | Live plan and quota via the undocumented `v1internal:retrieveUserQuotaSummary`, `v1internal:loadCodeAssist`, and `v1internal:retrieveUserQuota` contracts (**experimental**) | `list`, `list --check`, `current`, `details`, `auto` for OAuth profiles, unless `--offline` |
