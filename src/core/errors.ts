@@ -1,3 +1,18 @@
+import { ZodError } from 'zod';
+
+/**
+ * One line naming the first field that failed validation and how many others
+ * did. A ZodError's own message is a pretty-printed array of every issue: a
+ * debugging artefact rather than something a reader can act on.
+ */
+export function describeSchemaFailure(error: ZodError): string {
+  const [first, ...rest] = error.issues;
+  if (!first) return 'it does not match the expected schema';
+  const field = first.path.length > 0 ? first.path.join('.') : 'the document';
+  const others = rest.length > 0 ? ` (and ${rest.length} more)` : '';
+  return `${field}: ${first.message.toLowerCase()}${others}`;
+}
+
 export class CliError extends Error {
   public readonly code: string;
   public readonly exitCode: number;

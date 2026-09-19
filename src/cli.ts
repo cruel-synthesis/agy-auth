@@ -1,4 +1,5 @@
 import { Command, CommanderError } from 'commander';
+import { ZodError } from 'zod';
 import { addCommand } from './commands/add.js';
 import { aliasClearCommand, aliasSetCommand } from './commands/alias.js';
 import { autoCommand } from './commands/auto.js';
@@ -15,7 +16,7 @@ import { modelClearCommand, modelSetCommand } from './commands/model.js';
 import { projectClearCommand, projectSetCommand } from './commands/project.js';
 import { removeCommand } from './commands/remove.js';
 import { switchCommand } from './commands/switch.js';
-import { CancellationError, CliError, UsageError } from './core/errors.js';
+import { CancellationError, CliError, UsageError, describeSchemaFailure } from './core/errors.js';
 import { printTopLevelHelp } from './ui/help.js';
 import { colors } from './ui/theme.js';
 import { VERSION } from './version.js';
@@ -441,7 +442,12 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
       return err.exitCode;
     }
 
-    const message = err instanceof Error ? err.message : String(err);
+    const message =
+      err instanceof ZodError
+        ? `Invalid file: ${describeSchemaFailure(err)}`
+        : err instanceof Error
+          ? err.message
+          : String(err);
     if (isJson) {
       console.log(
         JSON.stringify(
