@@ -1,33 +1,28 @@
 import { VERSION } from '../version.js';
 import { colors } from './theme.js';
 
-/** A command and what it does, rendered as one aligned row. */
-type CommandRow = [command: string, description: string];
-
-const ACCOUNT_COMMANDS: CommandRow[] = [
-  ['add', 'Add the account signed in to Antigravity'],
-  ['list', 'Show saved accounts, plan and quota'],
-  ['switch [account]', 'Switch to a saved account'],
-  ['auto', 'Switch to the account with the most quota at risk'],
-  ['current', 'Show the account in use'],
-  ['remove [account...]', 'Remove saved accounts'],
-  ['doctor', 'Check for problems'],
-];
+/**
+ * A command and what it does, rendered as one aligned row. `common` marks the
+ * rows the short help shows, so the two listings cannot drift apart.
+ */
+type CommandRow = [command: string, description: string, common?: true];
 
 const ALL_ACCOUNT_COMMANDS: CommandRow[] = [
-  ['add', 'Add the account signed in to Antigravity'],
+  ['add', 'Add the account signed in to Antigravity', true],
   ['add --api-key', 'Add an API key, service-account, or ADC profile'],
   ['login', 'Sign in to another Google account in a browser'],
-  ['list', 'Show saved accounts, plan and quota'],
-  ['switch [account]', 'Switch to a saved account'],
+  ['list', 'Show saved accounts, plan and quota', true],
+  ['switch [account]', 'Switch to a saved account', true],
   ['switch -', 'Switch back to the previous account'],
-  ['auto', 'Switch to the account with the most quota at risk'],
+  ['auto', 'Switch to the account with the most quota at risk', true],
   ['auto --watch', 'Keep switching as each account runs out'],
-  ['current', 'Show the account in use'],
+  ['current', 'Show the account in use', true],
   ['details [account]', 'Show everything stored for one account'],
-  ['remove [account...]', 'Remove saved accounts'],
-  ['doctor', 'Check for problems'],
+  ['remove [account...]', 'Remove saved accounts', true],
+  ['doctor', 'Check for problems', true],
 ];
+
+const ACCOUNT_COMMANDS: CommandRow[] = ALL_ACCOUNT_COMMANDS.filter(([, , common]) => common);
 
 const MAINTENANCE_COMMANDS: CommandRow[] = [
   ['alias <set|clear>', 'Set or clear an account alias'],
