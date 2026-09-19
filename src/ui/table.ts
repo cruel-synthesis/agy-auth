@@ -105,7 +105,6 @@ const COLUMN_DROP_ORDER: ColumnKey[] = [
 ];
 
 const MIN_ACCOUNT_WIDTH = 10;
-const MAX_ACCOUNT_WIDTH = 32;
 const MAX_PLAN_WIDTH = 20;
 const COLUMN_SEPARATOR_WIDTH = 2;
 /** Below this the table degrades to account names only. */
