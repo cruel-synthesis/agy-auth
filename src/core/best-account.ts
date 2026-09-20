@@ -205,6 +205,21 @@ function byValue(a: AccountScore, b: AccountScore): number {
 }
 
 /**
+ * Whether the two scores can be compared on readings alone.
+ *
+ * An unread weekly window is scored as an untouched one. When both sides carry
+ * that assumption it is the same constant on each and cancels, leaving measured
+ * 5-hour headroom to decide; when neither does, everything is measured. Only a
+ * mixed pair lets the assumed figure itself decide the outcome, and no session
+ * is rewritten on that. An account that cannot work at all is not a comparison:
+ * anything with measured headroom beats it.
+ */
+function comparableOnReadings(best: AccountScore, active: AccountScore | undefined): boolean {
+  if (!active || active.score <= 0) return true;
+  return Boolean(best.perishing?.measured) === Boolean(active.perishing?.measured);
+}
+
+/**
  * Rank accounts by how well working on each one now spends quota that would
  * otherwise go to waste, and say whether moving off the active account is worth
  * it.
@@ -225,6 +240,7 @@ export function chooseBestAccount(
     shouldSwitch:
       best !== null &&
       best.account.id !== activeAccountId &&
-      best.score > (active?.score ?? 0) * (1 + SWITCH_MARGIN),
+      best.score > (active?.score ?? 0) * (1 + SWITCH_MARGIN) &&
+      comparableOnReadings(best, active),
   };
 }

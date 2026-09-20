@@ -30,6 +30,15 @@ function family(
   };
 }
 
+/** A family that reports its 5-hour window and nothing about the week. */
+function fiveHourOnly(remaining5h: number): RateLimitWindow {
+  return {
+    usedPercent: 100 - remaining5h * 100,
+    windowMinutes: 300,
+    resetsAt: hoursFromNow(3),
+  };
+}
+
 function account(id: string, overrides: Partial<Account> = {}): Account {
   return {
     id,
@@ -153,6 +162,45 @@ describe('choosing the account that wastes the least quota', () => {
     expect(chooseBestAccount([weak, clearlyBetter], 'weak', NOW)).toMatchObject({
       shouldSwitch: true,
     });
+  });
+
+  it('does not rewrite the session on the strength of an unread weekly window', () => {
+    // `inUse` has a measured week with almost nothing left to lose; `unread`
+    // reports no weekly window at all and is scored as an untouched one, which
+    // ranks it far higher. That lead is an assumption, not a reading.
+    const inUse = account('in-use', { rateLimit: { gemini: family(1, 0.02, 168) } });
+    const unread = account('unread', { rateLimit: { gemini: { rate5h: fiveHourOnly(1) } } });
+
+    const choice = chooseBestAccount([inUse, unread], 'in-use', NOW);
+
+    expect(choice.best?.account.id).toBe('unread');
+    expect(choice.best?.perishing?.measured).toBe(false);
+    expect(choice.shouldSwitch).toBe(false);
+  });
+
+  it('still moves on measured headroom when neither side has a weekly reading', () => {
+    // The same assumption on both sides cancels, so the comparison is between
+    // two measured 5-hour windows and the switch rests on readings.
+    const inUse = account('in-use', { rateLimit: { gemini: { rate5h: fiveHourOnly(0.2) } } });
+    const roomier = account('roomier', { rateLimit: { gemini: { rate5h: fiveHourOnly(0.9) } } });
+
+    const choice = chooseBestAccount([inUse, roomier], 'in-use', NOW);
+
+    expect(choice.best?.account.id).toBe('roomier');
+    expect(choice.shouldSwitch).toBe(true);
+  });
+
+  it('still moves off an account that cannot work, whatever the candidate reports', () => {
+    const spent = account('spent', { rateLimit: { gemini: family(0.05, 1, 168) } });
+    const unread = account('unread', { rateLimit: { gemini: { rate5h: fiveHourOnly(0.9) } } });
+
+    const choice = chooseBestAccount([spent, unread], 'spent', NOW);
+
+    expect(choice.ranked.find((entry) => entry.account.id === 'spent')?.blocked).toBe(
+      '5-hour limit nearly spent'
+    );
+    expect(choice.best?.account.id).toBe('unread');
+    expect(choice.shouldSwitch).toBe(true);
   });
 
   it('never proposes switching to the account already in use', () => {

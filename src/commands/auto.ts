@@ -178,15 +178,18 @@ async function watchTick(registry: RegistryManager, options: AutoOptions): Promi
   // The account in use is spent. Only now is a reading of the others worth its
   // traffic, and the choice must not be made on stale ones.
   const others = registry.getAccounts().filter((account) => account.id !== active.id);
-  await refreshAndApply(registry, selectRefreshable(others), options);
+  const othersRefresh = await refreshAndApply(registry, selectRefreshable(others), options);
 
   const { choice } = readActive();
   const reason = current?.blocked ?? 'out of quota';
+  // Whoever is chosen next may be chosen on a reading that could not be
+  // renewed, so the failure travels with the decision rather than being dropped.
+  const stale = othersRefresh.warning ? ` - ${othersRefresh.warning}` : '';
 
   if (!choice.best) {
     return {
       event: 'exhausted',
-      detail: `${formatAccountShort(active)}: ${reason}, and no other account can take work`,
+      detail: `${formatAccountShort(active)}: ${reason}, and no other account can take work${stale}`,
       activeAccountId: active.id,
     };
   }
@@ -195,7 +198,7 @@ async function watchTick(registry: RegistryManager, options: AutoOptions): Promi
   if (options.dryRun) {
     return {
       event: 'would-switch',
-      detail: `${formatAccountShort(active)}: ${reason}; would switch to ${target}`,
+      detail: `${formatAccountShort(active)}: ${reason}; would switch to ${target}${stale}`,
       activeAccountId: active.id,
       chosenAccountId: choice.best.account.id,
     };
@@ -209,14 +212,14 @@ async function watchTick(registry: RegistryManager, options: AutoOptions): Promi
     const message = error instanceof Error ? error.message : String(error);
     return {
       event: 'switch-failed',
-      detail: `${formatAccountShort(active)}: ${reason}; could not switch to ${target} (${message})`,
+      detail: `${formatAccountShort(active)}: ${reason}; could not switch to ${target} (${message})${stale}`,
       activeAccountId: active.id,
     };
   }
 
   return {
     event: 'switched',
-    detail: `${formatAccountShort(active)}: ${reason}; switched to ${target}`,
+    detail: `${formatAccountShort(active)}: ${reason}; switched to ${target}${stale}`,
     activeAccountId: choice.best.account.id,
     chosenAccountId: choice.best.account.id,
   };
@@ -300,8 +303,9 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
     return watchCommand(registry, options);
   }
 
+  let warning: string | undefined;
   if (!options.offline) {
-    await refreshAndApply(registry, selectStale(accounts), options);
+    warning = (await refreshAndApply(registry, selectStale(accounts), options)).warning;
   }
 
   // Re-read: the choice must be made on the readings just written, not the ones
@@ -335,6 +339,9 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
 
   const switched = choice.shouldSwitch && !options.dryRun;
   const result = switched ? Switcher.switchAccount(choice.best.account) : undefined;
+  // A reading that could not be renewed is part of the verdict: the ranking
+  // below it was decided on whatever was already on hand.
+  const warnings = [...(warning ? [warning] : []), ...(result?.warnings ?? [])];
 
   if (options.json) {
     console.log(
@@ -356,7 +363,7 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
               weeklyResetsAt: entry.perishing?.resetsAt,
               blocked: entry.blocked,
             })),
-            warnings: result?.warnings?.length ? result.warnings : undefined,
+            warnings: warnings.length ? warnings : undefined,
           },
         },
         null,
@@ -366,17 +373,24 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
     return;
   }
 
-  for (const warning of result?.warnings ?? []) {
-    console.error(colors.yellow(`  Warning: ${warning}`));
+  for (const line of warnings) {
+    console.error(colors.yellow(`  ${line.startsWith('Warning') ? line : `Warning: ${line}`}`));
   }
 
-  const name = colors.green(formatAccountShort(choice.best.account));
+  // Staying means staying on the account in use, which is not always the one
+  // that ranked first: a lead inside the margin, or one that rests on an
+  // assumed weekly figure, is not enough to move.
+  const staying = choice.ranked.find((entry) => entry.account.id === activeId);
+  const subject = choice.shouldSwitch ? choice.best : (staying ?? choice.best);
+  const name = colors.green(formatAccountShort(subject.account));
   const verdict = switched
     ? `Switched to ${name}`
     : choice.shouldSwitch
       ? `Would switch to ${name}`
-      : `Staying on ${name} - already the best use of your quota.`;
+      : subject === choice.best
+        ? `Staying on ${name} - already the best use of your quota.`
+        : `Staying on ${name} - no reading shows a better use of your quota.`;
 
   console.log(`  ${verdict}`);
-  console.log(`  ${colors.dim(explain(choice.best, nowMs))}\n`);
+  console.log(`  ${colors.dim(explain(subject, nowMs))}\n`);
 }
