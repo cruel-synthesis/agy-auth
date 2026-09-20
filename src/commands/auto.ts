@@ -7,6 +7,7 @@ import { RegistryManager } from '../core/registry.js';
 import { Switcher } from '../core/switcher.js';
 import { Account, needsSignIn } from '../core/types.js';
 import { NO_ACCOUNTS, formatAccountShort } from '../ui/format.js';
+import { terminalWidth, truncatePadded, truncateToWidth } from '../ui/table.js';
 import { colors } from '../ui/theme.js';
 import { refreshQuota, selectRefreshable, selectStale } from './refresh.js';
 
@@ -47,6 +48,9 @@ function coverage(score: AccountScore): string {
   return ` (${score.families.join(' and ')} only)`;
 }
 
+/** Below this the account name is clipped rather than squeezed any further. */
+const MIN_RANKING_NAME_WIDTH = 10;
+
 /** One line per account: what it has left, when it expires, and where it ranked. */
 function renderRanking(ranked: AccountScore[], activeId: string | null, nowMs: number): string[] {
   const rows = ranked.map((entry) => ({
@@ -63,20 +67,50 @@ function renderRanking(ranked: AccountScore[], activeId: string | null, nowMs: n
 
   const width = (pick: (row: (typeof rows)[number]) => string, header: string) =>
     Math.max(header.length, ...rows.map((row) => pick(row).length));
-  const nameWidth = width((row) => row.name, 'ACCOUNT');
-  const headroomWidth = width((row) => row.headroom, '5H');
-  const weeklyWidth = width((row) => row.weekly, 'WEEK');
-  const expiresWidth = width((row) => row.expires, 'EXPIRES');
+
+  // Widest first is also most important first, so a terminal too narrow for the
+  // whole line loses whole columns from the right rather than digits from a
+  // number. The verdict printed below still names the winner either way.
+  const columns = [
+    { header: '5H', pick: (row: (typeof rows)[number]) => row.headroom },
+    { header: 'WEEK', pick: (row: (typeof rows)[number]) => row.weekly },
+    { header: 'EXPIRES', pick: (row: (typeof rows)[number]) => row.expires },
+    { header: 'SCORE', pick: (row: (typeof rows)[number]) => row.note },
+  ].map((column) => ({ ...column, width: width(column.pick, column.header) }));
+
+  const termWidth = terminalWidth();
+  const visible = [...columns];
+  const restWidth = () => visible.reduce((sum, column) => sum + column.width + 2, 0);
+  while (visible.length > 1 && 4 + MIN_RANKING_NAME_WIDTH + restWidth() > termWidth) {
+    visible.pop();
+  }
+
+  const nameWidth = Math.max(
+    MIN_RANKING_NAME_WIDTH,
+    Math.min(
+      width((row) => row.name, 'ACCOUNT'),
+      termWidth - 4 - restWidth()
+    )
+  );
+
+  // The last column is left unpadded so no line carries trailing whitespace.
+  const cells = (name: string, pick: (column: (typeof visible)[number]) => string): string =>
+    [
+      truncatePadded(name, nameWidth),
+      ...visible.map((column, index) =>
+        index === visible.length - 1 ? pick(column).trimEnd() : pick(column)
+      ),
+    ].join('  ');
 
   const header = colors.dim(
-    `    ${'ACCOUNT'.padEnd(nameWidth)}  ${'5H'.padEnd(headroomWidth)}  ${'WEEK'.padEnd(weeklyWidth)}  ${'EXPIRES'.padEnd(expiresWidth)}  SCORE`
+    `    ${cells('ACCOUNT', (column) => column.header.padEnd(column.width))}`
   );
 
   return [
-    header,
+    truncateToWidth(header, termWidth, ''),
     ...rows.map((row) => {
-      const line = `${row.name.padEnd(nameWidth)}  ${row.headroom.padEnd(headroomWidth)}  ${row.weekly.padEnd(weeklyWidth)}  ${row.expires.padEnd(expiresWidth)}  ${row.note}`;
-      return `  ${row.marker} ${line}`;
+      const line = cells(row.name, (column) => column.pick(row).padEnd(column.width));
+      return truncateToWidth(`  ${row.marker} ${line}`, termWidth, '');
     }),
   ];
 }

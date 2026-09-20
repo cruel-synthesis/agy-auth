@@ -110,6 +110,17 @@ const COLUMN_SEPARATOR_WIDTH = 2;
 /** Below this the table degrades to account names only. */
 const NARROW_FALLBACK_WIDTH = 24;
 
+/**
+ * The width to render into: an explicit override, the live TTY, then `$COLUMNS`,
+ * then a conventional 120 when nothing says otherwise.
+ */
+export function terminalWidth(override?: number): number {
+  if (override) return override;
+  const envColumns = Number.parseInt(process.env.COLUMNS || '', 10);
+  const fallbackWidth = Number.isFinite(envColumns) && envColumns > 0 ? envColumns : 120;
+  return process.stdout.isTTY ? process.stdout.columns || fallbackWidth : fallbackWidth;
+}
+
 function quotaWindow(account: Account, key: QuotaColumnKey) {
   switch (key) {
     case 'gemini5h':
@@ -128,11 +139,7 @@ export function getTableComponents(
   activeAccountId: string | null,
   maxWidthOverride?: number
 ): TableComponents {
-  const isTTY = Boolean(process.stdout.isTTY);
-  const envColumns = Number.parseInt(process.env.COLUMNS || '', 10);
-  const fallbackWidth = Number.isFinite(envColumns) && envColumns > 0 ? envColumns : 120;
-  const termWidth =
-    maxWidthOverride || (isTTY ? process.stdout.columns || fallbackWidth : fallbackWidth);
+  const termWidth = terminalWidth(maxWidthOverride);
   const idxWidth = Math.max(2, String(accounts.length).length);
   const nowMs = Date.now();
 

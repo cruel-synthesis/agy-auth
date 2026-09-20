@@ -1,11 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import stringWidth from 'string-width';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { autoCommand } from '../src/commands/auto.js';
 import { QUOTA_CACHE_TTL_MS } from '../src/commands/refresh.js';
 import { QuotaClient, QuotaRefresh } from '../src/core/quota.js';
 import { Account } from '../src/core/types.js';
-import { setupTestEnvironment, TestEnv } from './test-utils.js';
+import { TestEnv, setupTestEnvironment } from './test-utils.js';
 
 const NOW = Date.now();
 const NOW_SEC = Math.floor(NOW / 1000);
@@ -66,6 +67,30 @@ describe('Automatic switching', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     testEnv.cleanup();
+  });
+
+  it('fits its ranking into a narrow terminal without clipping a number', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const originalColumns = process.env.COLUMNS;
+    process.env.COLUMNS = '40';
+
+    try {
+      await autoCommand({ dryRun: true, offline: true });
+      const table = logSpy.mock.calls
+        .map((call) => String(call[0]))
+        .filter((line) => line.includes('ACCOUNT') || line.includes('@example.com'));
+
+      expect(table.length).toBeGreaterThan(0);
+      for (const line of table) {
+        expect(stringWidth(line)).toBeLessThanOrEqual(40);
+      }
+      // The score cannot fit, and a clipped score would read as a real one.
+      expect(table[0]).not.toContain('SCORE');
+      expect(table[0]).toContain('5H');
+    } finally {
+      process.env.COLUMNS = originalColumns;
+      logSpy.mockRestore();
+    }
   });
 
   it('says so when it had to decide on readings it could not renew', async () => {
