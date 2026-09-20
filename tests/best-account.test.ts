@@ -178,6 +178,43 @@ describe('choosing the account that wastes the least quota', () => {
     expect(choice.shouldSwitch).toBe(false);
   });
 
+  it('does not rewrite the session when one family of the candidate went unread', () => {
+    // `candidate` reports both Gemini windows and only Claude's 5-hour one, so
+    // half its score rests on an assumed untouched Claude week. Its Gemini
+    // week is measured, which is all `perishing` ever spoke for.
+    const inUse = account('in-use', {
+      rateLimit: { gemini: family(1, 0.02, 168), claude: family(1, 0.02, 168) },
+    });
+    const candidate = account('candidate', {
+      rateLimit: { gemini: family(1, 0.03, 168), claude: { rate5h: fiveHourOnly(1) } },
+    });
+
+    const choice = chooseBestAccount([inUse, candidate], 'in-use', NOW);
+
+    expect(choice.best?.account.id).toBe('candidate');
+    expect(choice.best?.perishing?.measured).toBe(true);
+    expect(choice.best?.weeklyBasis).toBe('mixed');
+    expect(choice.ranked.find((entry) => entry.account.id === 'in-use')?.weeklyBasis).toBe(
+      'measured'
+    );
+    expect(choice.shouldSwitch).toBe(false);
+  });
+
+  it('moves between two accounts that both report every weekly window', () => {
+    const inUse = account('in-use', {
+      rateLimit: { gemini: family(1, 0.02, 168), claude: family(1, 0.02, 168) },
+    });
+    const candidate = account('candidate', {
+      rateLimit: { gemini: family(1, 0.9, 24), claude: family(1, 0.9, 24) },
+    });
+
+    const choice = chooseBestAccount([inUse, candidate], 'in-use', NOW);
+
+    expect(choice.best?.account.id).toBe('candidate');
+    expect(choice.best?.weeklyBasis).toBe('measured');
+    expect(choice.shouldSwitch).toBe(true);
+  });
+
   it('still moves on measured headroom when neither side has a weekly reading', () => {
     // The same assumption on both sides cancels, so the comparison is between
     // two measured 5-hour windows and the switch rests on readings.

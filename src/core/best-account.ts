@@ -45,6 +45,12 @@ export interface PerishingWeekly {
   resetsAt?: number;
 }
 
+/**
+ * Whether every contributing family reported a weekly window, none did, or the
+ * score mixes the two.
+ */
+export type WeeklyBasis = 'measured' | 'mixed' | 'assumed';
+
 export interface AccountScore {
   account: Account;
   /**
@@ -62,6 +68,12 @@ export interface AccountScore {
   families: ModelFamily[];
   /** The allowance that argues loudest for choosing this account. */
   perishing?: PerishingWeekly;
+  /**
+   * How much of the weekly input behind `score` came from readings rather than
+   * from the untouched week assumed in a missing window's place. `perishing`
+   * speaks for one family only, so it cannot answer this for the whole score.
+   */
+  weeklyBasis: WeeklyBasis;
   /** Epoch seconds at which the soonest 5-hour allowance refills, when known. */
   refillsAt?: number;
   /** Why the account is out of the running, when it is. */
@@ -151,7 +163,13 @@ function expiresAt(weekly: PerishingWeekly): number {
 }
 
 function scoreAccount(account: Account, nowMs: number): AccountScore {
-  const base = { account, score: 0, headroom: 0, families: [] as ModelFamily[] };
+  const base = {
+    account,
+    score: 0,
+    headroom: 0,
+    families: [] as ModelFamily[],
+    weeklyBasis: 'assumed' as WeeklyBasis,
+  };
 
   if (account.authType !== 'oauth') {
     return { ...base, blocked: 'not an OAuth account' };
@@ -174,10 +192,16 @@ function scoreAccount(account: Account, nowMs: number): AccountScore {
     expiresAt(s.weekly) < expiresAt(worst.weekly) ? s : worst
   ).weekly;
   const refills = scored.map((s) => s.refillsAt).filter((at): at is number => at !== undefined);
+  const measured = scored.filter((s) => s.weekly.measured).length;
   const common = {
     headroom,
     families: scored.map((s) => s.weekly.family),
     perishing,
+    weeklyBasis: (measured === scored.length
+      ? 'measured'
+      : measured === 0
+        ? 'assumed'
+        : 'mixed') as WeeklyBasis,
     ...(refills.length > 0 ? { refillsAt: Math.min(...refills) } : {}),
   };
 
@@ -207,16 +231,18 @@ function byValue(a: AccountScore, b: AccountScore): number {
 /**
  * Whether the two scores can be compared on readings alone.
  *
- * An unread weekly window is scored as an untouched one. When both sides carry
- * that assumption it is the same constant on each and cancels, leaving measured
- * 5-hour headroom to decide; when neither does, everything is measured. Only a
- * mixed pair lets the assumed figure itself decide the outcome, and no session
- * is rewritten on that. An account that cannot work at all is not a comparison:
- * anything with measured headroom beats it.
+ * An unread weekly window is scored as an untouched one. When no family on
+ * either side reported a weekly window, that assumption enters every family's
+ * value as the same constant factor, so it cancels out of the ordering and
+ * measured 5-hour headroom decides; when every family reported one, everything
+ * is measured. A score that mixes the two is neither: there the assumed week
+ * is weighted by one family's headroom alone, so it can move the account up or
+ * down the ranking on its own, and no session is rewritten on that. An account
+ * that cannot work at all is not a comparison: anything that can beats it.
  */
 function comparableOnReadings(best: AccountScore, active: AccountScore | undefined): boolean {
   if (!active || active.score <= 0) return true;
-  return Boolean(best.perishing?.measured) === Boolean(active.perishing?.measured);
+  return best.weeklyBasis === active.weeklyBasis && best.weeklyBasis !== 'mixed';
 }
 
 /**

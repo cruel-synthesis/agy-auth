@@ -67,6 +67,14 @@ passed, is scored as an untouched week: below anything visibly about to expire
 and above anything visibly spent. The ranking shows `-` rather than a percentage
 there, because nothing was measured.
 
+That assumption ranks accounts, but it never moves you between them. A switch
+needs the two accounts to be comparable on readings: either every family on both
+sides reported its weekly window, or no family on either side did. When no family
+reported one, the same assumption enters both scores the same way and measured
+5-hour headroom decides. An account whose score mixes measured and assumed weeks
+can still win the ranking and still be reported as the better use of your quota,
+but the session is not rewritten on it. `--dry-run` shows the ranking either way.
+
 Excluded from the running:
 
 - accounts needing a fresh sign-in, and anything that is not an OAuth account
@@ -76,6 +84,7 @@ Excluded from the running:
   working stint however urgent their week
 
 The account already in use has to be beaten by a clear margin, not a hair, since
-a switch rewrites the Antigravity session.
+a switch rewrites the Antigravity session. The exception is an account that
+cannot take work at all: anything that can beats it, whatever the readings.
 
 Exits `1` when no account can take work, naming when the first one frees up.
