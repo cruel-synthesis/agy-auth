@@ -27,5 +27,5 @@ First release.
 
 ### Compatibility
 
-- Registry schema version 3, with automatic migration from earlier versions.
+- Registry schema version 3, with automatic migration from schema 2. Any other schema version is refused with the registry left as it was found.
 - Node.js 22 or later.

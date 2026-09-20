@@ -1,13 +1,13 @@
+import { describeSchemaFailure } from './errors.js';
 import {
   Account,
-  AccountV2Schema,
   CURRENT_SCHEMA_VERSION,
-  DEFAULT_SETTINGS,
   ExportDocumentV2Schema,
   ExportDocumentV3,
   ExportDocumentV3Schema,
   Registry,
   RegistrySchema,
+  RegistryV2Schema,
   isRecord,
 } from './types.js';
 
@@ -71,18 +71,6 @@ function upgradeAccountProvenance(account: Account): Account {
   return { ...account, credentialSource: 'unknown' };
 }
 
-/**
- * Parses every schema 2 account strictly before converting any of them, so a
- * file that is only partly valid is rejected whole instead of migrated in
- * pieces.
- */
-function upgradeSchema2Accounts(raw: unknown): Account[] {
-  if (!Array.isArray(raw)) {
-    throw new Error("Registry is missing 'accounts' array.");
-  }
-  return raw.map((account) => AccountV2Schema.parse(account)).map(upgradeAccountProvenance);
-}
-
 export function migrateRegistry(raw: unknown): { registry: Registry; migrated: boolean } {
   if (!isRecord(raw)) {
     throw new Error('Registry data must be an object.');
@@ -101,41 +89,30 @@ export function migrateRegistry(raw: unknown): { registry: Registry; migrated: b
     return { registry: parsed, migrated: false };
   }
 
-  const accounts = upgradeSchema2Accounts(raw.accounts);
+  // Schema 2 is the current schema without credential provenance, so the whole
+  // document is checked against it before any of it is converted: a file that
+  // is only partly valid is refused rather than repaired into a shape it was
+  // never written in. Account pointers and settings then carry over exactly as
+  // they were found; whether a pointer still names an account is a registry
+  // invariant, and the caller checks migrated and current registries alike.
+  const parsed = RegistryV2Schema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error(
+      `Registry is not a valid schema 2 document (${describeSchemaFailure(parsed.error)}). The registry was left unchanged.`
+    );
+  }
+
+  const accounts = parsed.data.accounts.map(upgradeAccountProvenance);
   validateUniqueness(accounts);
-
-  const accountIds = new Set(accounts.map((a) => a.id));
-  const activeAccountId =
-    typeof raw.activeAccountId === 'string' && accountIds.has(raw.activeAccountId)
-      ? raw.activeAccountId
-      : null;
-  const previousAccountId =
-    typeof raw.previousAccountId === 'string' &&
-    accountIds.has(raw.previousAccountId) &&
-    raw.previousAccountId !== activeAccountId
-      ? raw.previousAccountId
-      : null;
-
-  const rawSettings = isRecord(raw.settings) ? raw.settings : {};
-  const settings = {
-    ...DEFAULT_SETTINGS,
-    ...(typeof rawSettings.defaultLocation === 'string'
-      ? { defaultLocation: rawSettings.defaultLocation }
-      : {}),
-    ...(typeof rawSettings.defaultModel === 'string'
-      ? { defaultModel: rawSettings.defaultModel }
-      : {}),
-  };
 
   const migratedRegistry: Registry = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
-    activeAccountId,
-    previousAccountId,
+    activeAccountId: parsed.data.activeAccountId,
+    previousAccountId: parsed.data.previousAccountId,
     accounts,
-    settings,
+    settings: parsed.data.settings,
   };
 
-  RegistrySchema.parse(migratedRegistry);
   return { registry: migratedRegistry, migrated: true };
 }
 

@@ -10,7 +10,10 @@ export function describeSchemaFailure(error: ZodError): string {
   if (!first) return 'it does not match the expected schema';
   const field = first.path.length > 0 ? first.path.join('.') : 'the document';
   const others = rest.length > 0 ? ` (and ${rest.length} more)` : '';
-  return `${field}: ${first.message.toLowerCase()}${others}`;
+  // Only the opening word is lowered: a message that quotes a field name must
+  // still quote it as the file spells it.
+  const detail = first.message.charAt(0).toLowerCase() + first.message.slice(1);
+  return `${field}: ${detail}${others}`;
 }
 
 export class CliError extends Error {

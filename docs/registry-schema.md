@@ -41,9 +41,9 @@ Three version numbers appear in this project and they are independent: the regis
 
 When `agy-auth` opens a registry that declares `schemaVersion: 2`, it upgrades that registry in place:
 
-1. Every account is parsed strictly against the schema 2 shape. If any one of them fails, the whole file is refused and left untouched: half a registry is worse than a clear error.
-2. OAuth accounts gain `credentialSource: 'unknown'`; nothing else changes.
-3. The result is validated as a complete schema 3 registry.
+1. The whole document is parsed strictly against the schema 2 shape: its accounts, its `activeAccountId` and `previousAccountId`, its `settings`, and no other key. If any part of it fails, the file is refused and left untouched: half a registry is worse than a clear error, and a value schema 2 could not have held is reported rather than replaced with a default.
+2. OAuth accounts gain `credentialSource: 'unknown'`. Account pointers and settings carry over exactly as they were written.
+3. The result is validated as a complete schema 3 registry, including that `activeAccountId` and `previousAccountId` still name accounts that exist.
 4. Only then is a backup written under `~/.agy-auth/backups/` with the `schema_migration_` prefix. If the backup cannot be created, the migration aborts with the registry untouched.
 5. The migrated registry is atomically written to `~/.agy-auth/registry.json` with mode `0600` on POSIX systems.
 

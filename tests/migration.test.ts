@@ -130,7 +130,30 @@ describe('Schema Migration and Timestamp Monotonicity', () => {
     expect(() => migrateRegistry(partlyValid)).toThrow();
 
     const missingAccounts = { schemaVersion: 2, activeAccountId: null, previousAccountId: null };
-    expect(() => migrateRegistry(missingAccounts)).toThrow(/missing 'accounts' array/);
+    expect(() => migrateRegistry(missingAccounts)).toThrow(/accounts: required/);
+  });
+
+  it('refuses malformed v2 values instead of substituting defaults', () => {
+    // Schema 2 was strict about its settings, so a value it could not have
+    // written means the file was edited by something else. Falling back to the
+    // defaults would hide that and then save the result.
+    const badSettings = { ...schema2Registry(), settings: { defaultLocation: 42 } };
+    expect(() => migrateRegistry(badSettings)).toThrow(
+      /not a valid schema 2 document \(settings\.defaultLocation/
+    );
+
+    const unknownKey = { ...schema2Registry(), lastSwitchedAt: 1 };
+    expect(() => migrateRegistry(unknownKey)).toThrow(/not a valid schema 2 document/);
+  });
+
+  it('refuses a v2 registry whose active account is missing, leaving the file alone', () => {
+    const dangling = JSON.stringify({ ...schema2Registry(), activeAccountId: 'acc_gone' });
+    fs.writeFileSync(Paths.registryFile, dangling);
+
+    // Nulling the pointer would deactivate whatever was last in use and write
+    // that over the file it was read from.
+    expect(() => new RegistryManager()).toThrow(/acc_gone/);
+    expect(fs.readFileSync(Paths.registryFile, 'utf-8')).toBe(dangling);
   });
 
   it('leaves a rejected registry on disk exactly as it was found', () => {

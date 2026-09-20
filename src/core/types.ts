@@ -193,6 +193,17 @@ export const AccountV2Schema = AccountSchema.omit({
   oauthClientId: true,
 }).strict();
 
+/** A registry as written before credential provenance was recorded. */
+export const RegistryV2Schema = z
+  .object({
+    schemaVersion: z.literal(2),
+    activeAccountId: z.string().max(64).nullable(),
+    previousAccountId: z.string().max(64).nullable(),
+    accounts: z.array(AccountV2Schema),
+    settings: RegistrySettingsSchema,
+  })
+  .strict();
+
 export const ExportDocumentV2Schema = z
   .object({
     kind: z.literal('agy-auth-export'),
