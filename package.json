@@ -1,7 +1,7 @@
 {
   "name": "@cruel-synthesis/agy-auth",
   "version": "0.1.0",
-  "description": "Local credential profile manager for Antigravity and Google AI development",
+  "description": "Local account manager and switcher for Antigravity and Google AI development",
   "type": "module",
   "bin": {
     "agy-auth": "bin/agy-auth.js"

@@ -8,7 +8,7 @@
 
 ## Key Features
 
-- **Multi-Account Switching**: Switch between multiple Google profiles for Antigravity and Gemini CLI workflows.
+- **Multi-Account Switching**: Switch between multiple Google accounts for Antigravity and Gemini CLI workflows.
 - **Authentication Methods**: Antigravity OAuth sessions, Gemini API keys, service-account JSON files, and authorized-user or service-account Google Cloud ADC.
 - **Live Plan and Quota Reporting (experimental)**: `list`, `current`, and `details` show your subscription plan and remaining Gemini and Claude/GPT quota for 5-hour and weekly windows. See [the caveats below](#live-plan-and-quota-experimental).
 - **Local-First Architecture**: Local metadata management under `~/.agy-auth/`. No telemetry, and nothing installed that runs on its own - `agy-auth auto --watch` keeps running only as long as you leave it running. Network access is limited to the quota, verification, token-refresh, and diagnostic requests documented below.
