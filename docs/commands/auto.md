@@ -21,7 +21,7 @@ Options:
 `agy-auth auto --watch` stays running and takes a live reading of the account in
 use every few minutes. While that account still has room it does nothing but say
 so. The moment it runs out, the others are read and the best one is switched to,
-by the same scoring described below.
+by the same choice described below.
 
 ```
   Watching the account in use, switching when it runs out. Checking every 5 min.
@@ -67,13 +67,15 @@ passed, is scored as an untouched week: below anything visibly about to expire
 and above anything visibly spent. The ranking shows `-` rather than a percentage
 there, because nothing was measured.
 
-That assumption ranks accounts, but it never moves you between them. A switch
-needs the two accounts to be comparable on readings: either every family on both
-sides reported its weekly window, or no family on either side did. When no family
-reported one, the same assumption enters both scores the same way and measured
-5-hour headroom decides. An account whose score mixes measured and assumed weeks
-can still win the ranking and still be reported as the better use of your quota,
-but the session is not rewritten on it. `--dry-run` shows the ranking either way.
+That assumption ranks accounts; it must not pick between them. So the score
+decides only when every account that can take work reported every weekly window.
+Short of that, the one figure all of them did measure - their 5-hour headroom -
+decides on its own: the order, the account chosen, and the margin the account in
+use has to be beaten by. The ranking says which of the two it used, and leaves
+out the `SCORE` column when it was not the score, since a number printed beside
+an order it did not produce reads as one that was ignored. With `--json`,
+`data.basis` is `weekly` or `headroom`. This applies to `--watch` as it does to a
+single run, and whether or not the account in use still has room.
 
 Excluded from the running:
 
@@ -87,8 +89,11 @@ The account already in use has to be beaten by a clear margin, not a hair, since
 a switch rewrites the Antigravity session. The exception is an account that
 cannot take work at all: anything that can beats it, whatever the readings.
 
-Exits `1` when no account can take work. It names when the first one frees up if
-a reading says so, and says the quota could not be determined when nothing could
-be read at all - being unable to reach the service is not the same as finding
-every account spent. A refresh that failed is reported with the refusal: on
-`stderr` for a person, and under `error.details.warnings` with `--json`.
+Exits `1` when no account can take work, saying only as much as was read. Read
+through and all out, it names when the first frees up. Nothing read at all, it
+says the quota could not be determined - being unable to reach the service is not
+the same as finding every account spent. A mix of the two says that no account
+has known usable quota, how many could not be read, and when the first account
+with a reading frees up; an unread account is never counted as a spent one. A
+refresh that failed is reported with the refusal: on `stderr` for a person, and
+under `error.details.warnings` with `--json`.
