@@ -41,16 +41,33 @@ export function selectRefreshable(accounts: Account[]): Account[] {
 export const QUOTA_CACHE_TTL_MS = 10 * 60 * 1000;
 
 /**
- * The profiles an ordinary read contacts: every OAuth profile whose reading has
- * aged out, not just the active one - the table shows them all, so a row that is
- * never refreshed is never right. Profiles already known to need a fresh sign-in
- * are left alone; they would spend a round trip each time to learn nothing.
- * `list --check` still asks about every profile.
+ * A window whose own reset time has passed describes a period that is over. Its
+ * usage number is no longer a reading of anything, whatever the cache TTL says.
+ */
+function hasElapsedWindow(account: Account, nowMs: number): boolean {
+  const nowSec = Math.floor(nowMs / 1000);
+  return [account.rateLimit?.gemini, account.rateLimit?.claude].some((family) =>
+    [family?.rate5h, family?.rateWeekly].some(
+      (window) => window?.resetsAt !== undefined && nowSec >= window.resetsAt
+    )
+  );
+}
+
+/**
+ * The accounts an ordinary read contacts: every OAuth account whose reading has
+ * aged out or has outlived its own reset time, not just the active one - the
+ * table shows them all, so a row that is never refreshed is never right.
+ * Accounts already known to need a fresh sign-in are left alone; they would
+ * spend a round trip each time to learn nothing. `list --check` still asks about
+ * every account.
  */
 export function selectStale(accounts: Account[]): Account[] {
-  const cutoff = Date.now() - QUOTA_CACHE_TTL_MS;
+  const nowMs = Date.now();
+  const cutoff = nowMs - QUOTA_CACHE_TTL_MS;
   return selectRefreshable(accounts).filter(
-    (account) => !needsSignIn(account) && (account.quotaCheckedAt ?? 0) <= cutoff
+    (account) =>
+      !needsSignIn(account) &&
+      ((account.quotaCheckedAt ?? 0) <= cutoff || hasElapsedWindow(account, nowMs))
   );
 }
 
