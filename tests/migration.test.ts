@@ -1,15 +1,45 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  migrateExportDocument,
-  migrateLegacyAccount,
-  migrateRegistry,
-} from '../src/core/migration.js';
+import { migrateExportDocument, migrateRegistry } from '../src/core/migration.js';
 import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
 import { Storage } from '../src/core/storage.js';
-import { generateSyntheticPrivateKey, setupTestEnvironment, TestEnv } from './test-utils.js';
+import { setupTestEnvironment, TestEnv } from './test-utils.js';
+
+/** A schema 2 registry as the first release wrote one. */
+function schema2Registry() {
+  return {
+    schemaVersion: 2,
+    activeAccountId: 'acc_native',
+    previousAccountId: null,
+    accounts: [
+      {
+        id: 'acc_native',
+        email: 'native@example.com',
+        authType: 'oauth',
+        status: 'valid',
+        credentials: {
+          keychainPayload: {
+            auth_method: 'consumer',
+            token: { access_token: 'a', refresh_token: 'r' },
+          },
+        },
+        createdAt: 1,
+        updatedAt: 2,
+      },
+      {
+        id: 'acc_key',
+        email: 'key@example.com',
+        authType: 'api-key',
+        status: 'valid',
+        credentials: { apiKey: 'AIzaSyExample' },
+        createdAt: 1,
+        updatedAt: 2,
+      },
+    ],
+    settings: { defaultLocation: 'global' },
+  };
+}
 
 describe('Schema Migration and Timestamp Monotonicity', () => {
   let testEnv: TestEnv;
@@ -22,126 +52,16 @@ describe('Schema Migration and Timestamp Monotonicity', () => {
     testEnv.cleanup();
   });
 
-  it('migrates a Schema v1 registry to the current schema with full field preservation', () => {
-    const pem = generateSyntheticPrivateKey();
-    const v1Data = {
-      version: 1,
-      activeAccountId: 'acc_1',
-      accounts: [
-        {
-          id: 'acc_1',
-          email: 'user1@example.com',
-          alias: 'main',
-          authType: 'oauth',
-          credentials: {
-            accessToken: 'ya29.old-token',
-            refreshToken: '1//old-refresh',
-            tokenExpiry: Math.floor(Date.now() / 1000) + 3600,
-          },
-          createdAt: 1000,
-          updatedAt: 1000,
-        },
-        {
-          id: 'acc_2',
-          email: 'api-alias-only',
-          authType: 'api-key',
-          credentials: {
-            apiKey: 'AIzaSyFakeKey1234567890',
-          },
-          createdAt: 2000,
-          updatedAt: 2000,
-        },
-        {
-          id: 'acc_3',
-          email: 'sa@proj.iam.gserviceaccount.com',
-          authType: 'service-account',
-          credentials: {
-            serviceAccountKey: {
-              type: 'service_account',
-              project_id: 'proj',
-              client_email: 'sa@proj.iam.gserviceaccount.com',
-              private_key: pem,
-            },
-          },
-          createdAt: 3000,
-          updatedAt: 3000,
-        },
-        {
-          id: 'acc_4',
-          email: 'adc@example.com',
-          authType: 'adc',
-          credentials: {
-            adcPath: '/path/to/adc.json',
-          },
-          createdAt: 4000,
-          updatedAt: 4000,
-        },
-      ],
-      settings: {
-        defaultModel: 'gemini-2.5-flash',
-        defaultLocation: 'us-central1',
-      },
-    };
-
-    const { registry, migrated } = migrateRegistry(v1Data);
-    expect(migrated).toBe(true);
-    expect(registry.schemaVersion).toBe(3);
-    expect(registry.activeAccountId).toBe('acc_1');
-    expect(registry.accounts.length).toBe(4);
-    expect(registry.accounts[0].authType).toBe('oauth');
-    expect(registry.accounts[0]?.credentials?.keychainPayload?.token.access_token).toBe(
-      'ya29.old-token'
-    );
-
-    // Legacy label converted to alias and local.invalid email
-    expect(registry.accounts[1].alias).toBe('api-alias-only');
-    expect(registry.accounts[1].email).toBe('acc_2@local.invalid');
-
-    // Settings preserved
-    expect(registry.settings.defaultModel).toBe('gemini-2.5-flash');
-    expect(registry.settings.defaultLocation).toBe('us-central1');
-  });
-
   it('upgrades v2 registries without inventing a credential source', () => {
-    const v2Data = {
-      schemaVersion: 2,
-      activeAccountId: 'acc_native',
-      previousAccountId: null,
-      accounts: [
-        {
-          id: 'acc_native',
-          email: 'native@example.com',
-          authType: 'oauth',
-          status: 'valid',
-          credentials: {
-            keychainPayload: {
-              auth_method: 'consumer',
-              token: { access_token: 'a', refresh_token: 'r' },
-            },
-          },
-          createdAt: 1,
-          updatedAt: 2,
-        },
-        {
-          id: 'acc_key',
-          email: 'key@example.com',
-          authType: 'api-key',
-          status: 'valid',
-          credentials: { apiKey: 'AIzaSyExample' },
-          createdAt: 1,
-          updatedAt: 2,
-        },
-      ],
-      settings: { defaultLocation: 'global' },
-    };
-
-    const { registry, migrated } = migrateRegistry(v2Data);
+    const { registry, migrated } = migrateRegistry(schema2Registry());
 
     expect(migrated).toBe(true);
     expect(registry.schemaVersion).toBe(3);
+    expect(registry.activeAccountId).toBe('acc_native');
+    expect(registry.settings.defaultLocation).toBe('global');
 
     // Where the credentials came from is unrecoverable for pre-existing
-    // profiles, so it is recorded as unknown rather than assumed.
+    // accounts, so it is recorded as unknown rather than assumed.
     const native = registry.accounts.find((a) => a.id === 'acc_native');
     expect(native?.credentialSource).toBe('unknown');
 
@@ -177,44 +97,67 @@ describe('Schema Migration and Timestamp Monotonicity', () => {
     expect(registry.accounts[0].oauthClientId).toBe('client-abc.apps.googleusercontent.com');
   });
 
-  it('migrates v1 export documents to the current format and handles invalid documents', () => {
-    const pem = generateSyntheticPrivateKey();
-    const v1Export = {
-      kind: 'agy-auth-profile-export',
-      formatVersion: 1,
-      exportedAt: '2026-01-01T00:00:00.000Z',
-      includesSecrets: true,
-      accounts: [
-        {
-          id: 'acc_exp_1',
-          email: 'exp@example.com',
-          authType: 'service-account',
-          credentials: {
-            serviceAccountKey: {
-              type: 'service_account',
-              project_id: 'p',
-              client_email: 'exp@example.com',
-              private_key: pem,
-            },
-          },
-          createdAt: 1000,
-          updatedAt: 1000,
-        },
-      ],
-    };
+  it('rejects schema versions it never wrote, naming the ones it reads', () => {
+    // Schema 1 predates this project; nothing here has ever written one.
+    expect(() => migrateRegistry({ schemaVersion: 1, accounts: [] })).toThrow(
+      /Unsupported registry schema version 1; agy-auth reads 2 and 3/
+    );
 
-    const migrated = migrateExportDocument(v1Export);
-    expect(migrated.kind).toBe('agy-auth-export');
-    expect(migrated.formatVersion).toBe(3);
-    expect(migrated.accounts.length).toBe(1);
-    expect(migrated.accounts[0].email).toBe('exp@example.com');
+    // A newer registry means the installed agy-auth is the old one.
+    expect(() => migrateRegistry({ schemaVersion: 4, accounts: [] })).toThrow(
+      /Unsupported registry schema version 4/
+    );
 
-    // Invalid non-object export document
+    // An absent or non-numeric version is named rather than assumed to be 1.
+    expect(() => migrateRegistry({ accounts: [] })).toThrow(
+      /Unsupported registry schema version missing/
+    );
+    expect(() => migrateRegistry({ schemaVersion: '3', accounts: [] })).toThrow(
+      /Unsupported registry schema version "3"/
+    );
+    expect(() => migrateRegistry(null)).toThrow(/must be an object/);
+  });
+
+  it('rejects a malformed v2 registry whole instead of migrating the valid part', () => {
+    const partlyValid = schema2Registry();
+    // A second account with an unparseable auth type must not be dropped while
+    // the first one is migrated: half a registry is worse than a clear refusal.
+    partlyValid.accounts[1] = {
+      ...partlyValid.accounts[1],
+      authType: 'oidc-token',
+    } as (typeof partlyValid.accounts)[number];
+
+    expect(() => migrateRegistry(partlyValid)).toThrow();
+
+    const missingAccounts = { schemaVersion: 2, activeAccountId: null, previousAccountId: null };
+    expect(() => migrateRegistry(missingAccounts)).toThrow(/missing 'accounts' array/);
+  });
+
+  it('leaves a rejected registry on disk exactly as it was found', () => {
+    const v1OnDisk = { schemaVersion: 1, accounts: [] };
+    fs.writeFileSync(Paths.registryFile, JSON.stringify(v1OnDisk));
+
+    expect(() => new RegistryManager()).toThrow(/Unsupported registry schema version 1/);
+
+    const rawAfter = JSON.parse(fs.readFileSync(Paths.registryFile, 'utf-8'));
+    expect(rawAfter).toEqual(v1OnDisk);
+  });
+
+  it('rejects export formats it never wrote and keeps reading format 2', () => {
+    // Format 1 (`agy-auth-profile-export`) predates this project.
+    expect(() =>
+      migrateExportDocument({
+        kind: 'agy-auth-profile-export',
+        formatVersion: 1,
+        exportedAt: '2026-01-01T00:00:00.000Z',
+        includesSecrets: true,
+        accounts: [],
+      })
+    ).toThrow(/Unsupported export document .*agy-auth reads formats 2 and 3/);
+
     expect(() => migrateExportDocument(null)).toThrow(/root must be an object/);
-
-    // Unsupported formatVersion
     expect(() => migrateExportDocument({ kind: 'unknown-export', formatVersion: 99 })).toThrow(
-      /Unsupported export document format/
+      /Unsupported export document/
     );
   });
 
@@ -236,6 +179,7 @@ describe('Schema Migration and Timestamp Monotonicity', () => {
         },
       ],
     };
+    const before = JSON.stringify(v2Export);
 
     const migrated = migrateExportDocument(v2Export);
 
@@ -243,53 +187,27 @@ describe('Schema Migration and Timestamp Monotonicity', () => {
     expect(migrated.registrySchemaVersion).toBe(3);
     expect(migrated.exportedAt).toBe('2026-01-01T00:00:00.000Z');
     expect(migrated.accounts[0].credentialSource).toBe('unknown');
+
+    // The document handed in is never edited in place.
+    expect(JSON.stringify(v2Export)).toBe(before);
   });
 
-  it('rejects legacy accounts with missing or unsupported authType without defaulting', () => {
-    const missingAuthType = {
-      id: 'acc_invalid',
-      email: 'bad@example.com',
-      credentials: { apiKey: 'key' },
-    };
-
-    expect(() => migrateLegacyAccount(missingAuthType)).toThrow(/missing or unsupported authType/);
-
-    const unsupportedAuthType = {
-      id: 'acc_invalid2',
-      email: 'bad2@example.com',
-      authType: 'oidc-token',
-      credentials: {},
-    };
-
-    expect(() => migrateLegacyAccount(unsupportedAuthType)).toThrow(
-      /missing or unsupported authType/
-    );
-
-    // Invalid email that is not an alias
+  it('rejects a malformed v2 export document rather than importing part of it', () => {
     expect(() =>
-      migrateLegacyAccount({
-        id: 'acc_bad_email',
-        email: 'not an email and not an alias!!',
-        authType: 'api-key',
-        credentials: { apiKey: 'k' },
+      migrateExportDocument({
+        kind: 'agy-auth-export',
+        formatVersion: 2,
+        registrySchemaVersion: 2,
+        exportedAt: '2026-01-01T00:00:00.000Z',
+        includesSecrets: false,
+        accounts: [{ id: 'acc_broken', email: 'not-an-email', authType: 'api-key' }],
       })
-    ).toThrow(/invalid email/);
+    ).toThrow();
   });
 
   it('aborts migration and leaves original registry untouched if backup creation fails', () => {
-    const v1Data = {
-      version: 1,
-      accounts: [
-        {
-          id: 'acc_1',
-          email: 'test@example.com',
-          authType: 'api-key',
-          credentials: { apiKey: 'AIzaSy12345' },
-        },
-      ],
-    };
-
-    fs.writeFileSync(Paths.registryFile, JSON.stringify(v1Data));
+    const v2Data = schema2Registry();
+    fs.writeFileSync(Paths.registryFile, JSON.stringify(v2Data));
 
     // Mock Storage.createBackup to return null (failure)
     const backupSpy = vi.spyOn(Storage, 'createBackup').mockReturnValue(null);
@@ -297,9 +215,10 @@ describe('Schema Migration and Timestamp Monotonicity', () => {
     try {
       expect(() => new RegistryManager()).toThrow(/Could not create a migration backup/);
 
-      // Verify original file on disk is still raw v1
+      // Verify original file on disk is still raw v2
       const rawAfter = JSON.parse(fs.readFileSync(Paths.registryFile, 'utf-8'));
-      expect(rawAfter.version).toBe(1);
+      expect(rawAfter.schemaVersion).toBe(2);
+      expect(rawAfter.accounts[0].credentialSource).toBeUndefined();
     } finally {
       backupSpy.mockRestore();
     }
@@ -332,7 +251,7 @@ describe('Schema Migration and Timestamp Monotonicity', () => {
     vi.restoreAllMocks();
   });
 
-  it('clears stale verification when replacement credentials reset a profile', () => {
+  it('clears stale verification when replacement credentials reset an account', () => {
     const registry = new RegistryManager();
     registry.addOrUpdateAccount({
       email: 'replacement@example.com',

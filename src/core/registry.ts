@@ -180,17 +180,17 @@ export class RegistryManager {
 
     try {
       const { registry: migrated, migrated: wasMigrated } = migrateRegistry(parsed);
+      validateRegistry(migrated);
       if (wasMigrated) {
-        const backupPath = Storage.createBackup(registryFile, 'schema_1_migration');
+        // Validation above has already passed, so nothing is backed up or
+        // rewritten unless the upgraded registry is known to be complete.
+        const backupPath = Storage.createBackup(registryFile, 'schema_migration');
         if (!backupPath) {
           throw new Error(
             'Could not create a migration backup; aborting migration with registry untouched.'
           );
         }
-        validateRegistry(migrated);
         Storage.writeJson(registryFile, migrated);
-      } else {
-        validateRegistry(migrated);
       }
       return migrated;
     } catch (err) {

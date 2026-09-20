@@ -142,7 +142,7 @@ export class CredentialFiles {
   }
 
   /**
-   * Load and validate an export/backup JSON file (supporting both format v1 and v2).
+   * Load and validate an export/backup JSON file (format 2 or 3).
    */
   public static loadExportBackupFile(filePath: string): ExportDocumentV3 {
     const data = this.loadJsonFile<unknown>(filePath, MAX_IMPORT_FILE_SIZE);

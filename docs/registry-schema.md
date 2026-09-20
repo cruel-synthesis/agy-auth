@@ -1,6 +1,8 @@
 # Registry Schema and Migration
 
-`agy-auth` stores your accounts in `~/.agy-auth/registry.json` under Registry Schema `3`. Older registries are upgraded when they are opened; you never run a migration yourself.
+`agy-auth` stores your accounts in `~/.agy-auth/registry.json` under Registry Schema `3`. A schema `2` registry is upgraded when it is opened; you never run a migration yourself. Any other schema version is refused rather than guessed at.
+
+Three version numbers appear in this project and they are independent: the registry schema (`3`), the export document format (`3`, with format `2` still readable), and the `--json` response envelope (`schemaVersion: 1`, documented in [the JSON contract](./json-contract.md)).
 
 ---
 
@@ -30,30 +32,26 @@
    First-class fields for `alias`, `gcpProject`, `gcpLocation`, `model`, `reasoningEffort`, and optional `verification` timestamps.
 5. **Validated Plan and Quota Cache**:
    Optional `plan`, `rateLimit`, and `quotaCheckedAt` fields hold the cached result of the last successful live quota fetch. `rateLimit` is restricted to the `gemini` and `claude` families and the 5-hour and weekly windows, with `usedPercent` bounded to `0..100`.
-   The obsolete `primary`, `secondary`, `quotaSnapshot`, and polling-state fields are **not** carried over; they are dropped on migration.
 6. **Standardized Backup & Export**:
-   Export format `3` (`kind: 'agy-auth-export'`). `agy-auth import` also accepts format `2` and the legacy format `1` (`kind: 'agy-auth-profile-export'`), upgrading both on read.
+   Export format `3` (`kind: 'agy-auth-export'`). `agy-auth import` also accepts format `2`, converting it as it reads. The file you import is never written back.
 
 ---
 
 ## Automatic Migration
 
-When `agy-auth` opens a registry that declares an older `schemaVersion` (or no `schemaVersion` field at all), it upgrades that registry in place:
+When `agy-auth` opens a registry that declares `schemaVersion: 2`, it upgrades that registry in place:
 
-1. A pre-migration backup is created under `~/.agy-auth/backups/` with the `schema_1_migration_` prefix.
-2. Legacy accounts are mapped to schema 3 structures.
-3. The migrated registry is atomically written to `~/.agy-auth/registry.json` with mode `0600` on POSIX systems.
+1. Every account is parsed strictly against the schema 2 shape. If any one of them fails, the whole file is refused and left untouched: half a registry is worse than a clear error.
+2. OAuth accounts gain `credentialSource: 'unknown'`; nothing else changes.
+3. The result is validated as a complete schema 3 registry.
+4. Only then is a backup written under `~/.agy-auth/backups/` with the `schema_migration_` prefix. If the backup cannot be created, the migration aborts with the registry untouched.
+5. The migrated registry is atomically written to `~/.agy-auth/registry.json` with mode `0600` on POSIX systems.
 
-A registry declaring a schema newer than this build understands is refused rather than downgraded.
+### Refused schema versions
 
-A separate legacy `~/.agy-auth/accounts.json` file is detected by `agy-auth doctor` but is not imported automatically. Back it up, then copy it to `~/.agy-auth/registry.json` with owner-only permissions before starting `agy-auth`; the migration will then validate and upgrade it.
+Schema `1` was never written by `agy-auth`, and a schema newer than this build understands cannot be downgraded. Both are refused by name, as is a registry with a missing or non-numeric `schemaVersion`. In every case the file on disk is left exactly as it was found.
 
-### Plan and quota during migration
-
-- A legacy `plan` string and a legacy `quotaCheckedAt` timestamp are preserved when valid.
-- Each legacy `rateLimit.gemini.*` and `rateLimit.claude.*` window is preserved **only if** it satisfies the strict schema. A malformed window (a non-numeric or out-of-range `usedPercent`, a nonsensical reset time) is dropped rather than repaired: inventing a value would present fiction as measurement.
-- Legacy `rateLimit.primary`, `rateLimit.secondary`, and `quotaSnapshot` are discarded because they carry no model-family attribution.
-- Missing cache data is entirely normal. Run `agy-auth list --check` to repopulate it from the live service.
+A separate legacy `~/.agy-auth/accounts.json` file is detected by `agy-auth doctor` but is not imported automatically. Back it up, then copy it to `~/.agy-auth/registry.json` with owner-only permissions before starting `agy-auth`; it is accepted only if it declares schema `2` or `3`.
 
 ### Already-current registries
 

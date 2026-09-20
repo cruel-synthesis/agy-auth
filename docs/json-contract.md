@@ -57,7 +57,7 @@ An unreadable or corrupted Antigravity Keychain/token-file pair uses the `sessio
 
 ## Plan and Quota Fields
 
-The account object returned by `list`, `current`, `details`, and `switch` carries three **optional** quota fields. They are omitted when no cached value exists, so consumers must treat each field as possibly absent. The envelope stays at `schemaVersion: 1` and the registry at schema version `2`; these additions are backward-compatible.
+The account object returned by `list`, `current`, `details`, and `switch` carries three **optional** quota fields. They are omitted when no cached value exists, so consumers must treat each field as possibly absent. The envelope stays at `schemaVersion: 1` and the registry at schema version `3`; these additions are backward-compatible.
 
 ```json
 {

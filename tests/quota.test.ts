@@ -915,50 +915,62 @@ describe('Registry integration', () => {
     );
   });
 
-  it('preserves valid legacy plan and quota cache while dropping malformed windows', () => {
+  it('carries a schema 2 quota cache forward and rejects a malformed one whole', () => {
+    const cache = {
+      plan: 'Google AI Ultra',
+      quotaCheckedAt: 1_700_000_000_000,
+      rateLimit: {
+        gemini: {
+          rate5h: { usedPercent: 40, windowMinutes: 300, resetsAt: FUTURE_RESET },
+        },
+      },
+    };
+    const v2Account = {
+      id: 'v2acc',
+      email: 'v2@example.com',
+      authType: 'oauth',
+      status: 'needs-reauth',
+      ...cache,
+      credentials: {
+        keychainPayload: {
+          auth_method: 'consumer',
+          token: { access_token: 'synthetic-access', refresh_token: 'synthetic-refresh' },
+        },
+      },
+      createdAt: 1_700_000_000_000,
+      updatedAt: 1_700_000_000_000,
+    };
     writeRegistry({
-      schemaVersion: 1,
-      activeAccountId: 'legacy1',
+      schemaVersion: 2,
+      activeAccountId: 'v2acc',
+      previousAccountId: null,
+      accounts: [v2Account],
+      settings: { defaultLocation: 'global' },
+    });
+
+    const [account] = new RegistryManager().getAccounts();
+    expect(account.plan).toBe('Google AI Ultra');
+    expect(account.quotaCheckedAt).toBe(1_700_000_000_000);
+    expect(account.rateLimit?.gemini?.rate5h?.usedPercent).toBe(40);
+    expect(account.status).toBe('needs-reauth');
+    // Provenance cannot be recovered for an account written before it existed.
+    expect(account.credentialSource).toBe('unknown');
+
+    // A window that fails the schema is not quietly dropped to salvage the
+    // rest: an out-of-range reading means the file is not trustworthy.
+    writeRegistry({
+      schemaVersion: 2,
+      activeAccountId: 'v2acc',
       previousAccountId: null,
       accounts: [
         {
-          id: 'legacy1',
-          email: 'legacy@example.com',
-          authType: 'oauth',
-          status: 'needs-reauth',
-          plan: 'Google AI Ultra',
-          quotaCheckedAt: 1_700_000_000_000,
-          quotaSnapshot: { dailyRequestsUsed: 5 },
-          rateLimit: {
-            primary: { usedPercent: 10, windowMinutes: 300 },
-            gemini: {
-              rate5h: { usedPercent: 40, windowMinutes: 300, resetsAt: FUTURE_RESET },
-              rateWeekly: { usedPercent: 250, windowMinutes: 10080 },
-            },
-            claude: { rate5h: { usedPercent: 'lots', windowMinutes: 300 } },
-          },
-          credentials: {
-            accessToken: 'legacy-access-token',
-            refreshToken: 'legacy-refresh-token',
-          },
-          createdAt: 1_700_000_000_000,
-          updatedAt: 1_700_000_000_000,
+          ...v2Account,
+          rateLimit: { gemini: { rateWeekly: { usedPercent: 250, windowMinutes: 10080 } } },
         },
       ],
       settings: { defaultLocation: 'global' },
     });
-
-    const registry = new RegistryManager();
-    const [account] = registry.getAccounts();
-
-    expect(account.plan).toBe('Google AI Ultra');
-    expect(account.quotaCheckedAt).toBe(1_700_000_000_000);
-    expect(account.rateLimit?.gemini?.rate5h?.usedPercent).toBe(40);
-    // usedPercent 250 is out of range and 'lots' is not a number: both dropped.
-    expect(account.rateLimit?.gemini?.rateWeekly).toBeUndefined();
-    expect(account.rateLimit?.claude).toBeUndefined();
-    expect((account as Record<string, unknown>).quotaSnapshot).toBeUndefined();
-    expect(account.status).toBe('needs-reauth');
+    expect(() => new RegistryManager()).toThrow();
   });
 
   it('applies quota state narrowly and rejects stale optimistic writes', async () => {

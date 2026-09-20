@@ -53,12 +53,17 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
     }
   });
 
-  it('reports warning for legacy accounts.json or legacy schemaVersion: 1 without failing', async () => {
+  it('warns about a legacy accounts.json or a schema 2 registry, and fails on one it cannot read', async () => {
     const isSupportedSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(false);
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
+    const lastJson = () => {
+      const calls = logSpy.mock.calls;
+      return JSON.parse(String(calls[calls.length - 1][0]));
+    };
+
     try {
-      // 1. Legacy accounts.json present
+      // 1. Legacy accounts.json present alongside a current registry.
       const legacyPath = path.join(Paths.authHome, 'accounts.json');
       fs.writeFileSync(
         legacyPath,
@@ -75,24 +80,48 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
         })
       );
       await doctorCommand({ offline: true, json: true });
-
-      // 2. Legacy schemaVersion: 1 inside registry.json
       fs.unlinkSync(legacyPath);
+
+      // 2. A schema 2 registry is readable, so it warns rather than failing.
+      const v2Account = {
+        id: 'acc_v2',
+        email: 'v2@example.com',
+        authType: 'api-key',
+        status: 'valid',
+        credentials: { apiKey: 'AIzaSy123' },
+        createdAt: 1,
+        updatedAt: 2,
+      };
       fs.writeFileSync(
         Paths.registryFile,
         JSON.stringify({
-          schemaVersion: 1,
-          accounts: [
-            {
-              id: 'acc_leg2',
-              email: 'leg2@example.com',
-              authType: 'api-key',
-              credentials: { apiKey: 'AIzaSy123' },
-            },
-          ],
+          schemaVersion: 2,
+          activeAccountId: null,
+          previousAccountId: null,
+          accounts: [v2Account],
+          settings: { defaultLocation: 'global' },
         })
       );
       await doctorCommand({ offline: true, json: true });
+      const warned = lastJson().data.checks.find(
+        (c: { name: string }) => c.name === 'Registry Schema & Integrity'
+      );
+      expect(warned.status).toBe('warn');
+      expect(warned.message).toMatch(/schema 2/);
+
+      // 3. A schema this build cannot read is reported as a failure, by name.
+      fs.writeFileSync(
+        Paths.registryFile,
+        JSON.stringify({ schemaVersion: 1, accounts: [v2Account] })
+      );
+      const thrown = await doctorCommand({ offline: true, json: true }).catch((e) => e);
+      expect(thrown).toBeInstanceOf(CliError);
+      expect((thrown as CliError).message).toMatch(/One or more diagnostics checks failed/);
+      const failed = (
+        (thrown as CliError).details.checks as { name: string; status: string; message: string }[]
+      ).find((c) => c.name === 'Registry Schema & Integrity');
+      expect(failed?.status).toBe('fail');
+      expect(failed?.message).toMatch(/Unsupported registry schema version 1/);
     } finally {
       isSupportedSpy.mockRestore();
       logSpy.mockRestore();

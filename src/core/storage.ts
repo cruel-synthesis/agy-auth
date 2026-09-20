@@ -8,6 +8,9 @@ import { Paths } from './paths.js';
 export const MAX_BACKUP_RETENTION = 10;
 
 export const MANAGED_BACKUP_PREFIXES = [
+  'schema_migration',
+  // Written by releases that migrated from registry schema 1; still recognized
+  // so pre-existing backups stay listed and cleanable.
   'schema_1_migration',
   'corrupt_registry_emergency',
   'switch_token',
