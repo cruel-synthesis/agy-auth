@@ -268,6 +268,48 @@ describe('Command Modules Behavioral & Regression Suite', () => {
     }
   });
 
+  it('keeps project and model out of current and available in details', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const output = (): string => logSpy.mock.calls.map((call) => String(call[0])).join('\n');
+
+    try {
+      const registry = new RegistryManager();
+      const acc = registry.addOrUpdateAccount({
+        email: 'infra@example.com',
+        authType: 'api-key',
+        credentials: { apiKey: 'AIzaSyKey' },
+        gcpProject: 'my-gcp',
+        gcpLocation: 'us-central1',
+        model: 'gemini-2.5-flash',
+      });
+      registry.setActiveAccount(acc.id);
+
+      await currentCommand({ json: false, offline: true });
+      const currentOutput = output();
+      expect(currentOutput).toContain('infra@example.com');
+      expect(currentOutput).toContain('Plan:');
+      expect(currentOutput).not.toContain('my-gcp');
+      expect(currentOutput).not.toContain('gemini-2.5-flash');
+      expect(currentOutput).toContain('agy-auth details');
+
+      logSpy.mockClear();
+      await detailsCommand(acc.id, { json: false, offline: true });
+      const detailsOutput = output();
+      expect(detailsOutput).toContain('my-gcp');
+      expect(detailsOutput).toContain('us-central1');
+      expect(detailsOutput).toContain('gemini-2.5-flash');
+
+      // The JSON contract is unchanged: every field stays addressable there.
+      logSpy.mockClear();
+      await currentCommand({ json: true, offline: true });
+      const payload = JSON.parse(String(logSpy.mock.calls.at(-1)?.[0]));
+      expect(payload.data.account.gcpProject).toBe('my-gcp');
+      expect(payload.data.account.model).toBe('gemini-2.5-flash');
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
   it('executes currentCommand and detailsCommand with formatted output and JSON', async () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
