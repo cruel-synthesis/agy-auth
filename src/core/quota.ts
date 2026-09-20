@@ -93,7 +93,7 @@ export interface QuotaResult {
   rateLimit?: RateLimitSnapshot;
   /** Epoch milliseconds of the last successful live quota fetch. */
   quotaCheckedAt?: number;
-  /** Project discovered via loadCodeAssist when the profile had none configured. */
+  /** Project discovered via loadCodeAssist when the account had none configured. */
   discoveredProject?: string;
   /** Set only when the outcome is decisive enough to assert a credential status. */
   status?: AccountStatus;
@@ -484,7 +484,7 @@ export class QuotaClient {
     return last;
   }
 
-  /** Plan name and, when the profile has none, the Cloud Code companion project. */
+  /** Plan name and, when the account has none, the Cloud Code companion project. */
   public static async loadCodeAssist(
     accessToken: string,
     ctx: RequestContext
@@ -600,7 +600,7 @@ export class QuotaClient {
    * to a different client both fails and discloses the credential to an
    * application that was never involved in issuing it. A session imported from
    * Antigravity therefore goes to Antigravity's client, a browser sign-in goes
-   * to the client that performed it, and a profile of unrecorded origin is not
+   * to the client that performed it, and an account of unrecorded origin is not
    * assumed to be safe to try.
    */
   private static clientFor(account: Account, env: NodeJS.ProcessEnv): OAuthClientConfig | null {

@@ -151,7 +151,7 @@ export async function importKeychainOAuth(
       throw new UsageError(`Invalid OAuth email address '${options.email}'.`);
     }
     // Google's answer is authoritative. A supplied email that contradicts it
-    // would file this session under the wrong profile, so stop before any write.
+    // would file this session under the wrong account, so stop before any write.
     if (liveEmail && liveEmail.toLowerCase() !== trimmed.toLowerCase()) {
       throw new CliError(
         `The active Antigravity session belongs to ${liveEmail}, not ${trimmed}. ` +
@@ -215,7 +215,7 @@ export async function importKeychainOAuth(
       stored?.token?.expiry === mergedPayload.token.expiry;
 
     // Re-importing the very same session changes nothing, so let it through.
-    // Anything else would file an unattributable session under this profile and
+    // Anything else would file an unattributable session under this account and
     // leave the account's earlier 'valid' verdict standing over new credentials.
     if (!unchanged) {
       const cause =

@@ -32,7 +32,7 @@ export interface QuotaRefreshOutcome {
   warning?: string;
 }
 
-/** Live quota only applies to OAuth profiles; nothing else is contacted. */
+/** Live quota only applies to OAuth accounts; nothing else is contacted. */
 export function selectRefreshable(accounts: Account[]): Account[] {
   return accounts.filter((account) => account.authType === 'oauth');
 }
@@ -72,7 +72,7 @@ export function selectStale(accounts: Account[]): Account[] {
 }
 
 /**
- * Best-effort live refresh for the given profiles. Failures are reported, never
+ * Best-effort live refresh for the given accounts. Failures are reported, never
  * thrown: the caller still renders whatever cached data exists.
  */
 export async function refreshQuota(

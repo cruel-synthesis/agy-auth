@@ -12,9 +12,9 @@ export const MANAGED_ENV_VARS = [
 ];
 
 /**
- * What the shell should hold for this profile. A `null` means unset.
+ * What the shell should hold for this account. A `null` means unset.
  *
- * Pass `null` for the profile to clear every managed variable.
+ * Pass `null` for the account to clear every managed variable.
  */
 export function environmentFor(account: Account | null): Record<string, string | null> {
   const env: Record<string, string | null> = Object.fromEntries(
@@ -41,9 +41,9 @@ export function environmentFor(account: Account | null): Record<string, string |
 }
 
 /**
- * Whether the shell has anything to apply when moving between these profiles.
+ * Whether the shell has anything to apply when moving between these accounts.
  *
- * A plain Antigravity OAuth profile sets no variable, so switching between two
+ * A plain Antigravity OAuth account sets no variable, so switching between two
  * of them changes nothing a shell can see and there is nothing to tell the user
  * to run.
  */

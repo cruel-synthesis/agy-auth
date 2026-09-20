@@ -44,14 +44,14 @@ export function getSignInClient(env: NodeJS.ProcessEnv = process.env): OAuthClie
 export const OAUTH_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 
 /**
- * The refresh token already stored for this profile, when the client now
+ * The refresh token already stored for this account, when the client now
  * signing in is the one that issued it. Empty string when it is not.
  *
  * Google honours a refresh token only for its own client, so one issued to a
- * different client is not carried across. A profile of unrecorded origin is
+ * different client is not carried across. An account of unrecorded origin is
  * treated as Antigravity's: the only way to hold a session payload was the
  * Antigravity import, and offering a refresh token to the wrong client is
- * refused without consequence, whereas discarding it strands the profile with
+ * refused without consequence, whereas discarding it strands the account with
  * nothing to renew from.
  */
 export function reusableRefreshToken(

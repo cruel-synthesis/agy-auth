@@ -432,7 +432,7 @@ export class Storage {
    *
    * The quota is per kind because the kinds are written at wildly different
    * rates: one switch writes up to four backups and every read of a corrupt
-   * registry writes another, while the copy of a profile taken just before
+   * registry writes another, while the copy of an account taken just before
    * `remove` is written once and holds the only remaining refresh token. A
    * single shared quota lets the noisy kinds evict that copy within a few
    * commands.

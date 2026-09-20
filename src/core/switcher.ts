@@ -204,7 +204,7 @@ function readAntigravitySettings(snapshot: FileSnapshot): AntigravitySettings {
 
 export class Switcher {
   /**
-   * Switches active profile with full rollback journal.
+   * Switches the active account with a full rollback journal.
    */
   static switchAccount(account: Account): SwitchResult {
     return Storage.withLockSync(Paths.switchLockFile, () => this.executeSwitch(account));

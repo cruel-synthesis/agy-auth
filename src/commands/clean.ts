@@ -97,7 +97,7 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
   managedFiles.sort((a, b) => b.mtimeMs - a.mtimeMs);
 
   // The quota is per backup kind, matching Storage.rotateBackups, so that
-  // clearing out switch churn cannot also take the one copy of a profile
+  // clearing out switch churn cannot also take the one copy of an account
   // written just before it was removed.
   const maxToKeep = options.all ? 0 : MAX_BACKUP_RETENTION;
   const keptPerPrefix = new Map<string, number>();

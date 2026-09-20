@@ -118,7 +118,7 @@ export type AccountCredentials = z.infer<typeof AccountCredentialsSchema>;
  *
  * A refresh token is only usable by the client it was issued to, so this
  * decides whether agy-auth may attempt a refresh at all. `unknown` covers
- * profiles saved before this was recorded: their origin cannot be recovered, so
+ * accounts saved before this was recorded: their origin cannot be recovered, so
  * it is never guessed.
  */
 export const OAuthCredentialSourceSchema = z.enum(['antigravity', 'custom-client', 'unknown']);
@@ -136,7 +136,7 @@ export const AccountSchema = z
       .optional(),
     authType: AuthTypeSchema,
     credentials: AccountCredentialsSchema.optional(),
-    /** OAuth profiles only: which client issued these credentials. */
+    /** OAuth accounts only: which client issued these credentials. */
     credentialSource: OAuthCredentialSourceSchema.optional(),
     /** The custom OAuth client id that issued them, when one did. */
     oauthClientId: z.string().max(256).optional(),

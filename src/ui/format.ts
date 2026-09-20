@@ -76,7 +76,7 @@ export function formatTimeAgo(timestamp?: number): string {
 
 /**
  * Short plan label for the PLAN column. Falls back to the authentication method
- * for profiles that have no subscription plan to report.
+ * for accounts that have no subscription plan to report.
  */
 export function formatPlan(account: Account): string {
   const plan = account.plan?.trim();

@@ -26,7 +26,7 @@ export function hasApplicableQuotaState(refresh: QuotaRefresh): boolean {
 
 /**
  * Write only quota-derived fields onto an account. Credentials, aliases, models
- * and every other profile setting are left exactly as the user configured them.
+ * and every other account setting are left exactly as the user configured them.
  */
 function writeQuotaState(account: Account, refresh: QuotaRefresh): boolean {
   const { result, tokenUpdate } = refresh;
