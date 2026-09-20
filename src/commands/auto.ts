@@ -1,5 +1,10 @@
 import { setTimeout as delay } from 'node:timers/promises';
-import { AccountScore, MODEL_FAMILIES, chooseBestAccount } from '../core/best-account.js';
+import {
+  AccountScore,
+  ChoiceBasis,
+  MODEL_FAMILIES,
+  chooseBestAccount,
+} from '../core/best-account.js';
 import { CancellationError, CliError, UsageError } from '../core/errors.js';
 import { applyQuotaResults } from '../core/quota-apply.js';
 import { QuotaOptions } from '../core/quota.js';
@@ -52,7 +57,12 @@ function coverage(score: AccountScore): string {
 const MIN_RANKING_NAME_WIDTH = 10;
 
 /** One line per account: what it has left, when it expires, and where it ranked. */
-function renderRanking(ranked: AccountScore[], activeId: string | null, nowMs: number): string[] {
+function renderRanking(
+  ranked: AccountScore[],
+  activeId: string | null,
+  nowMs: number,
+  basis: ChoiceBasis
+): string[] {
   const rows = ranked.map((entry) => ({
     marker: entry.account.id === activeId ? '*' : ' ',
     name: formatAccountShort(entry.account),
@@ -62,7 +72,10 @@ function renderRanking(ranked: AccountScore[], activeId: string | null, nowMs: n
     // assumption as 100% would pass it off as a reading.
     weekly: entry.perishing?.measured ? percent(entry.perishing.remaining) : '-',
     expires: formatUntil(entry.perishing?.resetsAt, nowMs),
-    note: entry.blocked ?? entry.score.toFixed(3),
+    // The score is only shown where it decided the order. On 5-hour headroom it
+    // still holds an assumed week, and printing it beside a ranking it did not
+    // produce would read as one that ignored its own numbers.
+    note: entry.blocked ?? (basis === 'weekly' ? entry.score.toFixed(3) : ''),
   }));
 
   const width = (pick: (row: (typeof rows)[number]) => string, header: string) =>
@@ -75,8 +88,13 @@ function renderRanking(ranked: AccountScore[], activeId: string | null, nowMs: n
     { header: '5H', pick: (row: (typeof rows)[number]) => row.headroom },
     { header: 'WEEK', pick: (row: (typeof rows)[number]) => row.weekly },
     { header: 'EXPIRES', pick: (row: (typeof rows)[number]) => row.expires },
-    { header: 'SCORE', pick: (row: (typeof rows)[number]) => row.note },
-  ].map((column) => ({ ...column, width: width(column.pick, column.header) }));
+    {
+      header: basis === 'weekly' ? 'SCORE' : 'NOTE',
+      pick: (row: (typeof rows)[number]) => row.note,
+    },
+  ]
+    .filter((column) => rows.some((row) => column.pick(row) !== ''))
+    .map((column) => ({ ...column, width: width(column.pick, column.header) }));
 
   const termWidth = terminalWidth();
   const visible = [...columns];
@@ -123,9 +141,9 @@ function printWarnings(lines: string[]): void {
 }
 
 /** Why the winner won, in the terms that decided it. */
-function explain(best: AccountScore, nowMs: number): string {
+function explain(best: AccountScore, nowMs: number, basis: ChoiceBasis): string {
   const weekly = best.perishing;
-  if (!weekly || weekly.resetsAt === undefined) {
+  if (basis === 'headroom' || !weekly || weekly.resetsAt === undefined) {
     return `It has the most room to work: ${percent(best.headroom)} of the 5-hour limit left${coverage(best)}.`;
   }
   return (
@@ -360,8 +378,11 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
   // printed before the failure rather than instead of it.
   if (!options.json) {
     console.log('');
-    for (const line of renderRanking(choice.ranked, activeId, nowMs)) {
+    for (const line of renderRanking(choice.ranked, activeId, nowMs, choice.basis)) {
       console.log(line);
+    }
+    if (choice.best && choice.basis === 'headroom') {
+      console.log(colors.dim('  Ranked on measured 5-hour headroom: a weekly window went unread.'));
     }
     console.log('');
   }
@@ -410,6 +431,7 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
             switched,
             activeAccountId: result?.currentAccount.id ?? activeId,
             chosenAccountId: choice.best.account.id,
+            basis: choice.basis,
             ranking: choice.ranked.map((entry) => ({
               accountId: entry.account.id,
               email: entry.account.email,
@@ -432,8 +454,7 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
   printWarnings(warnings);
 
   // Staying means staying on the account in use, which is not always the one
-  // that ranked first: a lead inside the margin, or one that rests on an
-  // assumed weekly figure, is not enough to move.
+  // that ranked first: a lead inside the margin is not enough to move.
   const staying = choice.ranked.find((entry) => entry.account.id === activeId);
   const subject = choice.shouldSwitch ? choice.best : (staying ?? choice.best);
   const name = colors.green(formatAccountShort(subject.account));
@@ -446,5 +467,5 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
         : `Staying on ${name} - no reading shows a better use of your quota.`;
 
   console.log(`  ${verdict}`);
-  console.log(`  ${colors.dim(explain(subject, nowMs))}\n`);
+  console.log(`  ${colors.dim(explain(subject, nowMs, choice.basis))}\n`);
 }

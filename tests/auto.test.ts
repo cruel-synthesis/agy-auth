@@ -229,4 +229,60 @@ describe('Automatic switching', () => {
     expect(envelope.data.warnings).toBeUndefined();
     expect(envelope.data.chosenAccountId).toBe('acc2');
   });
+
+  it('sends the watcher to the measured account, not the one with the best guess', async () => {
+    // acc1 answers and is spent, acc2 reports only a 5-hour window, acc3 reports
+    // both. acc2's unread week is scored as an untouched one, which puts it on
+    // top; that guess must not be what the watcher moves the session to.
+    fs.writeFileSync(
+      path.join(process.env.AGY_AUTH_HOME as string, 'registry.json'),
+      `${JSON.stringify({
+        schemaVersion: 3,
+        activeAccountId: 'acc1',
+        previousAccountId: null,
+        accounts: [account('acc1', 0.8), account('acc2', 0.95), account('acc3', 0.99)],
+        settings: { defaultLocation: 'global' },
+      })}\n`,
+      { mode: 0o600 }
+    );
+    const readings: Record<string, Account['rateLimit']> = {
+      acc1: {
+        gemini: { rate5h: { usedPercent: 99, windowMinutes: 300, resetsAt: NOW_SEC + 3600 } },
+      },
+      acc2: {
+        gemini: { rate5h: { usedPercent: 5, windowMinutes: 300, resetsAt: NOW_SEC + 3600 } },
+      },
+      acc3: {
+        gemini: {
+          rate5h: { usedPercent: 1, windowMinutes: 300, resetsAt: NOW_SEC + 3600 },
+          rateWeekly: { usedPercent: 70, windowMinutes: 10_080, resetsAt: NOW_SEC + 604_800 },
+        },
+      },
+    };
+    vi.spyOn(QuotaClient, 'refreshAccountQuotas').mockImplementation(async (accounts) => {
+      const results = new Map<string, QuotaRefresh>();
+      for (const target of accounts) {
+        results.set(target.id, {
+          result: {
+            accountId: target.id,
+            observedUpdatedAt: target.updatedAt,
+            ok: true,
+            status: 'valid',
+            quotaCheckedAt: Date.now(),
+            rateLimit: readings[target.id],
+          },
+        });
+      }
+      return results;
+    });
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const watching = autoCommand({ json: true, dryRun: true, watch: true, interval: '1' });
+    process.emit('SIGINT');
+    await expect(watching).rejects.toThrow(/Stopped watching/);
+
+    const tick = JSON.parse(String(logSpy.mock.calls.at(-1)?.[0]));
+    expect(tick.data.event).toBe('would-switch');
+    expect(tick.data.chosenAccountId).toBe('acc3');
+  });
 });

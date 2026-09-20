@@ -173,9 +173,57 @@ describe('choosing the account that wastes the least quota', () => {
 
     const choice = chooseBestAccount([inUse, unread], 'in-use', NOW);
 
-    expect(choice.best?.account.id).toBe('unread');
-    expect(choice.best?.perishing?.measured).toBe(false);
+    // Both measured the same 5-hour headroom, which is all there is to compare.
+    expect(choice.basis).toBe('headroom');
     expect(choice.shouldSwitch).toBe(false);
+  });
+
+  it('sends an exhausted account to the best measured headroom, not the best guess', () => {
+    const spent = account('spent', { rateLimit: { gemini: family(0.05, 1, 168) } });
+    const guessed = account('guessed', { rateLimit: { gemini: { rate5h: fiveHourOnly(0.95) } } });
+    const measured = account('measured', { rateLimit: { gemini: family(0.99, 0.3, 168) } });
+
+    const choice = chooseBestAccount([spent, guessed, measured], 'spent', NOW);
+    const scoreOf = (id: string) =>
+      choice.ranked.find((entry) => entry.account.id === id)?.score ?? 0;
+
+    // The assumed untouched week wins on score, so an exhausted account in use
+    // must not be a licence to act on it.
+    expect(scoreOf('guessed')).toBeGreaterThan(scoreOf('measured'));
+    expect(choice.basis).toBe('headroom');
+    expect(choice.best?.account.id).toBe('measured');
+    expect(choice.shouldSwitch).toBe(true);
+  });
+
+  it('applies the same measured comparison when no account is in use', () => {
+    const guessed = account('guessed', { rateLimit: { gemini: { rate5h: fiveHourOnly(0.95) } } });
+    const measured = account('measured', { rateLimit: { gemini: family(0.99, 0.3, 168) } });
+
+    const choice = chooseBestAccount([guessed, measured], null, NOW);
+
+    expect(choice.basis).toBe('headroom');
+    expect(choice.best?.account.id).toBe('measured');
+    expect(choice.shouldSwitch).toBe(true);
+  });
+
+  it('does not let the account that tops the score hide a usable alternative', () => {
+    const inUse = account('in-use', { rateLimit: { gemini: family(0.6, 0.2, 168) } });
+    // Half measured, half assumed: it tops the score on a week nobody read.
+    const mixed = account('mixed', {
+      rateLimit: { gemini: family(0.7, 0.05, 168), claude: { rate5h: fiveHourOnly(0.7) } },
+    });
+    const spare = account('spare', { rateLimit: { gemini: family(0.9, 0.1, 168) } });
+
+    const choice = chooseBestAccount([inUse, mixed, spare], 'in-use', NOW);
+    const topScore = [...choice.ranked].sort((a, b) => b.score - a.score)[0];
+
+    expect(topScore.account.id).toBe('mixed');
+    expect(topScore.weeklyBasis).toBe('mixed');
+    // Refusing to act on `mixed` must not mean staying on an account that
+    // `spare` beats on measured headroom alone.
+    expect(choice.ranked[0].account.id).toBe('spare');
+    expect(choice.best?.account.id).toBe('spare');
+    expect(choice.shouldSwitch).toBe(true);
   });
 
   it('does not rewrite the session when one family of the candidate went unread', () => {

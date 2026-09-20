@@ -80,13 +80,25 @@ export interface AccountScore {
   blocked?: string;
 }
 
+/**
+ * What the ranking and the choice were decided on.
+ *
+ * `weekly` means every account that can take work reported every weekly window,
+ * so the full score - the quota most likely to be wasted - ordered them.
+ * `headroom` means at least one did not, so the weekly term was set aside and
+ * the measured 5-hour headroom decided on its own.
+ */
+export type ChoiceBasis = 'weekly' | 'headroom';
+
 export interface BestAccountChoice {
-  /** Every account considered, best first. */
+  /** Every account considered, best first on `basis`. */
   ranked: AccountScore[];
   /** The account to work on, or null when none can serve work. */
   best: AccountScore | null;
   /** True when `best` is not the account already in use. */
   shouldSwitch: boolean;
+  /** The figure `ranked` was ordered on and `best` was chosen by. */
+  basis: ChoiceBasis;
 }
 
 /**
@@ -216,49 +228,70 @@ function scoreAccount(account: Account, nowMs: number): AccountScore {
   };
 }
 
-/** Best first, with ties settled the same way on every run. */
-function byValue(a: AccountScore, b: AccountScore): number {
-  if (a.score !== b.score) return b.score - a.score;
-  if (a.headroom !== b.headroom) return b.headroom - a.headroom;
-
-  const aExpiry = a.perishing ? expiresAt(a.perishing) : Number.POSITIVE_INFINITY;
-  const bExpiry = b.perishing ? expiresAt(b.perishing) : Number.POSITIVE_INFINITY;
-  if (aExpiry !== bExpiry) return aExpiry - bExpiry;
-
-  return a.account.id.localeCompare(b.account.id);
-}
-
 /**
- * Whether the two scores can be compared on readings alone.
+ * Best first on `basis`, with everything that cannot take work last and ties
+ * settled the same way on every run.
  *
- * An unread weekly window is scored as an untouched one. When no family on
- * either side reported a weekly window, that assumption enters every family's
- * value as the same constant factor, so it cancels out of the ordering and
- * measured 5-hour headroom decides; when every family reported one, everything
- * is measured. A score that mixes the two is neither: there the assumed week
- * is weighted by one family's headroom alone, so it can move the account up or
- * down the ranking on its own, and no session is rewritten on that. An account
- * that cannot work at all is not a comparison: anything that can beats it.
+ * On `headroom` the weekly figures are left out of the ordering entirely,
+ * including as a tiebreaker: an account that reported no weekly window has no
+ * reset instant to be sorted by, so using one would let a missing reading
+ * settle the order.
  */
-function comparableOnReadings(best: AccountScore, active: AccountScore | undefined): boolean {
-  if (!active || active.score <= 0) return true;
-  return best.weeklyBasis === active.weeklyBasis && best.weeklyBasis !== 'mixed';
+function byBasis(basis: ChoiceBasis): (a: AccountScore, b: AccountScore) => number {
+  const workable = (entry: AccountScore) => (entry.score > 0 ? 1 : 0);
+  return (a, b) => {
+    if (workable(a) !== workable(b)) return workable(b) - workable(a);
+
+    if (basis === 'weekly') {
+      if (a.score !== b.score) return b.score - a.score;
+      if (a.headroom !== b.headroom) return b.headroom - a.headroom;
+
+      const aExpiry = a.perishing ? expiresAt(a.perishing) : Number.POSITIVE_INFINITY;
+      const bExpiry = b.perishing ? expiresAt(b.perishing) : Number.POSITIVE_INFINITY;
+      if (aExpiry !== bExpiry) return aExpiry - bExpiry;
+    } else if (a.headroom !== b.headroom) {
+      return b.headroom - a.headroom;
+    }
+
+    return a.account.id.localeCompare(b.account.id);
+  };
 }
 
 /**
  * Rank accounts by how well working on each one now spends quota that would
  * otherwise go to waste, and say whether moving off the active account is worth
  * it.
+ *
+ * An unread weekly window is scored as an untouched one, which is a placeholder
+ * and not a reading. That placeholder may not pick where the session goes, so
+ * the weekly term orders the accounts only when every account that can take
+ * work reported every weekly window. Short of that the choice drops to the one
+ * figure all of them did measure, their 5-hour headroom, and the same figure
+ * decides the ranking, the destination and the margin the account in use has to
+ * be beaten by. An account that cannot take work at all is not a comparison:
+ * anything that can beats it.
  */
 export function chooseBestAccount(
   accounts: Account[],
   activeAccountId: string | null,
   nowMs: number = Date.now()
 ): BestAccountChoice {
-  const ranked = accounts.map((account) => scoreAccount(account, nowMs)).sort(byValue);
+  const scored = accounts.map((account) => scoreAccount(account, nowMs));
+  const candidates = scored.filter((entry) => entry.score > 0);
+  const basis: ChoiceBasis =
+    candidates.length > 0 && candidates.every((entry) => entry.weeklyBasis === 'measured')
+      ? 'weekly'
+      : 'headroom';
 
-  const best = ranked.length > 0 && ranked[0].score > 0 ? ranked[0] : null;
+  const ranked = scored.sort(byBasis(basis));
+  const value = (entry: AccountScore) => (basis === 'weekly' ? entry.score : entry.headroom);
+
+  // Sorted with the unworkable last, so the first entry is a candidate whenever
+  // there is one: a top-ranked account that cannot be moved to never stands in
+  // front of one that can.
+  const best = candidates.length > 0 ? ranked[0] : null;
   const active = ranked.find((entry) => entry.account.id === activeAccountId);
+  const activeValue = active && active.score > 0 ? value(active) : 0;
 
   return {
     ranked,
@@ -266,7 +299,7 @@ export function chooseBestAccount(
     shouldSwitch:
       best !== null &&
       best.account.id !== activeAccountId &&
-      best.score > (active?.score ?? 0) * (1 + SWITCH_MARGIN) &&
-      comparableOnReadings(best, active),
+      value(best) > activeValue * (1 + SWITCH_MARGIN),
+    basis,
   };
 }
