@@ -115,6 +115,13 @@ function renderRanking(ranked: AccountScore[], activeId: string | null, nowMs: n
   ];
 }
 
+/** Warning lines as the human output shows them. */
+function printWarnings(lines: string[]): void {
+  for (const line of lines) {
+    console.error(colors.yellow(`  ${line.startsWith('Warning') ? line : `Warning: ${line}`}`));
+  }
+}
+
 /** Why the winner won, in the terms that decided it. */
 function explain(best: AccountScore, nowMs: number): string {
   const weekly = best.perishing;
@@ -359,23 +366,38 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
     console.log('');
   }
 
+  // A reading that could not be renewed is part of the verdict, including a
+  // verdict of none: whatever is reported was decided on what was already on
+  // hand.
+  const refreshWarnings = warning ? [warning] : [];
+
   if (!choice.best) {
     const soonest = choice.ranked
       .map((entry) => entry.refillsAt)
       .filter((at): at is number => at !== undefined)
       .sort((a, b) => a - b)[0];
+    // `families` names what an account's score was averaged over, so an empty
+    // one everywhere means nothing was read at all: the answer is that the
+    // quota is unknown, not that it is spent.
+    const unread = choice.ranked.every((entry) => entry.families.length === 0);
+    if (!options.json) {
+      printWarnings(refreshWarnings);
+    }
     throw new CliError(
-      soonest === undefined
-        ? 'No account has quota to work with. Run `agy-auth list --check` for a live reading.'
-        : `Every account is out of 5-hour quota. The first frees up in ${formatUntil(soonest, nowMs)}.`
+      soonest !== undefined
+        ? `Every account is out of 5-hour quota. The first frees up in ${formatUntil(soonest, nowMs)}.`
+        : unread
+          ? 'Quota could not be determined for any account. Run `agy-auth list --check` for a live reading.'
+          : 'No account has quota to work with. Run `agy-auth list --check` for a live reading.',
+      'cli_error',
+      1,
+      refreshWarnings.length > 0 ? { warnings: refreshWarnings } : {}
     );
   }
 
   const switched = choice.shouldSwitch && !options.dryRun;
   const result = switched ? Switcher.switchAccount(choice.best.account) : undefined;
-  // A reading that could not be renewed is part of the verdict: the ranking
-  // below it was decided on whatever was already on hand.
-  const warnings = [...(warning ? [warning] : []), ...(result?.warnings ?? [])];
+  const warnings = [...refreshWarnings, ...(result?.warnings ?? [])];
 
   if (options.json) {
     console.log(
@@ -407,9 +429,7 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
     return;
   }
 
-  for (const line of warnings) {
-    console.error(colors.yellow(`  ${line.startsWith('Warning') ? line : `Warning: ${line}`}`));
-  }
+  printWarnings(warnings);
 
   // Staying means staying on the account in use, which is not always the one
   // that ranked first: a lead inside the margin, or one that rests on an

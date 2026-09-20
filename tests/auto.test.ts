@@ -168,6 +168,56 @@ describe('Automatic switching', () => {
     expect(tick.data.detail).toMatch(/could not refresh live quota for acc2@example.com/);
   });
 
+  it('says the quota is unknown, not spent, when nothing could be read', async () => {
+    // No cached readings and no live ones either: the app knows nothing about
+    // these accounts, which is not the same as knowing they are out.
+    const unread = (id: string): Partial<Account> => {
+      const withReadings: Partial<Account> = account(id, 0.5);
+      withReadings.rateLimit = undefined;
+      return withReadings;
+    };
+    fs.writeFileSync(
+      path.join(process.env.AGY_AUTH_HOME as string, 'registry.json'),
+      `${JSON.stringify({
+        schemaVersion: 3,
+        activeAccountId: 'acc1',
+        previousAccountId: null,
+        accounts: [unread('acc1'), unread('acc2')],
+        settings: { defaultLocation: 'global' },
+      })}\n`,
+      { mode: 0o600 }
+    );
+    vi.spyOn(QuotaClient, 'refreshAccountQuotas').mockImplementation(async (accounts) => {
+      const results = new Map<string, QuotaRefresh>();
+      for (const target of accounts) {
+        results.set(target.id, {
+          result: {
+            accountId: target.id,
+            observedUpdatedAt: target.updatedAt,
+            ok: false,
+            reason: 'network-error',
+          },
+        });
+      }
+      return results;
+    });
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(autoCommand({ dryRun: true })).rejects.toThrow(
+      /Quota could not be determined for any account/
+    );
+    // The reason the readings are missing belongs with the refusal, not only
+    // with the runs that end in a choice.
+    expect(errorSpy.mock.calls.map((call) => String(call[0])).join('\n')).toMatch(
+      /could not refresh live quota for 2 of 2 accounts/
+    );
+
+    await expect(autoCommand({ dryRun: true, json: true })).rejects.toMatchObject({
+      details: { warnings: [expect.stringMatching(/could not refresh live quota/)] },
+    });
+  });
+
   it('reports no warning when every reading is current', async () => {
     const refreshSpy = vi.spyOn(QuotaClient, 'refreshAccountQuotas');
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});

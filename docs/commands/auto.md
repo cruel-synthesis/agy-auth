@@ -87,4 +87,8 @@ The account already in use has to be beaten by a clear margin, not a hair, since
 a switch rewrites the Antigravity session. The exception is an account that
 cannot take work at all: anything that can beats it, whatever the readings.
 
-Exits `1` when no account can take work, naming when the first one frees up.
+Exits `1` when no account can take work. It names when the first one frees up if
+a reading says so, and says the quota could not be determined when nothing could
+be read at all - being unable to reach the service is not the same as finding
+every account spent. A refresh that failed is reported with the refusal: on
+`stderr` for a person, and under `error.details.warnings` with `--json`.
