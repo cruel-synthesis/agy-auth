@@ -248,7 +248,7 @@ async function watchTick(registry: RegistryManager, options: AutoOptions): Promi
   if (!choice.best) {
     return {
       event: 'exhausted',
-      detail: `${formatAccountShort(active)}: ${reason}, and no other account can take work${stale}`,
+      detail: `${formatAccountShort(active)}: ${reason}, and no other account has known usable quota${stale}`,
       activeAccountId: active.id,
     };
   }
@@ -397,19 +397,32 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
       .map((entry) => entry.refillsAt)
       .filter((at): at is number => at !== undefined)
       .sort((a, b) => a - b)[0];
-    // `families` names what an account's score was averaged over, so an empty
-    // one everywhere means nothing was read at all: the answer is that the
-    // quota is unknown, not that it is spent.
-    const unread = choice.ranked.every((entry) => entry.families.length === 0);
+    // `families` names what an account's score was averaged over, so an empty one
+    // means that account was never read. An account nothing is known about is not
+    // an account known to be spent, so only a set that was read through can be
+    // called out of quota, and a refill is only ever the first one on record.
+    const unread = choice.ranked.filter((entry) => entry.families.length === 0).length;
+    const check = 'Run `agy-auth list --check` for a live reading.';
+    const refill =
+      soonest !== undefined
+        ? ` The first account with a reading frees up in ${formatUntil(soonest, nowMs)}.`
+        : '';
+    let message: string;
+    if (unread === choice.ranked.length) {
+      message = `Quota could not be determined for any account. ${check}`;
+    } else if (unread > 0) {
+      message = `No account has known usable quota; ${unread} of ${choice.ranked.length} could not be read.${refill} ${check}`;
+    } else if (soonest !== undefined) {
+      message = `Every account is out of 5-hour quota. The first frees up in ${formatUntil(soonest, nowMs)}.`;
+    } else {
+      message = `No account has quota to work with. ${check}`;
+    }
+
     if (!options.json) {
       printWarnings(refreshWarnings);
     }
     throw new CliError(
-      soonest !== undefined
-        ? `Every account is out of 5-hour quota. The first frees up in ${formatUntil(soonest, nowMs)}.`
-        : unread
-          ? 'Quota could not be determined for any account. Run `agy-auth list --check` for a live reading.'
-          : 'No account has quota to work with. Run `agy-auth list --check` for a live reading.',
+      message,
       'cli_error',
       1,
       refreshWarnings.length > 0 ? { warnings: refreshWarnings } : {}

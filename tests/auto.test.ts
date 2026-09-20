@@ -285,4 +285,30 @@ describe('Automatic switching', () => {
     expect(tick.data.event).toBe('would-switch');
     expect(tick.data.chosenAccountId).toBe('acc3');
   });
+
+  it('does not call an unread account spent alongside an exhausted one', async () => {
+    // acc1 was read and is out; acc2 was never read. Nothing is known to be
+    // usable, but only acc1 is known to be spent.
+    const spent = account('acc1', 0.01);
+    const unread: Account = { ...account('acc2', 0.5), rateLimit: undefined };
+    fs.writeFileSync(
+      path.join(process.env.AGY_AUTH_HOME as string, 'registry.json'),
+      `${JSON.stringify({
+        schemaVersion: 3,
+        activeAccountId: 'acc1',
+        previousAccountId: null,
+        accounts: [spent, unread],
+        settings: { defaultLocation: 'global' },
+      })}\n`,
+      { mode: 0o600 }
+    );
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await expect(autoCommand({ dryRun: true, offline: true })).rejects.toThrow(
+      /No account has known usable quota; 1 of 2 could not be read\. The first account with a reading frees up in/
+    );
+    await expect(autoCommand({ dryRun: true, offline: true })).rejects.not.toThrow(
+      /Every account is out/
+    );
+  });
 });
