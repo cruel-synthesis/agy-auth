@@ -7,7 +7,12 @@ import { CancellationError, CliError, UsageError } from '../core/errors.js';
 import { type ImportKeychainOAuthResult, importKeychainOAuth } from '../core/keychain-import.js';
 import { Paths } from '../core/paths.js';
 import { RegistryManager } from '../core/registry.js';
-import { AccountCredentials, AuthType, sanitizeAccount } from '../core/types.js';
+import {
+  AccountCredentials,
+  AuthType,
+  checkSettingLength,
+  sanitizeAccount,
+} from '../core/types.js';
 import { formatAccountShort } from '../ui/format.js';
 import { colors } from '../ui/theme.js';
 
@@ -65,6 +70,9 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
   let email: string;
   let credentials: AccountCredentials | undefined;
   let defaultProject = options.project?.trim();
+  checkSettingLength('gcpProject', defaultProject, '--project');
+  checkSettingLength('gcpLocation', options.location?.trim(), '--location');
+  checkSettingLength('model', options.model?.trim(), '--model');
 
   if (options.apiKey !== undefined) {
     authType = 'api-key';

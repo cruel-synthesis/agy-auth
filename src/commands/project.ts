@@ -1,6 +1,6 @@
 import { AccountNotFoundError, AmbiguousSelectorError, UsageError } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
-import { sanitizeAccount } from '../core/types.js';
+import { checkSettingLength, sanitizeAccount } from '../core/types.js';
 import { colors } from '../ui/theme.js';
 
 interface ProjectOptions {
@@ -30,6 +30,8 @@ export async function projectSetCommand(
   if (!trimmedProject) {
     throw new UsageError('Project ID cannot be empty.');
   }
+  checkSettingLength('gcpProject', trimmedProject, 'Project ID');
+  checkSettingLength('gcpLocation', location?.trim(), 'Location');
 
   registry.setProject(account.id, trimmedProject, location);
   const updated = registry.findAccount(account.id);

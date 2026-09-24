@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { UsageError } from './errors.js';
 
 export const CURRENT_SCHEMA_VERSION = 3;
 
@@ -155,6 +156,22 @@ export const AccountSchema = z
   })
   .strict();
 export type Account = z.infer<typeof AccountSchema>;
+
+/**
+ * Refuses a project, location or model typed on the command line that is longer
+ * than the registry holds. Left to the save, it would fail as a malformed
+ * registry field instead of as the input that caused it.
+ */
+export function checkSettingLength(
+  field: 'gcpProject' | 'gcpLocation' | 'model',
+  value: string | undefined,
+  input: string
+): void {
+  const limit = AccountSchema.shape[field].unwrap().maxLength;
+  if (value !== undefined && limit !== null && value.length > limit) {
+    throw new UsageError(`${input} is too long; use at most ${limit} characters.`);
+  }
+}
 
 /** Statuses that cannot improve until the user signs in again. */
 const NEEDS_SIGN_IN: ReadonlySet<AccountStatus> = new Set(['expired', 'invalid', 'needs-reauth']);
