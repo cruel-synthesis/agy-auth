@@ -177,17 +177,23 @@ describe('CLI unit tests and option dispatch', () => {
 
   it('names a mistyped subcommand instead of counting it as an argument', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     try {
       for (const group of ['alias', 'project', 'model']) {
         errorSpy.mockClear();
         expect(await runCli(['node', 'agy-auth', group, 'sett', 'acc', 'x'])).toBe(2);
         expect(String(errorSpy.mock.calls[0]?.[0])).toContain(
-          `Unknown \`${group}\` subcommand 'sett'; use \`set\` or \`clear\`.`
+          "unknown command 'sett'\n(Did you mean set?)"
         );
 
         errorSpy.mockClear();
+        stderrSpy.mockClear();
         expect(await runCli(['node', 'agy-auth', group])).toBe(2);
         expect(String(errorSpy.mock.calls[0]?.[0])).toContain(`\`${group}\` needs a subcommand`);
+        expect(stderrSpy.mock.calls.join('')).toContain('clear [options] <account>');
+
+        expect(await runCli(['node', 'agy-auth', group, 'help', 'set'])).toBe(0);
       }
       // The subcommands keep their own argument counts.
       errorSpy.mockClear();
@@ -195,6 +201,8 @@ describe('CLI unit tests and option dispatch', () => {
       expect(String(errorSpy.mock.calls[0]?.[0])).toContain('too many arguments');
     } finally {
       errorSpy.mockRestore();
+      stderrSpy.mockRestore();
+      stdoutSpy.mockRestore();
     }
   });
 

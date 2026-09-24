@@ -21,26 +21,6 @@ import { printTopLevelHelp } from './ui/help.js';
 import { colors } from './ui/theme.js';
 import { VERSION } from './version.js';
 
-/**
- * Commander answers a group invoked with no subcommand by doing nothing and
- * exiting 0, and one given a word that is not a subcommand by counting it as an
- * excess argument. Both are answered with what the group actually takes.
- *
- * Called after the subcommands exist: they copy the parent's settings when they
- * are created, and must not inherit its tolerance for excess arguments.
- */
-function requireSubcommand(group: Command): void {
-  const choices = group.commands.map((command) => `\`${command.name()}\``).join(' or ');
-  group.allowExcessArguments().action((_options, command: Command) => {
-    const [word] = command.args;
-    throw new UsageError(
-      word === undefined
-        ? `\`${group.name()}\` needs a subcommand: ${choices}.`
-        : `Unknown \`${group.name()}\` subcommand '${word}'; use ${choices}.`
-    );
-  });
-}
-
 export function createCli(): Command {
   const program = new Command();
 
@@ -250,10 +230,6 @@ export function createCli(): Command {
       await modelClearCommand(account, options);
     });
 
-  for (const group of [aliasCmd, projectCmd, modelCmd]) {
-    requireSubcommand(group);
-  }
-
   // env
   program
     .command('env')
@@ -322,11 +298,15 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
   );
   const cli = customCli || createCli();
 
-  // Commander writes its own message and then throws it. Swallow the write and
-  // report it once below, in the shape every other failure uses.
+  // Commander writes its own error line and then throws it. That line is dropped
+  // and reported once below, in the shape every other failure uses. What else it
+  // writes to stderr is the help for a group run without a subcommand.
   cli.configureOutput({
     writeOut: (str) => process.stdout.write(str),
-    writeErr: () => {},
+    writeErr: (str) => {
+      if (!isJson) process.stderr.write(str);
+    },
+    outputError: () => {},
   });
 
   // Derive command name from raw args
@@ -366,17 +346,21 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
         typeof err.code === 'string' &&
         err.code.startsWith('commander.'))
     ) {
-      const commanderCode = (err as { code?: string }).code;
-      if (
-        commanderCode === 'commander.helpDisplayed' ||
-        commanderCode === 'commander.help' ||
-        commanderCode === 'commander.version'
-      ) {
+      const { code: commanderCode, exitCode } = err as { code?: string; exitCode?: number };
+      if (commanderCode === 'commander.helpDisplayed' || commanderCode === 'commander.version') {
+        return 0;
+      }
+      // Help asked for succeeds; help shown because a group was run without one
+      // of its subcommands is a usage error, and its message is only a marker.
+      if (commanderCode === 'commander.help' && exitCode === 0) {
         return 0;
       }
       // Commander prefixes its messages with 'error: '; ours adds its own.
       const raw = err instanceof Error ? err.message : String(err);
-      const message = raw.replace(/^error:\s*/, '');
+      const message =
+        commanderCode === 'commander.help'
+          ? `\`${commandName}\` needs a subcommand.`
+          : raw.replace(/^error:\s*/, '');
       if (isJson) {
         console.log(
           JSON.stringify(
