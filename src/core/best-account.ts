@@ -26,6 +26,16 @@ const MIN_HEADROOM = 0.1;
  */
 const SWITCH_MARGIN = 0.05;
 
+/** Why an account is out of the running, as the ranking prints it. */
+export const BLOCKED = {
+  notOauth: 'not an OAuth account',
+  signIn: 'needs a fresh sign-in',
+  unread: 'no current quota reading',
+  fiveHour: '5-hour limit nearly spent',
+  weekly: 'weekly limit nearly spent',
+} as const;
+export type BlockedReason = (typeof BLOCKED)[keyof typeof BLOCKED];
+
 /** The model families a reading can cover. */
 export const MODEL_FAMILIES = ['gemini', 'claude'] as const;
 export type ModelFamily = (typeof MODEL_FAMILIES)[number];
@@ -74,10 +84,15 @@ export interface AccountScore {
    * speaks for one family only, so it cannot answer this for the whole score.
    */
   weeklyBasis: WeeklyBasis;
-  /** Epoch seconds at which the soonest 5-hour allowance refills, when known. */
+  /**
+   * Mean share of the weekly allowance left across the families that reported
+   * one, and the soonest of their resets. Absent when no weekly window was read.
+   */
+  measuredWeek?: { remaining: number; resetsAt?: number };
+  /** Epoch seconds at which the account can next take work, when a reading says. */
   refillsAt?: number;
   /** Why the account is out of the running, when it is. */
-  blocked?: string;
+  blocked?: BlockedReason;
 }
 
 /**
@@ -156,10 +171,14 @@ function scoreFamily(
   const msLeft = resetsAt !== undefined ? resetsAt * 1000 - nowMs : ONE_WEEK_MS;
   const windowsLeft = Math.max(1, Math.ceil(msLeft / FIVE_HOURS_MS));
 
+  // A spent week keeps the family out past its next 5-hour reset, so that reset
+  // is not when it can work again.
+  const refillsAt = weeklyRead === 0 ? resetsAt : limits?.rate5h?.resetsAt;
+
   return {
     headroom,
     value: headroom * (weeklyRemaining / windowsLeft),
-    ...(limits?.rate5h?.resetsAt !== undefined ? { refillsAt: limits.rate5h.resetsAt } : {}),
+    ...(refillsAt !== undefined ? { refillsAt } : {}),
     weekly: {
       family,
       remaining: weeklyRemaining,
@@ -184,10 +203,10 @@ function scoreAccount(account: Account, nowMs: number): AccountScore {
   };
 
   if (account.authType !== 'oauth') {
-    return { ...base, blocked: 'not an OAuth account' };
+    return { ...base, blocked: BLOCKED.notOauth };
   }
   if (needsSignIn(account)) {
-    return { ...base, blocked: 'needs a fresh sign-in' };
+    return { ...base, blocked: BLOCKED.signIn };
   }
 
   const scored = MODEL_FAMILIES.map((family) =>
@@ -195,7 +214,7 @@ function scoreAccount(account: Account, nowMs: number): AccountScore {
   ).filter((entry): entry is FamilyScore => entry !== undefined);
 
   if (scored.length === 0) {
-    return { ...base, blocked: 'no current quota reading' };
+    return { ...base, blocked: BLOCKED.unread };
   }
 
   const headroom = scored.reduce((sum, s) => sum + s.headroom, 0) / scored.length;
@@ -204,7 +223,9 @@ function scoreAccount(account: Account, nowMs: number): AccountScore {
     expiresAt(s.weekly) < expiresAt(worst.weekly) ? s : worst
   ).weekly;
   const refills = scored.map((s) => s.refillsAt).filter((at): at is number => at !== undefined);
-  const measured = scored.filter((s) => s.weekly.measured).length;
+  const weeks = scored.filter((s) => s.weekly.measured).map((s) => s.weekly);
+  const weekResets = weeks.map((w) => w.resetsAt).filter((at): at is number => at !== undefined);
+  const measured = weeks.length;
   const common = {
     headroom,
     families: scored.map((s) => s.weekly.family),
@@ -214,17 +235,42 @@ function scoreAccount(account: Account, nowMs: number): AccountScore {
       : measured === 0
         ? 'assumed'
         : 'mixed') as WeeklyBasis,
+    ...(weeks.length > 0
+      ? {
+          measuredWeek: {
+            remaining: weeks.reduce((sum, w) => sum + w.remaining, 0) / weeks.length,
+            ...(weekResets.length > 0 ? { resetsAt: Math.min(...weekResets) } : {}),
+          },
+        }
+      : {}),
     ...(refills.length > 0 ? { refillsAt: Math.min(...refills) } : {}),
   };
 
+  const score = scored.reduce((sum, s) => sum + s.value, 0) / scored.length;
+  // Nothing left to work with in any family: every one that still has 5-hour room
+  // has a spent week. Checked first, because a 5-hour reset would not free it.
+  if (score === 0 && headroom >= MIN_HEADROOM) {
+    return { ...base, ...common, blocked: BLOCKED.weekly };
+  }
   if (headroom < MIN_HEADROOM) {
-    return { ...base, ...common, blocked: '5-hour limit nearly spent' };
+    return { ...base, ...common, blocked: BLOCKED.fiveHour };
   }
 
+  return { account, score, ...common };
+}
+
+/**
+ * Takes an account out of the running because its measured week is all but
+ * spent. It frees up when that week resets, not when its 5-hour window does.
+ */
+function holdOutForWeek(entry: AccountScore): AccountScore {
+  const { refillsAt: _fiveHourReset, ...rest } = entry;
+  const resetsAt = entry.measuredWeek?.resetsAt;
   return {
-    account,
-    score: scored.reduce((sum, s) => sum + s.value, 0) / scored.length,
-    ...common,
+    ...rest,
+    score: 0,
+    blocked: BLOCKED.weekly,
+    ...(resetsAt !== undefined ? { refillsAt: resetsAt } : {}),
   };
 }
 
@@ -268,20 +314,37 @@ function byBasis(basis: ChoiceBasis): (a: AccountScore, b: AccountScore) => numb
  * work reported every weekly window. Short of that the choice drops to the one
  * figure all of them did measure, their 5-hour headroom, and the same figure
  * decides the ranking, the destination and the margin the account in use has to
- * be beaten by. An account that cannot take work at all is not a comparison:
- * anything that can beats it.
+ * be beaten by. Because that figure says nothing about the week, an account whose
+ * measured week is all but spent is left out of it. An account that cannot take
+ * work at all is not a comparison: anything that can beats it.
  */
 export function chooseBestAccount(
   accounts: Account[],
   activeAccountId: string | null,
   nowMs: number = Date.now()
 ): BestAccountChoice {
-  const scored = accounts.map((account) => scoreAccount(account, nowMs));
-  const candidates = scored.filter((entry) => entry.score > 0);
+  const all = accounts.map((account) => scoreAccount(account, nowMs));
   const basis: ChoiceBasis =
-    candidates.length > 0 && candidates.every((entry) => entry.weeklyBasis === 'measured')
+    all.some((entry) => entry.score > 0) &&
+    all.every((entry) => entry.score === 0 || entry.weeklyBasis === 'measured')
       ? 'weekly'
       : 'headroom';
+
+  // On headroom the weekly allowance is not weighed at all, so an account whose
+  // measured week is all but spent would rank on 5-hour room it cannot use. The
+  // weekly score needs no such rule: it already prices a small week by how soon
+  // it resets, which is what makes burning the last of one before it goes worth it.
+  const scored =
+    basis === 'weekly'
+      ? all
+      : all.map((entry) =>
+          entry.score > 0 &&
+          entry.measuredWeek !== undefined &&
+          entry.measuredWeek.remaining < MIN_HEADROOM
+            ? holdOutForWeek(entry)
+            : entry
+        );
+  const candidates = scored.filter((entry) => entry.score > 0);
 
   const ranked = scored.sort(byBasis(basis));
   const value = (entry: AccountScore) => (basis === 'weekly' ? entry.score : entry.headroom);

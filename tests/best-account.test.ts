@@ -165,10 +165,10 @@ describe('choosing the account that wastes the least quota', () => {
   });
 
   it('does not rewrite the session on the strength of an unread weekly window', () => {
-    // `inUse` has a measured week with almost nothing left to lose; `unread`
-    // reports no weekly window at all and is scored as an untouched one, which
-    // ranks it far higher. That lead is an assumption, not a reading.
-    const inUse = account('in-use', { rateLimit: { gemini: family(1, 0.02, 168) } });
+    // `inUse` has a measured week with little left to lose; `unread` reports no
+    // weekly window at all and is scored as an untouched one, which ranks it far
+    // higher. That lead is an assumption, not a reading.
+    const inUse = account('in-use', { rateLimit: { gemini: family(1, 0.2, 168) } });
     const unread = account('unread', { rateLimit: { gemini: { rate5h: fiveHourOnly(1) } } });
 
     const choice = chooseBestAccount([inUse, unread], 'in-use', NOW);
@@ -210,7 +210,7 @@ describe('choosing the account that wastes the least quota', () => {
     const inUse = account('in-use', { rateLimit: { gemini: family(0.6, 0.2, 168) } });
     // Half measured, half assumed: it tops the score on a week nobody read.
     const mixed = account('mixed', {
-      rateLimit: { gemini: family(0.7, 0.05, 168), claude: { rate5h: fiveHourOnly(0.7) } },
+      rateLimit: { gemini: family(0.7, 0.2, 168), claude: { rate5h: fiveHourOnly(0.7) } },
     });
     const spare = account('spare', { rateLimit: { gemini: family(0.9, 0.1, 168) } });
 
@@ -231,10 +231,10 @@ describe('choosing the account that wastes the least quota', () => {
     // half its score rests on an assumed untouched Claude week. Its Gemini
     // week is measured, which is all `perishing` ever spoke for.
     const inUse = account('in-use', {
-      rateLimit: { gemini: family(1, 0.02, 168), claude: family(1, 0.02, 168) },
+      rateLimit: { gemini: family(1, 0.2, 168), claude: family(1, 0.2, 168) },
     });
     const candidate = account('candidate', {
-      rateLimit: { gemini: family(1, 0.03, 168), claude: { rate5h: fiveHourOnly(1) } },
+      rateLimit: { gemini: family(1, 0.3, 168), claude: { rate5h: fiveHourOnly(1) } },
     });
 
     const choice = chooseBestAccount([inUse, candidate], 'in-use', NOW);
@@ -296,5 +296,46 @@ describe('choosing the account that wastes the least quota', () => {
 
     expect(choice.best?.account.id).toBe('best');
     expect(choice.shouldSwitch).toBe(false);
+  });
+
+  it('does not rank a measured week that is all but spent on its 5-hour room', () => {
+    // `unread` puts the choice on 5-hour headroom, which says nothing about the
+    // week. `drained` would win there with 1% of its week left.
+    const inUse = account('in-use', { rateLimit: { gemini: family(0.5, 0.8, 168) } });
+    const unread = account('unread', { rateLimit: { gemini: { rate5h: fiveHourOnly(0.6) } } });
+    const drained = account('drained', { rateLimit: { gemini: family(1, 0.01, 144) } });
+
+    const choice = chooseBestAccount([inUse, unread, drained], 'in-use', NOW);
+    const held = choice.ranked.find((entry) => entry.account.id === 'drained');
+
+    expect(choice.basis).toBe('headroom');
+    expect(held?.blocked).toBe('weekly limit nearly spent');
+    expect(held?.refillsAt).toBe(hoursFromNow(144));
+    expect(choice.best?.account.id).not.toBe('drained');
+    expect(choice.shouldSwitch).toBe(true);
+    expect(choice.best?.account.id).toBe('unread');
+  });
+
+  it('still spends the last of a measured week that resets soon', () => {
+    // Every week was read, so the score decides, and a small week about to
+    // reset is exactly the quota most likely to be wasted.
+    const later = account('later', { rateLimit: { gemini: family(1, 0.5, 168) } });
+    const closing = account('closing', { rateLimit: { gemini: family(1, 0.08, 1) } });
+
+    const choice = chooseBestAccount([later, closing], 'later', NOW);
+
+    expect(choice.basis).toBe('weekly');
+    expect(choice.best?.account.id).toBe('closing');
+    expect(choice.shouldSwitch).toBe(true);
+  });
+
+  it('blocks an account whose week is spent, and dates it by the weekly reset', () => {
+    const spentWeek = account('spent-week', { rateLimit: { gemini: family(0.9, 0, 48, 2) } });
+
+    const choice = chooseBestAccount([spentWeek], null, NOW);
+
+    expect(choice.best).toBeNull();
+    expect(choice.ranked[0].blocked).toBe('weekly limit nearly spent');
+    expect(choice.ranked[0].refillsAt).toBe(hoursFromNow(48));
   });
 });
