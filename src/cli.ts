@@ -356,9 +356,10 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
       if (commanderCode === 'commander.helpDisplayed' || commanderCode === 'commander.version') {
         return 0;
       }
-      // Help asked for succeeds; help shown because a group was run without one
-      // of its subcommands is a usage error, and its message is only a marker.
-      if (commanderCode === 'commander.help' && exitCode === 0) {
+      // Help asked for succeeds, and so does bare `agy-auth`, which shows its
+      // overview. Help shown because a group was run without one of its
+      // subcommands is a usage error, and its message is only a marker.
+      if (commanderCode === 'commander.help' && (exitCode === 0 || commandName === 'agy-auth')) {
         return 0;
       }
       // Commander prefixes its messages with 'error: '; ours adds its own.
