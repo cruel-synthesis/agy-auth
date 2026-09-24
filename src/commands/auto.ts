@@ -122,12 +122,18 @@ function renderRanking(
       ),
     ].join('  ');
 
+  // Clipped before it is dimmed: clipping counts characters, and would count
+  // the escape codes as text and cut off the one that ends the style.
   const header = colors.dim(
-    `    ${cells('ACCOUNT', (column) => column.header.padEnd(column.width))}`
+    truncateToWidth(
+      `    ${cells('ACCOUNT', (column) => column.header.padEnd(column.width))}`,
+      termWidth,
+      ''
+    )
   );
 
   return [
-    truncateToWidth(header, termWidth, ''),
+    header,
     ...rows.map((row) => {
       const line = cells(row.name, (column) => column.pick(row).padEnd(column.width));
       return truncateToWidth(`  ${row.marker} ${line}`, termWidth, '');

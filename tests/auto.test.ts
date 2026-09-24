@@ -6,6 +6,7 @@ import { autoCommand } from '../src/commands/auto.js';
 import { QUOTA_CACHE_TTL_MS } from '../src/commands/refresh.js';
 import { QuotaClient, QuotaRefresh } from '../src/core/quota.js';
 import { Account } from '../src/core/types.js';
+import { colors } from '../src/ui/theme.js';
 import { TestEnv, setupTestEnvironment } from './test-utils.js';
 
 const NOW = Date.now();
@@ -493,5 +494,24 @@ describe('Automatic switching', () => {
     expect(output).toMatch(/Staying on acc1@example\.com\./);
     expect(output).toMatch(/acc2@example\.com ranks first, but not by enough/);
     expect(output).not.toMatch(/most likely to go to waste/);
+  });
+
+  it('ends the dimmed ranking header even when it has to be clipped', async () => {
+    vi.spyOn(colors, 'dim').mockImplementation((text: string) => `\x1b[2m${text}\x1b[22m`);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const originalColumns = process.env.COLUMNS;
+    process.env.COLUMNS = '16';
+
+    try {
+      await autoCommand({ dryRun: true, offline: true });
+      const header = logSpy.mock.calls
+        .map((call) => String(call[0]))
+        .find((line) => line.includes('ACC'));
+
+      expect(header?.endsWith('\x1b[22m')).toBe(true);
+      expect(stringWidth(header ?? '')).toBe(16);
+    } finally {
+      process.env.COLUMNS = originalColumns;
+    }
   });
 });
