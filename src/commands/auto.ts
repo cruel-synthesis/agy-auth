@@ -303,8 +303,12 @@ async function watchTick(registry: RegistryManager, options: AutoOptions): Promi
   }
 
   // The account in use is spent. Only now is a reading of the others worth its
-  // traffic, and the choice must not be made on stale ones.
-  const others = registry.getAccounts().filter((account) => account.id !== active.id);
+  // traffic, and the choice must not be made on stale ones. An account already
+  // known to need a sign-in cannot be chosen, and asking about it again would
+  // only attach its failure to every decision.
+  const others = registry
+    .getAccounts()
+    .filter((account) => account.id !== active.id && !needsSignIn(account));
   const othersRefresh = await refreshAndApply(registry, selectRefreshable(others), options);
 
   const { choice } = readActive();
