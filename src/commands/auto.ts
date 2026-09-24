@@ -303,6 +303,16 @@ async function watchTick(registry: RegistryManager, options: AutoOptions): Promi
     };
   }
 
+  if (current?.blocked === BLOCKED.unread) {
+    // The reading came back without a current 5-hour window, which says nothing
+    // about whether the account ran out. Moving on it would act on no evidence.
+    return {
+      event: 'holding',
+      detail: `${formatAccountShort(active)}: ${BLOCKED.unread}; staying until one comes back`,
+      activeAccountId: active.id,
+    };
+  }
+
   // The account in use is spent. Only now is a reading of the others worth its
   // traffic, and the choice must not be made on stale ones. An account already
   // known to need a sign-in cannot be chosen, and asking about it again would

@@ -34,7 +34,8 @@ by the same choice described below.
 ```
 
 A check that cannot reach the service changes nothing: the watcher keeps the
-account in use rather than moving off it because the network failed. A rejected
+account in use rather than moving off it because the network failed. Neither
+does a reading that comes back without a current 5-hour window. A rejected
 credential is different - the answer is decisive, so the watcher treats the
 account as spent and looks for another. An account in use that is not OAuth
 reports no quota at all, so the watcher leaves it alone rather than reading that

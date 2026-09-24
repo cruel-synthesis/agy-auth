@@ -402,6 +402,41 @@ describe('Automatic switching', () => {
     expect(refreshSpy).not.toHaveBeenCalled();
   });
 
+  it('stays on the account in use when its reading has no 5-hour window', async () => {
+    const asked: string[] = [];
+    vi.spyOn(QuotaClient, 'refreshAccountQuotas').mockImplementation(async (accounts) => {
+      const results = new Map<string, QuotaRefresh>();
+      for (const target of accounts) {
+        asked.push(target.id);
+        results.set(target.id, {
+          result: {
+            accountId: target.id,
+            observedUpdatedAt: target.updatedAt,
+            ok: true,
+            status: 'valid',
+            quotaCheckedAt: Date.now(),
+            rateLimit: {
+              gemini: {
+                rateWeekly: { usedPercent: 50, windowMinutes: 10_080, resetsAt: NOW_SEC + 86_400 },
+              },
+            },
+          },
+        });
+      }
+      return results;
+    });
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const watching = autoCommand({ json: true, dryRun: true, watch: true, interval: '1' });
+    process.emit('SIGINT');
+    await expect(watching).rejects.toThrow(/Stopped watching/);
+
+    const tick = JSON.parse(String(logSpy.mock.calls.at(-1)?.[0]));
+    expect(tick.data.event).toBe('holding');
+    expect(tick.data.detail).toContain('no current quota reading');
+    expect(asked).toEqual([tick.data.activeAccountId]);
+  });
+
   it('does not ask about an account already known to need a sign-in', async () => {
     fs.writeFileSync(
       path.join(process.env.AGY_AUTH_HOME as string, 'registry.json'),
