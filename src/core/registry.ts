@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { validateAccountCredentials } from './credential-validation.js';
-import { migrateRegistry } from './migration.js';
+import { migrateRegistry, validateUniqueness } from './migration.js';
 import { Paths } from './paths.js';
 import { CorruptedRegistryError, ManagedBackupPrefix, Storage } from './storage.js';
 import {
@@ -38,46 +38,18 @@ function emptyRegistry(): Registry {
 /** Validate both the shape and the cross-record relationships of a registry. */
 export function validateRegistry(registry: Registry): void {
   RegistrySchema.parse(registry);
-
-  const ids = new Set<string>();
-  const aliases = new Map<string, Account>();
-  const identities = new Map<string, Account>();
+  validateUniqueness(registry.accounts);
 
   for (const account of registry.accounts) {
-    if (ids.has(account.id)) {
-      throw new Error(`Registry invariant violated: duplicate account ID '${account.id}'.`);
-    }
-    ids.add(account.id);
-
     const credVal = validateAccountCredentials(account);
     if (!credVal.ok) {
       throw new Error(
         `Registry invariant violated: account '${account.email}' (${account.id}) has invalid credentials: ${credVal.reason}`
       );
     }
-
-    if (account.alias !== undefined) {
-      const aliasKey = account.alias.trim().toLowerCase();
-      const conflict = aliases.get(aliasKey);
-      if (conflict) {
-        throw new Error(
-          `Registry invariant violated: duplicate alias '${account.alias}' (${conflict.id}, ${account.id}).`
-        );
-      }
-      aliases.set(aliasKey, account);
-    }
-
-    const identityKey = `${account.email.trim().toLowerCase()}\u0000${account.authType}`;
-    const identityConflict = identities.get(identityKey);
-    if (identityConflict) {
-      throw new Error(
-        `Registry invariant violated: duplicate account identity '${account.email}' (${account.authType}) ` +
-          `(${identityConflict.id}, ${account.id}).`
-      );
-    }
-    identities.set(identityKey, account);
   }
 
+  const ids = new Set(registry.accounts.map((account) => account.id));
   if (registry.activeAccountId !== null && !ids.has(registry.activeAccountId)) {
     throw new Error(
       `Registry invariant violated: active account '${registry.activeAccountId}' does not exist.`
