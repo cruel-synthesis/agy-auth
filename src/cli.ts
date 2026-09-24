@@ -21,6 +21,26 @@ import { printTopLevelHelp } from './ui/help.js';
 import { colors } from './ui/theme.js';
 import { VERSION } from './version.js';
 
+/**
+ * Commander answers a group invoked with no subcommand by doing nothing and
+ * exiting 0, and one given a word that is not a subcommand by counting it as an
+ * excess argument. Both are answered with what the group actually takes.
+ *
+ * Called after the subcommands exist: they copy the parent's settings when they
+ * are created, and must not inherit its tolerance for excess arguments.
+ */
+function requireSubcommand(group: Command): void {
+  const choices = group.commands.map((command) => `\`${command.name()}\``).join(' or ');
+  group.allowExcessArguments().action((_options, command: Command) => {
+    const [word] = command.args;
+    throw new UsageError(
+      word === undefined
+        ? `\`${group.name()}\` needs a subcommand: ${choices}.`
+        : `Unknown \`${group.name()}\` subcommand '${word}'; use ${choices}.`
+    );
+  });
+}
+
 export function createCli(): Command {
   const program = new Command();
 
@@ -166,12 +186,6 @@ export function createCli(): Command {
   // alias
   const aliasCmd = program.command('alias').description('Manage account aliases');
 
-  // Commander answers a group invoked with no subcommand by doing nothing and
-  // exiting 0, which reads as success for a command that did not run.
-  aliasCmd.action(() => {
-    throw new UsageError('`alias` needs a subcommand: `set` or `clear`.');
-  });
-
   aliasCmd
     .command('set')
     .description('Set an alias for an account')
@@ -193,10 +207,6 @@ export function createCli(): Command {
 
   // project
   const projectCmd = program.command('project').description('Manage GCP project settings');
-
-  projectCmd.action(() => {
-    throw new UsageError('`project` needs a subcommand: `set` or `clear`.');
-  });
 
   projectCmd
     .command('set')
@@ -221,10 +231,6 @@ export function createCli(): Command {
   // model
   const modelCmd = program.command('model').description('Manage model preferences');
 
-  modelCmd.action(() => {
-    throw new UsageError('`model` needs a subcommand: `set` or `clear`.');
-  });
-
   modelCmd
     .command('set')
     .description('Set preferred model for an account')
@@ -243,6 +249,10 @@ export function createCli(): Command {
     .action(async (account, options) => {
       await modelClearCommand(account, options);
     });
+
+  for (const group of [aliasCmd, projectCmd, modelCmd]) {
+    requireSubcommand(group);
+  }
 
   // env
   program
