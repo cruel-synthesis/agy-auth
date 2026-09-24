@@ -364,4 +364,40 @@ describe('Automatic switching', () => {
       /^No account has known usable quota: 1 out of quota, 1 not OAuth\. Of those out of quota, the first frees up in 1h 0m\.$/
     );
   });
+
+  it('leaves a non-OAuth account in use alone while watching', async () => {
+    fs.writeFileSync(
+      path.join(process.env.AGY_AUTH_HOME as string, 'registry.json'),
+      `${JSON.stringify({
+        schemaVersion: 3,
+        activeAccountId: 'key',
+        previousAccountId: null,
+        accounts: [
+          {
+            id: 'key',
+            email: 'key@example.com',
+            authType: 'api-key',
+            status: 'valid',
+            credentials: { apiKey: 'synthetic-key' },
+            createdAt: NOW,
+            updatedAt: NOW,
+          },
+          account('acc2', 0.9),
+        ],
+        settings: { defaultLocation: 'global' },
+      })}\n`,
+      { mode: 0o600 }
+    );
+    const refreshSpy = vi.spyOn(QuotaClient, 'refreshAccountQuotas');
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const watching = autoCommand({ json: true, dryRun: true, watch: true, interval: '1' });
+    process.emit('SIGINT');
+    await expect(watching).rejects.toThrow(/Stopped watching/);
+
+    const tick = JSON.parse(String(logSpy.mock.calls.at(-1)?.[0]));
+    expect(tick.data.event).toBe('idle');
+    expect(tick.data.chosenAccountId).toBeUndefined();
+    expect(refreshSpy).not.toHaveBeenCalled();
+  });
 });

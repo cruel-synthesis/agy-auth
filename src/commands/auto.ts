@@ -258,6 +258,15 @@ async function watchTick(registry: RegistryManager, options: AutoOptions): Promi
   if (!active) {
     return { event: 'idle', detail: 'no account in use', activeAccountId: null };
   }
+  if (active.authType !== 'oauth') {
+    // Only OAuth accounts report quota, so this one can never be seen to run out.
+    // Scoring it as spent would move off an account chosen on purpose.
+    return {
+      event: 'idle',
+      detail: `${formatAccountShort(active)} is not an OAuth account, so it has no quota to watch`,
+      activeAccountId: active.id,
+    };
+  }
 
   const activeRefresh = await refreshAndApply(registry, selectRefreshable([active]), options);
   const afterRefresh = registry.getActiveAccount();

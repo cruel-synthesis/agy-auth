@@ -36,7 +36,9 @@ by the same choice described below.
 A check that cannot reach the service changes nothing: the watcher keeps the
 account in use rather than moving off it because the network failed. A rejected
 credential is different - the answer is decisive, so the watcher treats the
-account as spent and looks for another.
+account as spent and looks for another. An account in use that is not OAuth
+reports no quota at all, so the watcher leaves it alone rather than reading that
+silence as running out.
 
 Only the account in use is contacted on an ordinary check, so leaving the watcher
 running costs one account's traffic per interval rather than everyone's. With
