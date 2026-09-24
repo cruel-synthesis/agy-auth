@@ -500,7 +500,7 @@ describe('Automatic switching', () => {
     vi.spyOn(colors, 'dim').mockImplementation((text: string) => `\x1b[2m${text}\x1b[22m`);
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const originalColumns = process.env.COLUMNS;
-    process.env.COLUMNS = '16';
+    process.env.COLUMNS = '8';
 
     try {
       await autoCommand({ dryRun: true, offline: true });
@@ -509,7 +509,28 @@ describe('Automatic switching', () => {
         .find((line) => line.includes('ACC'));
 
       expect(header?.endsWith('\x1b[22m')).toBe(true);
-      expect(stringWidth(header ?? '')).toBe(16);
+      expect(stringWidth(header ?? '')).toBe(8);
+    } finally {
+      process.env.COLUMNS = originalColumns;
+    }
+  });
+
+  it('drops the last column rather than cut digits from it', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const originalColumns = process.env.COLUMNS;
+
+    try {
+      for (const columns of ['16', '17', '18', '19']) {
+        logSpy.mockClear();
+        process.env.COLUMNS = columns;
+        await autoCommand({ dryRun: true, offline: true });
+        const lines = logSpy.mock.calls.map((call) => String(call[0]));
+        const header = lines.findIndex((line) => line.includes('ACC'));
+        const rows = lines.slice(header + 1, header + 3);
+
+        expect(rows).toHaveLength(2);
+        for (const row of rows) expect(row).not.toMatch(/\d$/);
+      }
     } finally {
       process.env.COLUMNS = originalColumns;
     }

@@ -101,7 +101,7 @@ function renderRanking(
   const termWidth = terminalWidth();
   const visible = [...columns];
   const restWidth = () => visible.reduce((sum, column) => sum + column.width + 2, 0);
-  while (visible.length > 1 && 4 + MIN_RANKING_NAME_WIDTH + restWidth() > termWidth) {
+  while (visible.length > 0 && 4 + MIN_RANKING_NAME_WIDTH + restWidth() > termWidth) {
     visible.pop();
   }
 
@@ -113,14 +113,9 @@ function renderRanking(
     )
   );
 
-  // The last column is left unpadded so no line carries trailing whitespace.
+  // Trimmed so that no line carries the padding of its last cell.
   const cells = (name: string, pick: (column: (typeof visible)[number]) => string): string =>
-    [
-      truncatePadded(name, nameWidth),
-      ...visible.map((column, index) =>
-        index === visible.length - 1 ? pick(column).trimEnd() : pick(column)
-      ),
-    ].join('  ');
+    [truncatePadded(name, nameWidth), ...visible.map(pick)].join('  ').trimEnd();
 
   // Clipped before it is dimmed: clipping counts characters, and would count
   // the escape codes as text and cut off the one that ends the style.
