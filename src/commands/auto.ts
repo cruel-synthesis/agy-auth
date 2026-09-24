@@ -1,6 +1,8 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import {
   AccountScore,
+  BLOCKED,
+  BlockedReason,
   ChoiceBasis,
   MODEL_FAMILIES,
   chooseBestAccount,
@@ -138,6 +140,63 @@ function printWarnings(lines: string[]): void {
   for (const line of lines) {
     console.error(colors.yellow(`  ${line.startsWith('Warning') ? line : `Warning: ${line}`}`));
   }
+}
+
+const CHECK_HINT = 'Run `agy-auth list --check` for a live reading.';
+const SIGN_IN_HINT = 'Sign in through Antigravity, then run `agy-auth add`.';
+
+/**
+ * Why no account can take work, in terms of what is actually known.
+ *
+ * An account that was never read is not one known to be spent, and one that
+ * needs a sign-in or is not OAuth was never going to be read, so each is named
+ * for what it is rather than counted as out of quota or as unread.
+ */
+function refusal(ranked: AccountScore[], nowMs: number): string {
+  const count = (...reasons: BlockedReason[]) =>
+    ranked.filter((entry) => entry.blocked !== undefined && reasons.includes(entry.blocked)).length;
+  const fiveHour = count(BLOCKED.fiveHour);
+  const weekly = count(BLOCKED.weekly);
+  const spent = fiveHour + weekly;
+  const unread = count(BLOCKED.unread);
+  const signIn = count(BLOCKED.signIn);
+  const notOauth = count(BLOCKED.notOauth);
+
+  const soonest = ranked
+    .filter((entry) => entry.blocked === BLOCKED.fiveHour || entry.blocked === BLOCKED.weekly)
+    .map((entry) => entry.refillsAt)
+    .filter((at): at is number => at !== undefined)
+    .sort((a, b) => a - b)[0];
+  const frees = soonest !== undefined ? formatUntil(soonest, nowMs) : undefined;
+
+  if (spent === ranked.length) {
+    const limit = weekly === 0 ? '5-hour ' : fiveHour === 0 ? 'weekly ' : '';
+    return `Every account is out of ${limit}quota. ${frees ? `The first frees up in ${frees}.` : CHECK_HINT}`;
+  }
+  if (unread === ranked.length) {
+    return `Quota could not be determined for any account. ${CHECK_HINT}`;
+  }
+  if (signIn === ranked.length) {
+    return `Every account needs a fresh sign-in. ${SIGN_IN_HINT}`;
+  }
+  if (notOauth === ranked.length) {
+    return 'Only OAuth accounts can be chosen automatically, and none is saved.';
+  }
+
+  const parts = [
+    spent > 0 ? `${spent} out of quota` : '',
+    unread > 0 ? `${unread} not read` : '',
+    signIn > 0 ? `${signIn} needing a fresh sign-in` : '',
+    notOauth > 0 ? `${notOauth} not OAuth` : '',
+  ].filter(Boolean);
+  return [
+    `No account has known usable quota: ${parts.join(', ')}.`,
+    frees ? `Of those out of quota, the first frees up in ${frees}.` : '',
+    unread > 0 ? CHECK_HINT : '',
+    signIn > 0 ? SIGN_IN_HINT : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 /** Why the winner won, in the terms that decided it. */
@@ -393,36 +452,11 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
   const refreshWarnings = warning ? [warning] : [];
 
   if (!choice.best) {
-    const soonest = choice.ranked
-      .map((entry) => entry.refillsAt)
-      .filter((at): at is number => at !== undefined)
-      .sort((a, b) => a - b)[0];
-    // `families` names what an account's score was averaged over, so an empty one
-    // means that account was never read. An account nothing is known about is not
-    // an account known to be spent, so only a set that was read through can be
-    // called out of quota, and a refill is only ever the first one on record.
-    const unread = choice.ranked.filter((entry) => entry.families.length === 0).length;
-    const check = 'Run `agy-auth list --check` for a live reading.';
-    const refill =
-      soonest !== undefined
-        ? ` The first account with a reading frees up in ${formatUntil(soonest, nowMs)}.`
-        : '';
-    let message: string;
-    if (unread === choice.ranked.length) {
-      message = `Quota could not be determined for any account. ${check}`;
-    } else if (unread > 0) {
-      message = `No account has known usable quota; ${unread} of ${choice.ranked.length} could not be read.${refill} ${check}`;
-    } else if (soonest !== undefined) {
-      message = `Every account is out of 5-hour quota. The first frees up in ${formatUntil(soonest, nowMs)}.`;
-    } else {
-      message = `No account has quota to work with. ${check}`;
-    }
-
     if (!options.json) {
       printWarnings(refreshWarnings);
     }
     throw new CliError(
-      message,
+      refusal(choice.ranked, nowMs),
       'cli_error',
       1,
       refreshWarnings.length > 0 ? { warnings: refreshWarnings } : {}

@@ -305,10 +305,63 @@ describe('Automatic switching', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
 
     await expect(autoCommand({ dryRun: true, offline: true })).rejects.toThrow(
-      /No account has known usable quota; 1 of 2 could not be read\. The first account with a reading frees up in/
+      /No account has known usable quota: 1 out of quota, 1 not read\. Of those out of quota, the first frees up in/
     );
     await expect(autoCommand({ dryRun: true, offline: true })).rejects.not.toThrow(
       /Every account is out/
+    );
+  });
+
+  it('names why each account is out rather than calling it unread', async () => {
+    const write = (accounts: Account[]) =>
+      fs.writeFileSync(
+        path.join(process.env.AGY_AUTH_HOME as string, 'registry.json'),
+        `${JSON.stringify({
+          schemaVersion: 3,
+          activeAccountId: 'acc1',
+          previousAccountId: null,
+          accounts,
+          settings: { defaultLocation: 'global' },
+        })}\n`,
+        { mode: 0o600 }
+      );
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    // A rejected sign-in is not a missing reading: a check cannot fix it.
+    write([
+      { ...account('acc1', 0.9), status: 'needs-reauth' },
+      { ...account('acc2', 0.9), status: 'expired' },
+    ]);
+    await expect(autoCommand({ dryRun: true, offline: true })).rejects.toThrow(
+      /^Every account needs a fresh sign-in\. Sign in through Antigravity/
+    );
+
+    // 5-hour room with a spent week is out until the week resets, not the window.
+    const spentWeek = (id: string): Account => {
+      const entry = account(id, 0.9);
+      if (entry.rateLimit?.gemini?.rateWeekly) entry.rateLimit.gemini.rateWeekly.usedPercent = 100;
+      return entry;
+    };
+    write([spentWeek('acc1'), spentWeek('acc2')]);
+    await expect(autoCommand({ dryRun: true, offline: true })).rejects.toThrow(
+      /^Every account is out of weekly quota\. The first frees up in 1d 0h\.$/
+    );
+
+    // An API-key account is never read, and saying so is not a reason to check.
+    write([
+      account('acc1', 0.01),
+      {
+        id: 'acc2',
+        email: 'acc2@example.com',
+        authType: 'api-key',
+        status: 'valid',
+        credentials: { apiKey: 'synthetic-key' },
+        createdAt: NOW,
+        updatedAt: NOW,
+      },
+    ]);
+    await expect(autoCommand({ dryRun: true, offline: true })).rejects.toThrow(
+      /^No account has known usable quota: 1 out of quota, 1 not OAuth\. Of those out of quota, the first frees up in 1h 0m\.$/
     );
   });
 });
