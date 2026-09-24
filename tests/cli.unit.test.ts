@@ -231,6 +231,26 @@ describe('CLI unit tests and option dispatch', () => {
     }
   });
 
+  it('answers an error in the shape Commander actually parsed', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      // `-j` inside a cluster is the JSON flag.
+      expect(await runCli(['node', 'agy-auth', 'list', '-aj', '--bogus'])).toBe(2);
+      expect(JSON.parse(String(logSpy.mock.calls[0]?.[0])).error.code).toBe('invalid_usage');
+      expect(errorSpy).not.toHaveBeenCalled();
+
+      // `-j` given as the value of --shell is not.
+      logSpy.mockClear();
+      expect(await runCli(['node', 'agy-auth', 'env', '--shell', '-j'])).toBe(2);
+      expect(String(errorSpy.mock.calls[0]?.[0])).toContain("Unsupported shell format '-j'");
+      expect(logSpy).not.toHaveBeenCalled();
+    } finally {
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
+
   it('outputs text error to stderr on failure in non-JSON mode', async () => {
     const registry = new RegistryManager();
     registry.addOrUpdateAccount({

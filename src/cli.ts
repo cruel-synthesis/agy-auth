@@ -290,13 +290,19 @@ export function createCli(): Command {
 }
 
 export async function runCli(argv = process.argv, customCli?: Command): Promise<number> {
-  // Commander expands a short-flag cluster, so `-yj` runs the command in JSON
-  // mode. Matching only the bare tokens left the error path reporting that run
-  // in prose, which is the one shape a caller parsing --json cannot read.
-  const isJson = argv.some(
-    (arg) => arg === '--json' || (/^-[a-zA-Z]+$/.test(arg) && arg.includes('j'))
-  );
+  // `-j` inside a cluster such as `-yj` also runs the command in JSON mode, and
+  // only Commander knows whether a `-j` was that flag or an option's value, as
+  // in `env --shell -j`. So it is asked, and the error path answers in the
+  // shape the command ran in.
+  let isJson = argv.includes('--json');
   const cli = customCli || createCli();
+  const listenForJson = (command: Command): void => {
+    command.on('option:json', () => {
+      isJson = true;
+    });
+    for (const sub of command.commands) listenForJson(sub);
+  };
+  listenForJson(cli);
 
   // Commander writes its own error line and then throws it. That line is dropped
   // and reported once below, in the shape every other failure uses. What else it
