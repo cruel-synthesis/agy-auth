@@ -624,6 +624,33 @@ describe('Command Modules Behavioral & Regression Suite', () => {
     }
   });
 
+  it('keeps the same backups on clean as automatic rotation does', async () => {
+    // Identical timestamps leave only the tiebreak to decide, which is where two
+    // separate retention loops could disagree.
+    fs.mkdirSync(Paths.backupsDir, { recursive: true });
+    const at = new Date('2026-01-01T00:00:00Z');
+    for (let i = 0; i < 12; i++) {
+      const name = `switch_token_2026-01-01T00-00-00-000Z_${i.toString(16).padStart(8, '0')}`;
+      const file = path.join(Paths.backupsDir, name);
+      fs.writeFileSync(file, '{}');
+      fs.utimesSync(file, at, at);
+    }
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await cleanCommand({ dryRun: true, json: true });
+      const keptByClean = JSON.parse(String(logSpy.mock.calls.at(-1)?.[0])).data.keptFiles;
+
+      Storage.rotateBackups(Paths.backupsDir);
+      const keptByRotation = fs.readdirSync(Paths.backupsDir);
+
+      expect(keptByClean).toHaveLength(10);
+      expect([...keptByClean].sort()).toEqual([...keptByRotation].sort());
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
   it('reports managed backup deletion failures instead of claiming success', async () => {
     const sourceFile = path.join(testEnv.dir, 'source.json');
     fs.writeFileSync(sourceFile, '{}');

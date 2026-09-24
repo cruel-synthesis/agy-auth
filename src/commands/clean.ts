@@ -1,8 +1,7 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import { CliError } from '../core/errors.js';
 import { Paths } from '../core/paths.js';
-import { MAX_BACKUP_RETENTION, managedBackupPrefix } from '../core/storage.js';
+import { BackupRetention, MAX_BACKUP_RETENTION, planBackupRetention } from '../core/storage.js';
 import { colors } from '../ui/theme.js';
 
 interface CleanOptions {
@@ -50,9 +49,9 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
     );
   }
 
-  let entries: string[];
+  let plan: BackupRetention;
   try {
-    entries = fs.readdirSync(backupsDir);
+    plan = planBackupRetention(backupsDir, options.all ? 0 : MAX_BACKUP_RETENTION);
   } catch (err) {
     throw new CliError(
       `Could not read the managed backup directory: ${err instanceof Error ? err.message : String(err)}`,
@@ -61,58 +60,17 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
     );
   }
 
-  const managedFiles: Array<{ name: string; fullPath: string; mtimeMs: number; prefix: string }> =
-    [];
-  const inspectionFailures: string[] = [];
-
-  for (const name of entries) {
-    const prefix = managedBackupPrefix(name);
-    if (!prefix) continue;
-
-    const fullPath = path.join(backupsDir, name);
-    try {
-      const stat = fs.lstatSync(fullPath);
-      if (stat.isFile()) {
-        managedFiles.push({
-          name,
-          fullPath,
-          mtimeMs: stat.mtimeMs,
-          prefix,
-        });
-      }
-    } catch {
-      inspectionFailures.push(name);
-    }
-  }
-
-  if (inspectionFailures.length > 0) {
+  if (plan.unreadable.length > 0) {
     throw new CliError(
-      `Could not inspect ${inspectionFailures.length} managed backup file(s).`,
+      `Could not inspect ${plan.unreadable.length} managed backup file(s).`,
       'clean_failed',
       1,
-      { failedFiles: inspectionFailures }
+      { failedFiles: plan.unreadable }
     );
   }
 
-  managedFiles.sort((a, b) => b.mtimeMs - a.mtimeMs);
-
-  // The quota is per backup kind, matching Storage.rotateBackups, so that
-  // clearing out switch churn cannot also take the one copy of an account
-  // written just before it was removed.
-  const maxToKeep = options.all ? 0 : MAX_BACKUP_RETENTION;
-  const keptPerPrefix = new Map<string, number>();
-  const kept: typeof managedFiles = [];
-  const toRemove: typeof managedFiles = [];
-
-  for (const file of managedFiles) {
-    const keptSoFar = keptPerPrefix.get(file.prefix) ?? 0;
-    if (keptSoFar < maxToKeep) {
-      keptPerPrefix.set(file.prefix, keptSoFar + 1);
-      kept.push(file);
-    } else {
-      toRemove.push(file);
-    }
-  }
+  const kept = plan.keep;
+  const toRemove = plan.remove;
 
   const removedNames: string[] = [];
   const failedNames: string[] = [];

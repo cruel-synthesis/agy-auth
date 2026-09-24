@@ -40,7 +40,7 @@ export function isManagedBackupFileName(fileName: string): boolean {
  * The kind of backup a managed file name records, or null if it is not one.
  * Longest match wins so `remove_all_...` is not read as a `remove` backup.
  */
-export function managedBackupPrefix(fileName: string): ManagedBackupPrefix | null {
+function managedBackupPrefix(fileName: string): ManagedBackupPrefix | null {
   if (!isManagedBackupFileName(fileName)) return null;
   let match: ManagedBackupPrefix | null = null;
   for (const prefix of MANAGED_BACKUP_PREFIXES) {
@@ -49,6 +49,70 @@ export function managedBackupPrefix(fileName: string): ManagedBackupPrefix | nul
     }
   }
   return match;
+}
+
+export interface ManagedBackup {
+  name: string;
+  fullPath: string;
+}
+
+export interface BackupRetention {
+  /** Newest first. */
+  keep: ManagedBackup[];
+  remove: ManagedBackup[];
+  /** Managed file names that could not be inspected, and so were not placed. */
+  unreadable: string[];
+}
+
+/**
+ * Which managed backups in `dir` to keep: the newest `maxFiles` of each kind,
+ * with `protectedPath` ahead of every other file of its kind. Throws only when
+ * the directory itself cannot be read.
+ *
+ * The quota is per kind because the kinds are written at wildly different
+ * rates: one switch writes up to four backups and every read of a corrupt
+ * registry writes another, while the copy of an account taken just before
+ * `remove` is written once and holds the only remaining refresh token. A
+ * single shared quota lets the noisy kinds evict that copy within a few
+ * commands.
+ */
+export function planBackupRetention(
+  dir: string,
+  maxFiles: number,
+  protectedPath?: string
+): BackupRetention {
+  const found: Array<ManagedBackup & { kind: ManagedBackupPrefix; mtimeMs: number }> = [];
+  const unreadable: string[] = [];
+  for (const name of fs.readdirSync(dir)) {
+    const kind = managedBackupPrefix(name);
+    if (!kind) continue;
+    const fullPath = path.join(dir, name);
+    try {
+      const stat = fs.lstatSync(fullPath);
+      if (stat.isFile()) found.push({ name, fullPath, kind, mtimeMs: stat.mtimeMs });
+    } catch {
+      unreadable.push(name);
+    }
+  }
+
+  found.sort((a, b) => {
+    if (a.fullPath === protectedPath) return -1;
+    if (b.fullPath === protectedPath) return 1;
+    return b.mtimeMs - a.mtimeMs || b.name.localeCompare(a.name);
+  });
+
+  const keptPerKind = new Map<ManagedBackupPrefix, number>();
+  const plan: BackupRetention = { keep: [], remove: [], unreadable };
+  for (const { name, fullPath, kind } of found) {
+    const kept = keptPerKind.get(kind) ?? 0;
+    if (kept < maxFiles) {
+      keptPerKind.set(kind, kept + 1);
+      plan.keep.push({ name, fullPath });
+    } else {
+      plan.remove.push({ name, fullPath });
+    }
+  }
+  return plan;
 }
 
 interface LockOwner {
@@ -427,54 +491,15 @@ export class Storage {
     }
   }
 
-  /**
-   * Keep the latest N backups of each kind and delete the rest.
-   *
-   * The quota is per kind because the kinds are written at wildly different
-   * rates: one switch writes up to four backups and every read of a corrupt
-   * registry writes another, while the copy of an account taken just before
-   * `remove` is written once and holds the only remaining refresh token. A
-   * single shared quota lets the noisy kinds evict that copy within a few
-   * commands.
-   */
+  /** Keep the latest N backups of each kind and delete the rest, best effort. */
   static rotateBackups(dir: string, maxFiles = MAX_BACKUP_RETENTION, protectedPath?: string): void {
     try {
       if (!fs.existsSync(dir)) return;
-
-      const byPrefix = new Map<ManagedBackupPrefix, string[]>();
-      for (const name of fs.readdirSync(dir)) {
-        const prefix = managedBackupPrefix(name);
-        if (!prefix) continue;
-        const fullPath = path.join(dir, name);
+      for (const file of planBackupRetention(dir, maxFiles, protectedPath).remove) {
         try {
-          const stat = fs.lstatSync(fullPath);
-          if (!stat.isFile() || stat.isSymbolicLink()) continue;
+          fs.unlinkSync(file.fullPath);
         } catch {
-          continue;
-        }
-        const group = byPrefix.get(prefix);
-        if (group) group.push(fullPath);
-        else byPrefix.set(prefix, [fullPath]);
-      }
-
-      for (const files of byPrefix.values()) {
-        if (files.length <= maxFiles) continue;
-        files.sort((a, b) => {
-          if (a === protectedPath) return -1;
-          if (b === protectedPath) return 1;
-          try {
-            const timeDelta = fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs;
-            return timeDelta || b.localeCompare(a);
-          } catch {
-            return b.localeCompare(a);
-          }
-        });
-        for (let i = maxFiles; i < files.length; i++) {
-          try {
-            fs.unlinkSync(files[i]);
-          } catch {
-            // ignore
-          }
+          // ignore
         }
       }
     } catch {
