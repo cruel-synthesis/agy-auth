@@ -83,7 +83,7 @@
    - Account and status JSON responses redact credentials. `agy-auth env` is the deliberate exception: its shell and JSON forms can emit the active API key so the caller can configure a shell. Do not log or share that output.
 
 9. **Recovery Backups Retain Pre-Mutation State**:
-   Switching, syncing, importing, and removing accounts may create owner-readable recovery snapshots under `~/.agy-auth/backups/`. Registry, ADC, and service-account snapshots can contain credentials; settings snapshots can contain other local Antigravity configuration. Up to 10 managed snapshots are retained across these operations. Run `agy-auth clean --all` to delete them when recovery is no longer needed.
+   Switching, syncing, importing, and removing accounts may create owner-readable recovery snapshots under `~/.agy-auth/backups/`. Registry, ADC, and service-account snapshots can contain credentials; settings snapshots can contain other local Antigravity configuration. The 10 newest snapshots of each kind (switch, remove, import, and so on) are retained, so one busy operation cannot push out another's. Run `agy-auth clean --all` to delete them when recovery is no longer needed.
 
 ---
 

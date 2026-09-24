@@ -65,7 +65,7 @@ Writing a refreshed plan or quota reading is a cache update, not a structural mu
 
 ## Backup Rotation
 
-Up to 10 managed mutation backups are retained in `~/.agy-auth/backups/`. Older managed backups are rotated automatically. You can delete all managed backups with:
+The 10 newest managed backups of each kind (switch, remove, import, and so on) are retained in `~/.agy-auth/backups/`, so one busy operation cannot push out another's. Older ones are rotated automatically, and `agy-auth clean` applies the same rule. You can delete all managed backups with:
 
 ```bash
 agy-auth clean --all
