@@ -471,4 +471,27 @@ describe('Automatic switching', () => {
     expect(asked).not.toContain('acc2');
     expect(tick.data.detail).not.toMatch(/could not refresh/);
   });
+
+  it("does not credit the account kept in use with the leader's reasons", async () => {
+    // acc2 ranks first, but only just, so the session stays on acc1.
+    fs.writeFileSync(
+      path.join(process.env.AGY_AUTH_HOME as string, 'registry.json'),
+      `${JSON.stringify({
+        schemaVersion: 3,
+        activeAccountId: 'acc1',
+        previousAccountId: null,
+        accounts: [account('acc1', 0.9), account('acc2', 0.92)],
+        settings: { defaultLocation: 'global' },
+      })}\n`,
+      { mode: 0o600 }
+    );
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await autoCommand({ dryRun: true, offline: true });
+    const output = logSpy.mock.calls.map((call) => String(call[0])).join('\n');
+
+    expect(output).toMatch(/Staying on acc1@example\.com\./);
+    expect(output).toMatch(/acc2@example\.com ranks first, but not by enough/);
+    expect(output).not.toMatch(/most likely to go to waste/);
+  });
 });

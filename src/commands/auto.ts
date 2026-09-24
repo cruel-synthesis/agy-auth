@@ -524,8 +524,14 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
       ? `Would switch to ${name}`
       : subject === choice.best
         ? `Staying on ${name} - already the best use of your quota.`
-        : `Staying on ${name} - no reading shows a better use of your quota.`;
+        : `Staying on ${name}.`;
+  // The reasons belong to whichever account ranked first. Giving them to the
+  // one kept in use would contradict the ranking printed just above.
+  const reason =
+    subject === choice.best
+      ? explain(subject, nowMs, choice.basis)
+      : `${formatAccountShort(choice.best.account)} ranks first, but not by enough to be worth rewriting the session.`;
 
   console.log(`  ${verdict}`);
-  console.log(`  ${colors.dim(explain(subject, nowMs, choice.basis))}\n`);
+  console.log(`  ${colors.dim(reason)}\n`);
 }
