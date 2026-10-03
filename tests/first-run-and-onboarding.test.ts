@@ -279,8 +279,20 @@ describe('First-run and OAuth onboarding behavior', () => {
 
     const tableExpired = renderAccountsTable([expiredAccount], null, 120);
     expect(tableExpired).toContain(
-      "Hint: Run 'agy-auth add' to import your active Antigravity session."
+      "Hint: To renew an account that needs a sign-in, sign in to it through Antigravity, then run 'agy-auth add'."
     );
+
+    // A rejected credential needs the same sign-in; an API key is not renewed that way.
+    expect(renderAccountsTable([{ ...expiredAccount, status: 'invalid' }], null, 120)).toContain(
+      'needs a sign-in'
+    );
+    expect(
+      renderAccountsTable(
+        [{ ...expiredAccount, authType: 'api-key', status: 'invalid' }],
+        null,
+        120
+      )
+    ).not.toContain('needs a sign-in');
 
     const uncachedAccount: Account = {
       id: 'acc_uncached',

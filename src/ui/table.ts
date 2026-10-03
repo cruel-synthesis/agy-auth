@@ -1,5 +1,5 @@
 import stringWidth from 'string-width';
-import { Account } from '../core/types.js';
+import { Account, needsSignIn } from '../core/types.js';
 import {
   NO_ACCOUNTS,
   blockingStatusLabel,
@@ -307,19 +307,16 @@ export function renderAccountsTable(
   );
   const rowLines = rows.map((r) => r.coloredText);
 
-  // Check for expired status vs un-cached quota
-  const hasExpired = accounts.some((a) => a.status === 'expired' || a.status === 'needs-reauth');
-  const hasUncachedQuota = accounts.some(
-    (a) =>
-      a.authType === 'oauth' &&
-      a.status !== 'expired' &&
-      a.status !== 'needs-reauth' &&
-      (!a.rateLimit || Object.keys(a.rateLimit).length === 0)
+  // A session to renew comes first: until then its quota cannot be read anyway.
+  const oauth = accounts.filter((a) => a.authType === 'oauth');
+  const hasExpired = oauth.some(needsSignIn);
+  const hasUncachedQuota = oauth.some(
+    (a) => !needsSignIn(a) && (!a.rateLimit || Object.keys(a.rateLimit).length === 0)
   );
 
   let hintLine = '';
   if (hasExpired) {
-    hintLine = `\n  ${colors.dim("Hint: Run 'agy-auth add' to import your active Antigravity session.")}\n`;
+    hintLine = `\n  ${colors.dim("Hint: To renew an account that needs a sign-in, sign in to it through Antigravity, then run 'agy-auth add'.")}\n`;
   } else if (hasUncachedQuota) {
     hintLine = `\n  ${colors.dim("Hint: Run 'agy-auth list --check' to fetch live quota over the network.")}\n`;
   }
