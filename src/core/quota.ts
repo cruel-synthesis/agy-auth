@@ -518,14 +518,16 @@ export class QuotaClient {
   /**
    * Exchange a refresh token for a fresh access token, using whichever OAuth
    * client is entitled to refresh this account. Returns null when there is no
-   * such client, no refresh token, or no time left in the deadline.
+   * such client or no refresh token, or when Google refuses the exchange, and
+   * 'unreachable' when no answer came back in time: that is not a verdict on
+   * the credential.
    */
   private static async refreshAccessToken(
     stored: RefreshedToken,
     ctx: RequestContext,
     env: NodeJS.ProcessEnv,
     account: Account
-  ): Promise<RefreshedToken | null> {
+  ): Promise<RefreshedToken | 'unreachable' | null> {
     const refreshToken = stored.refresh_token;
     if (!refreshToken) return null;
 
@@ -533,7 +535,7 @@ export class QuotaClient {
     if (!client) return null;
 
     const budget = Math.min(ctx.requestTimeoutMs, remainingBudget(ctx));
-    if (budget <= 0) return null;
+    if (budget <= 0) return 'unreachable';
 
     const params = new URLSearchParams({
       grant_type: 'refresh_token',
@@ -553,7 +555,9 @@ export class QuotaClient {
         body: params.toString(),
         signal: AbortSignal.timeout(budget),
       });
-      if (!response.ok) return null;
+      if (!response.ok) {
+        return response.status >= 500 || response.status === 429 ? 'unreachable' : null;
+      }
 
       const data = await this.readJson(response);
       if (!isRecord(data)) return null;
@@ -576,7 +580,7 @@ export class QuotaClient {
         expiry: new Date(ctx.now() + expiresIn * 1000).toISOString(),
       };
     } catch {
-      return null;
+      return 'unreachable';
     }
   }
 
@@ -584,13 +588,14 @@ export class QuotaClient {
    * Renew for a diagnostic run: same code path as a live reading, but attempted
    * regardless of how much life the stored token appears to have left.
    */
-  public static renewForProbe(
+  public static async renewForProbe(
     stored: KeychainPayload['token'],
     ctx: RequestContext,
     env: NodeJS.ProcessEnv,
     account: Account
   ): Promise<RefreshedToken | null> {
-    return this.refreshAccessToken(stored, ctx, env, account);
+    const renewed = await this.refreshAccessToken(stored, ctx, env, account);
+    return renewed === 'unreachable' ? null : renewed;
   }
 
   /**
@@ -677,7 +682,13 @@ export class QuotaClient {
         options.env ?? process.env,
         account
       );
-      if (refreshed) {
+      if (refreshed === 'unreachable') {
+        // No answer is not a refusal. The account keeps its status, and an
+        // expired token simply cannot be read with this time.
+        if (this.isTokenExpired(stored.expiry, now())) {
+          return { result: { ...base, ok: false, reason: 'network-error' } };
+        }
+      } else if (refreshed) {
         accessToken = refreshed.access_token;
         tokenUpdate = new TokenUpdate(refreshed);
       } else if (this.isTokenExpired(stored.expiry, now())) {

@@ -796,6 +796,23 @@ describe('Environment-gated OAuth refresh', () => {
     expect(tokenUpdate?.token.refresh_token).toBe('synthetic-refresh-token');
   });
 
+  it('does not report expired when the refresh request gets no answer', async () => {
+    for (const unanswered of [
+      () => {
+        throw new TypeError('fetch failed');
+      },
+      () => new Response('', { status: 503 }),
+    ]) {
+      const { fetchFn } = mockFetch({ 'oauth2.googleapis.com': unanswered });
+      const { result } = await QuotaClient.refreshAccountQuota(expiredAccount(), {
+        fetchFn,
+        env: { AGY_OAUTH_CLIENT_ID: 'env-client-id' },
+      });
+      expect(result.reason).toBe('network-error');
+      expect(result.status).toBeUndefined();
+    }
+  });
+
   it('reports expired when the refresh request is rejected', async () => {
     const { fetchFn } = mockFetch({
       'oauth2.googleapis.com': () => new Response('{"error":"invalid_grant"}', { status: 400 }),
