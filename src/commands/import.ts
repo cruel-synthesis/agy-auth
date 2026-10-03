@@ -23,6 +23,7 @@ export async function importCommand(filePath: string, options: ImportOptions = {
   const currentAccounts = registry.getAccounts();
 
   // Pre-validate all accounts before performing any mutations
+  const aliases = new Map(currentAccounts.map((a) => [a.id, a.alias]));
   for (const rawAcc of exportDoc.accounts) {
     const identityKey = `${rawAcc.email.toLowerCase()}\u0000${rawAcc.authType}`;
     const existingById = currentAccounts.find((a) => a.id === rawAcc.id);
@@ -43,6 +44,10 @@ export async function importCommand(filePath: string, options: ImportOptions = {
     }
 
     const existing = existingByIdentity || existingById;
+    if (!existing) aliases.set(rawAcc.id, rawAcc.alias);
+    else if (options.overwrite && rawAcc.alias !== undefined)
+      aliases.set(existing.id, rawAcc.alias);
+
     if (!existing) {
       // New account must have complete, valid credentials
       const credVal = validateAccountCredentials(rawAcc);
@@ -66,6 +71,17 @@ export async function importCommand(filePath: string, options: ImportOptions = {
         );
       }
     }
+  }
+
+  const seen = new Set<string>();
+  for (const alias of aliases.values()) {
+    if (!alias) continue;
+    if (seen.has(alias.toLowerCase())) {
+      throw new UsageError(
+        `Import would give two accounts the alias '${alias}'; rename one with \`agy-auth alias set\` first.`
+      );
+    }
+    seen.add(alias.toLowerCase());
   }
 
   const importedAccounts: Account[] = [];

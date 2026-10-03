@@ -682,6 +682,31 @@ describe('Command Modules Behavioral & Regression Suite', () => {
     await expect(cleanCommand({ all: true })).rejects.toMatchObject({ code: 'clean_failed' });
   });
 
+  it('refuses an import that would duplicate an alias before backing anything up', async () => {
+    const registry = new RegistryManager();
+    registry.addOrUpdateAccount({
+      email: 'held@example.com',
+      alias: 'work',
+      authType: 'api-key',
+      credentials: { apiKey: 'AIzaSyHeldKey' },
+    });
+    const exported = path.join(testEnv.dir, 'alias-export.json');
+    await exportCommand({ output: exported, includeSecrets: true, yes: true, json: true });
+    const doc = JSON.parse(fs.readFileSync(exported, 'utf-8'));
+    doc.accounts[0] = {
+      ...doc.accounts[0],
+      id: 'acc_other',
+      email: 'other@example.com',
+      alias: 'WORK',
+    };
+    fs.writeFileSync(exported, JSON.stringify(doc));
+
+    await expect(importCommand(exported, {})).rejects.toThrow(UsageError);
+    await expect(importCommand(exported, {})).rejects.toThrow(/alias 'WORK'/);
+    const backups = fs.existsSync(Paths.backupsDir) ? fs.readdirSync(Paths.backupsDir) : [];
+    expect(backups.filter((name) => name.startsWith('import_'))).toEqual([]);
+  });
+
   it('executes exportCommand and importCommand with strict validation and non-overwrite rules', async () => {
     const registry = new RegistryManager();
     const acc = registry.addOrUpdateAccount({
