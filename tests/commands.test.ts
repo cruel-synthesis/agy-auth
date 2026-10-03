@@ -468,6 +468,17 @@ describe('Command Modules Behavioral & Regression Suite', () => {
     await removeCommand(['api-rem2'], { yes: true, json: false });
     expect(new RegistryManager().findAccount('api-rem2')).toBeNull();
 
+    // JSON mode never opens a picker, even on a terminal
+    const tty = process.stdin.isTTY;
+    process.stdin.isTTY = true;
+    try {
+      await expect(removeCommand([], { yes: true, json: true })).rejects.toThrow(
+        /Name the account to remove/
+      );
+    } finally {
+      process.stdin.isTTY = tty;
+    }
+
     // Remove single profile in JSON mode
     await removeCommand(['api-rem3'], { yes: true, json: true });
     expect(new RegistryManager().findAccount('api-rem3')).toBeNull();

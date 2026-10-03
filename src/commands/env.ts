@@ -54,7 +54,7 @@ export async function envCommand(options: EnvOptions = {}): Promise<void> {
     rawShell !== 'zsh'
   ) {
     throw new UsageError(
-      `Unsupported shell format '${options.shell}'. Supported formats: posix, powershell.`
+      `Unsupported shell format '${options.shell}'. Supported formats: posix (also bash, zsh), powershell.`
     );
   }
 

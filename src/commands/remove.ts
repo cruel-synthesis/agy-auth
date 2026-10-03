@@ -154,6 +154,10 @@ export async function removeCommand(
 
   // Case 2: No selectors provided -> interactive picker
   if (selectors.length === 0) {
+    // A picker would write its prompt into the JSON on stdout.
+    if (options.json) {
+      throw new UsageError('Name the account to remove, or pass --all.');
+    }
     const selected = await promptSelectAccount(
       accounts,
       active?.id || null,
