@@ -27,7 +27,7 @@ Three version numbers appear in this project and they are independent: the regis
 2. **Validated Status Model**:
    Allowed statuses are `valid | rate-limited | expired | invalid | needs-reauth | unverified | unknown`.
 3. **Credential Provenance** (new in schema 3):
-   An OAuth account records where its credentials came from in `credentialSource: 'antigravity' | 'custom-client' | 'unknown'`. This decides which OAuth client renews its token. Registries written earlier carry no such record and it cannot be reconstructed, so they are marked `unknown` rather than assumed.
+   An OAuth account records where its credentials came from in `credentialSource: 'antigravity' | 'custom-client' | 'unknown'`. This decides which OAuth client renews its token. Registries written earlier carry no such record and it cannot be reconstructed, so they are marked `unknown` rather than assumed; one that holds an imported Antigravity session is renewed with Antigravity's client.
 4. **Account Configuration**:
    First-class fields for `alias`, `gcpProject`, `gcpLocation`, `model`, `reasoningEffort`, and optional `verification` timestamps.
 5. **Validated Plan and Quota Cache**:

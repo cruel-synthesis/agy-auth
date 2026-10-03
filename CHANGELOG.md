@@ -22,6 +22,7 @@ First release.
 
 - Credentials are stored under restricted POSIX modes, redacted from account and status output, and read only through no-follow descriptors that reject symlinked, replaced, non-regular, or oversized paths.
 - Registry mutations are locked across processes, validated fail-closed, and rolled back when a switch cannot complete.
+- Sign-in and renewal use the OAuth client Antigravity publishes in its own binary, the only one Google's individual tier answers; `AGY_OAUTH_CLIENT_ID` selects your own. See [SECURITY.md](./SECURITY.md).
 - The loopback OAuth callback binds to `127.0.0.1`, validates PKCE and state, and settles exactly once.
 - No telemetry and no background process. [PRIVACY.md](./PRIVACY.md) lists the scopes sign-in requests and every host contacted.
 

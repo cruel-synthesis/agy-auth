@@ -26,9 +26,9 @@ import {
  * mode here degrades to cached data rather than to a wrong number.
  *
  * Endpoint set and the `loadCodeAssist` project-discovery step were derived from
- * ag-multi-account-switchboard (MIT); see THIRD_PARTY_NOTICES.md. Unlike that
- * reference this client never substitutes a default project ID, never ships an
- * OAuth secret, and treats an unrecognized response shape as a failure.
+ * ag-multi-account-switchboard (MIT); see THIRD_PARTY_NOTICES.md, as are the
+ * fallback project ID and Antigravity's client identity. Unlike that reference,
+ * an unrecognized response shape is treated as a failure, not as no quota.
  */
 
 const USER_AGENT = `agy-auth/${VERSION}`;
@@ -605,8 +605,8 @@ export class QuotaClient {
    * to a different client both fails and discloses the credential to an
    * application that was never involved in issuing it. A session imported from
    * Antigravity therefore goes to Antigravity's client, a browser sign-in goes
-   * to the client that performed it, and an account of unrecorded origin is not
-   * assumed to be safe to try.
+   * to the client that performed it, and an account of unrecorded origin goes to
+   * Antigravity's client only if it holds an imported session.
    */
   private static clientFor(account: Account, env: NodeJS.ProcessEnv): OAuthClientConfig | null {
     if (account.credentialSource === 'custom-client') {

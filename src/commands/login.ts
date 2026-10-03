@@ -48,7 +48,8 @@ function printSavedAccount(account: Account, isNew: boolean, isActive: boolean):
 }
 
 /**
- * Browser sign-in with the user's own OAuth client. Importing the account
+ * Browser sign-in, with Antigravity's OAuth client unless AGY_OAUTH_CLIENT_ID
+ * names another. Importing the account
  * Antigravity is already signed in to is `agy-auth add`; this command exists
  * for the accounts Antigravity does not hold.
  */

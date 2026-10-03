@@ -12,7 +12,7 @@
 | **Service Account JSON** | Supported | Supported | Supported |
 | **Authorized-user or service-account ADC** | Supported | Supported | Supported |
 | **External-account / Workload Identity Federation ADC** | Not supported in v0.1 | Not supported in v0.1 | Not supported in v0.1 |
-| **Browser OAuth Sign-In with a user-supplied client** | Supported (`open`) | Supported (`xdg-open`) | Supported (`explorer.exe`) |
+| **Browser OAuth Sign-In** | Supported (`open`) | Supported (`xdg-open`) | Supported (`explorer.exe`) |
 | **Antigravity token-file session import and switching** | Supported | Supported when Antigravity uses file-backed storage | Supported when Antigravity uses file-backed storage |
 | **Native OS keyring import and switching** | Supported (Apple Keychain) | Not supported (Secret Service) | Not supported (Credential Manager) |
 | **Atomic File Locking** | Supported (`fs.openSync('wx')`) | Supported (`fs.openSync('wx')`) | Supported (`fs.openSync('wx')`) |
