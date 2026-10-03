@@ -35,7 +35,8 @@ process.env.AGY_AUTH_NO_NATIVE = '1';
  * not call `setupTestEnvironment()` must still resolve them into scratch space,
  * never into the developer's own agy-auth, Antigravity or gcloud files.
  */
-const scratchHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agy-hermetic-'));
+const scratchHome =
+  process.env.AGY_TEST_SCRATCH_HOME ?? fs.mkdtempSync(path.join(os.tmpdir(), 'agy-hermetic-'));
 process.env.HOME = scratchHome;
 process.env.USERPROFILE = scratchHome;
 process.env.APPDATA = path.join(scratchHome, 'AppData', 'Roaming');
@@ -48,4 +49,3 @@ for (const key of [
 ]) {
   delete process.env[key];
 }
-process.on('exit', () => fs.rmSync(scratchHome, { recursive: true, force: true }));
