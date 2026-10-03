@@ -289,20 +289,36 @@ export function createCli(): Command {
   return program;
 }
 
+/** Why Commander showed a group's help as an error: no subcommand, or `help` named an unknown one. */
+function missingSubcommandMessage(words: string[]): string {
+  const at = words.indexOf('help');
+  const named = at >= 0 ? words[at + 1] : undefined;
+  if (named === undefined) return `\`${words[0]}\` needs a subcommand.`;
+  return at === 0
+    ? `Unknown command '${named}'.`
+    : `Unknown \`${words[0]}\` subcommand '${named}'.`;
+}
+
 export async function runCli(argv = process.argv, customCli?: Command): Promise<number> {
-  // `-j` inside a cluster such as `-yj` also runs the command in JSON mode, and
-  // only Commander knows whether a `-j` was that flag or an option's value, as
-  // in `env --shell -j`. So it is asked, and the error path answers in the
-  // shape the command ran in.
-  let isJson = argv.includes('--json');
+  // Only Commander knows whether a `-j` or `--json` was the flag (also inside a
+  // cluster such as `-yj`) or an option's value, as in `env --shell --json`. Once
+  // a command runs, the error path answers in the shape it ran in. A parse error
+  // can stop before the flag is reached, so there the raw words decide.
+  let jsonFlag = false;
+  let parsed = false;
+  const jsonWord = argv.includes('--json') || argv.includes('-j');
+  const isJson = (): boolean => jsonFlag || (!parsed && jsonWord);
   const cli = customCli || createCli();
   const listenForJson = (command: Command): void => {
     command.on('option:json', () => {
-      isJson = true;
+      jsonFlag = true;
     });
     for (const sub of command.commands) listenForJson(sub);
   };
   listenForJson(cli);
+  cli.hook('preAction', () => {
+    parsed = true;
+  });
 
   // Commander writes its own error line and then throws it. That line is dropped
   // and reported once below, in the shape every other failure uses. What else it
@@ -310,7 +326,7 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
   cli.configureOutput({
     writeOut: (str) => process.stdout.write(str),
     writeErr: (str) => {
-      if (!isJson) process.stderr.write(str);
+      if (!isJson()) process.stderr.write(str);
     },
     outputError: () => {},
   });
@@ -366,9 +382,9 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
       const raw = err instanceof Error ? err.message : String(err);
       const message =
         commanderCode === 'commander.help'
-          ? `\`${commandName}\` needs a subcommand.`
+          ? missingSubcommandMessage(nonFlagArgs)
           : raw.replace(/^error:\s*/, '');
-      if (isJson) {
+      if (isJson()) {
         console.log(
           JSON.stringify(
             {
@@ -394,7 +410,7 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
       err instanceof CancellationError ||
       (err instanceof Error && err.name === 'ExitPromptError')
     ) {
-      if (isJson) {
+      if (isJson()) {
         console.log(
           JSON.stringify(
             {
@@ -415,7 +431,7 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
     }
 
     if (err instanceof CliError) {
-      if (isJson) {
+      if (isJson()) {
         console.log(
           JSON.stringify(
             {
@@ -446,7 +462,7 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
         : err instanceof Error
           ? err.message
           : String(err);
-    if (isJson) {
+    if (isJson()) {
       console.log(
         JSON.stringify(
           {

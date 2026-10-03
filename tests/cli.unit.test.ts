@@ -194,6 +194,12 @@ describe('CLI unit tests and option dispatch', () => {
         expect(stderrSpy.mock.calls.join('')).toContain('clear [options] <account>');
 
         expect(await runCli(['node', 'agy-auth', group, 'help', 'set'])).toBe(0);
+
+        errorSpy.mockClear();
+        expect(await runCli(['node', 'agy-auth', group, 'help', 'bogus'])).toBe(2);
+        expect(String(errorSpy.mock.calls[0]?.[0])).toContain(
+          `Unknown \`${group}\` subcommand 'bogus'.`
+        );
       }
       // The subcommands keep their own argument counts.
       errorSpy.mockClear();
@@ -245,6 +251,24 @@ describe('CLI unit tests and option dispatch', () => {
       expect(await runCli(['node', 'agy-auth', 'env', '--shell', '-j'])).toBe(2);
       expect(String(errorSpy.mock.calls[0]?.[0])).toContain("Unsupported shell format '-j'");
       expect(logSpy).not.toHaveBeenCalled();
+
+      // Nor is `--json` in that place.
+      errorSpy.mockClear();
+      expect(await runCli(['node', 'agy-auth', 'env', '--shell', '--json'])).toBe(2);
+      expect(String(errorSpy.mock.calls[0]?.[0])).toContain("Unsupported shell format '--json'");
+      expect(logSpy).not.toHaveBeenCalled();
+
+      // A parse error that stops before the flag is reached still answers in JSON.
+      errorSpy.mockClear();
+      for (const argv of [
+        ['lst', '-j'],
+        ['-j', 'list'],
+      ]) {
+        logSpy.mockClear();
+        expect(await runCli(['node', 'agy-auth', ...argv])).toBe(2);
+        expect(JSON.parse(String(logSpy.mock.calls[0]?.[0])).error.code).toBe('invalid_usage');
+      }
+      expect(errorSpy).not.toHaveBeenCalled();
     } finally {
       logSpy.mockRestore();
       errorSpy.mockRestore();
