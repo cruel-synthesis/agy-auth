@@ -304,6 +304,38 @@ describe('CLI unit tests and option dispatch', () => {
     }
   });
 
+  it('refuses typed input the registry would not save as a usage error', async () => {
+    const registry = new RegistryManager();
+    registry.addOrUpdateAccount({
+      email: 'user@example.com',
+      alias: 'work',
+      authType: 'api-key',
+      credentials: { apiKey: 'AIzaSyUserKey' },
+    });
+    registry.addOrUpdateAccount({
+      email: 'second@example.com',
+      authType: 'api-key',
+      credentials: { apiKey: 'AIzaSySecondKey' },
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const add = ['node', 'agy-auth', 'add', '--api-key'];
+    try {
+      for (const [argv, message] of [
+        [[...add, 'K', '--email', 'other@example.c'], "Invalid email address 'other@example.c'."],
+        [[...add, 'k'.repeat(1025), '--alias', 'big'], 'API key is too long'],
+        [[...add, 'K', '--email', 'other@example.com', '--alias', 'WORK'], "Alias 'WORK'"],
+        [['node', 'agy-auth', 'alias', 'set', 'second@example.com', 'work'], "Alias 'work'"],
+      ] as const) {
+        errorSpy.mockClear();
+        expect(await runCli([...argv])).toBe(2);
+        expect(String(errorSpy.mock.calls[0]?.[0])).toContain(message);
+      }
+      expect(new RegistryManager().getAccounts().map((a) => a.alias)).toEqual(['work', undefined]);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
   it('outputs text error to stderr on failure in non-JSON mode', async () => {
     const registry = new RegistryManager();
     registry.addOrUpdateAccount({

@@ -7,7 +7,7 @@ import {
 } from '../core/oauth-config.js';
 import { type AuthenticateOptions, OAuthFlow, type OAuthResult } from '../core/oauth.js';
 import { RegistryManager } from '../core/registry.js';
-import { type Account, checkSettingLength } from '../core/types.js';
+import { type Account, checkInputLength } from '../core/types.js';
 import { formatAccountShort } from '../ui/format.js';
 import { colors } from '../ui/theme.js';
 
@@ -63,9 +63,9 @@ export async function loginCommand(
     }
   }
   // Checked before the browser sign-in, which would otherwise be wasted.
-  checkSettingLength('gcpProject', options.project?.trim(), '--project');
-  checkSettingLength('gcpLocation', options.location?.trim(), '--location');
-  checkSettingLength('model', options.model?.trim(), '--model');
+  checkInputLength('gcpProject', options.project?.trim(), '--project');
+  checkInputLength('gcpLocation', options.location?.trim(), '--location');
+  checkInputLength('model', options.model?.trim(), '--model');
 
   const registry = new RegistryManager();
   const authenticate = services?.authenticateOAuth || OAuthFlow.authenticate;

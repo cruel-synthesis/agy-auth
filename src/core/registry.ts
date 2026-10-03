@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { validateAccountCredentials } from './credential-validation.js';
+import { UsageError } from './errors.js';
 import { migrateRegistry, validateUniqueness } from './migration.js';
 import { Paths } from './paths.js';
 import { CorruptedRegistryError, ManagedBackupPrefix, Storage } from './storage.js';
@@ -23,6 +24,15 @@ function nextTimestamp(previous = 0): number {
 
 interface MutationOptions {
   backupPrefix?: ManagedBackupPrefix;
+}
+
+/** An alias names one account; asking for one another account holds is a usage error. */
+function assertAliasFree(accounts: Account[], id: string, alias: string | undefined): void {
+  if (!alias) return;
+  const holder = accounts.find(
+    (a) => a.id !== id && a.alias?.toLowerCase() === alias.toLowerCase()
+  );
+  if (holder) throw new UsageError(`Alias '${alias}' is already in use by ${holder.email}.`);
 }
 
 function emptyRegistry(): Registry {
@@ -308,6 +318,7 @@ export class RegistryManager {
         if (accountData.status === 'unverified' && accountData.verification === undefined) {
           delete updated.verification;
         }
+        assertAliasFree(draft.accounts, existing.id, updated.alias);
         const parsed = AccountSchema.parse(updated);
         draft.accounts[existingIndex] = parsed;
         return clone(parsed);
@@ -335,6 +346,7 @@ export class RegistryManager {
         createdAt: now,
         updatedAt: now,
       };
+      assertAliasFree(draft.accounts, id, newAccount.alias);
       const parsed = AccountSchema.parse(newAccount);
       draft.accounts.push(parsed);
 
@@ -375,12 +387,7 @@ export class RegistryManager {
 
       if (alias !== null) {
         const trimmed = alias.trim();
-        const existing = draft.accounts.find(
-          (a) => a.id !== id && a.alias?.toLowerCase() === trimmed.toLowerCase()
-        );
-        if (existing) {
-          throw new Error(`Alias '${trimmed}' is already in use by ${existing.email}.`);
-        }
+        assertAliasFree(draft.accounts, id, trimmed);
         acc.alias = trimmed;
       } else {
         delete acc.alias;

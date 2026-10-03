@@ -7,12 +7,7 @@ import { CancellationError, CliError, UsageError } from '../core/errors.js';
 import { type ImportKeychainOAuthResult, importKeychainOAuth } from '../core/keychain-import.js';
 import { Paths } from '../core/paths.js';
 import { RegistryManager } from '../core/registry.js';
-import {
-  AccountCredentials,
-  AuthType,
-  checkSettingLength,
-  sanitizeAccount,
-} from '../core/types.js';
+import { AccountCredentials, AuthType, checkInputLength, sanitizeAccount } from '../core/types.js';
 import { formatAccountShort } from '../ui/format.js';
 import { colors } from '../ui/theme.js';
 
@@ -70,9 +65,9 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
   let email: string;
   let credentials: AccountCredentials | undefined;
   let defaultProject = options.project?.trim();
-  checkSettingLength('gcpProject', defaultProject, '--project');
-  checkSettingLength('gcpLocation', options.location?.trim(), '--location');
-  checkSettingLength('model', options.model?.trim(), '--model');
+  checkInputLength('gcpProject', defaultProject, '--project');
+  checkInputLength('gcpLocation', options.location?.trim(), '--location');
+  checkInputLength('model', options.model?.trim(), '--model');
 
   if (options.apiKey !== undefined) {
     authType = 'api-key';
@@ -106,6 +101,7 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
       }
     }
     if (!key) throw new UsageError('API key cannot be empty.');
+    checkInputLength('apiKey', key, 'API key');
     credentials = { apiKey: key };
 
     if (options.email) {
@@ -145,6 +141,7 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
     authType = 'adc';
     if (typeof options.adc === 'string' && options.adc.trim()) {
       const adcPath = options.adc.trim();
+      checkInputLength('adcPath', adcPath, '--adc path');
       CredentialFiles.loadAdcFile(adcPath);
       credentials = { adcPath };
     } else {

@@ -158,16 +158,20 @@ export const AccountSchema = z
 export type Account = z.infer<typeof AccountSchema>;
 
 /**
- * Refuses a project, location or model typed on the command line that is longer
+ * Refuses a setting or credential typed on the command line that is longer
  * than the registry holds. Left to the save, it would fail as a malformed
  * registry field instead of as the input that caused it.
  */
-export function checkSettingLength(
-  field: 'gcpProject' | 'gcpLocation' | 'model',
+export function checkInputLength(
+  field: 'gcpProject' | 'gcpLocation' | 'model' | 'apiKey' | 'adcPath',
   value: string | undefined,
   input: string
 ): void {
-  const limit = AccountSchema.shape[field].unwrap().maxLength;
+  const schema =
+    field === 'apiKey' || field === 'adcPath'
+      ? AccountCredentialsSchema.shape[field]
+      : AccountSchema.shape[field];
+  const limit = schema.unwrap().maxLength;
   if (value !== undefined && limit !== null && value.length > limit) {
     throw new UsageError(`${input} is too long; use at most ${limit} characters.`);
   }

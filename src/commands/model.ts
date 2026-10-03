@@ -1,6 +1,6 @@
 import { AccountNotFoundError, AmbiguousSelectorError, UsageError } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
-import { checkSettingLength, sanitizeAccount } from '../core/types.js';
+import { checkInputLength, sanitizeAccount } from '../core/types.js';
 import { colors } from '../ui/theme.js';
 
 interface ModelOptions {
@@ -29,7 +29,7 @@ export async function modelSetCommand(
   if (!trimmedModel) {
     throw new UsageError('Model name cannot be empty.');
   }
-  checkSettingLength('model', trimmedModel, 'Model name');
+  checkInputLength('model', trimmedModel, 'Model name');
 
   registry.setModel(account.id, trimmedModel);
   const updated = registry.findAccount(account.id);

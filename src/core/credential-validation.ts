@@ -1,4 +1,5 @@
 import { createPrivateKey } from 'node:crypto';
+import { AccountSchema } from './types.js';
 
 export type CredentialValidation = { ok: true } | { ok: false; reason: string };
 
@@ -6,8 +7,9 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** An address the registry will accept, so a value that passes here can be saved. */
 export function isEmail(value: unknown): boolean {
-  return typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+  return typeof value === 'string' && AccountSchema.shape.email.safeParse(value.trim()).success;
 }
 
 function isNonEmptyString(value: unknown): value is string {
