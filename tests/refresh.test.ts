@@ -73,6 +73,13 @@ describe('Quota refresh selection', () => {
     expect(selectStale([account]).map((a) => a.id)).toEqual(['acc1']);
   });
 
+  it('waits for the TTL when a window had already reset when it was read', () => {
+    // The service reported a reset time before the reading was taken; refreshing
+    // on every run would ask again for the same answer.
+    const account = oauthAccount(freshCache(Math.floor((NOW - 120_000) / 1000)));
+    expect(selectStale([account])).toEqual([]);
+  });
+
   it('refreshes a reading that has aged past the cache TTL', () => {
     const account = oauthAccount({
       quotaCheckedAt: NOW - QUOTA_CACHE_TTL_MS - 1,

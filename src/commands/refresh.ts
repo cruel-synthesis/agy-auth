@@ -41,15 +41,19 @@ export function selectRefreshable(accounts: Account[]): Account[] {
 export const QUOTA_CACHE_TTL_MS = 10 * 60 * 1000;
 
 /**
- * A window whose own reset time has passed describes a period that is over. Its
+ * A window that reset since it was read describes a period that is over. Its
  * usage number is no longer a reading of anything, whatever the cache TTL says.
+ * A reset time already past when it was read says nothing new, so it waits for
+ * the TTL like any other reading.
  */
 function hasElapsedWindow(account: Account, nowMs: number): boolean {
-  const nowSec = Math.floor(nowMs / 1000);
+  const readAtMs = account.quotaCheckedAt ?? 0;
   return [account.rateLimit?.gemini, account.rateLimit?.claude].some((family) =>
-    [family?.rate5h, family?.rateWeekly].some(
-      (window) => window?.resetsAt !== undefined && nowSec >= window.resetsAt
-    )
+    [family?.rate5h, family?.rateWeekly].some((window) => {
+      if (window?.resetsAt === undefined) return false;
+      const resetMs = window.resetsAt * 1000;
+      return resetMs >= readAtMs && nowMs >= resetMs;
+    })
   );
 }
 
