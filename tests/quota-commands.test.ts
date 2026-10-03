@@ -223,10 +223,16 @@ describe('Plan and quota command behaviour', () => {
 
     const failingFetch = (async () =>
       new Response('{}', { status: 500 })) as unknown as typeof fetch;
+    const errors: string[] = [];
+    vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      errors.push(args.map(String).join(' '));
+    });
     await listCommand({ quotaOptions: { fetchFn: failingFetch } });
 
+    // The warning goes to stderr, leaving the table on stdout to pipe.
     const text = stdout();
-    const warnings = text.split('\n').filter((line) => line.includes('Warning:'));
+    expect(text).not.toContain('Warning:');
+    const warnings = errors.filter((line) => line.includes('Warning:'));
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain('network or service error');
     expect(text).toContain('GEMINI 5H');

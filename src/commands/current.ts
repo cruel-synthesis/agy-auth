@@ -82,7 +82,7 @@ export async function currentCommand(options: CurrentOptions = {}): Promise<void
   }
 
   if (warning) {
-    console.log(colors.yellow(`Warning: ${warning}`));
+    console.error(colors.yellow(`Warning: ${warning}`));
   }
 
   console.log(`Account:      ${colors.green(formatAccountShort(active))}`);

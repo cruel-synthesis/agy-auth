@@ -92,7 +92,7 @@ export async function listCommand(options: ListOptions): Promise<void> {
   }
 
   if (warning) {
-    console.log(colors.yellow(`  Warning: ${warning}`));
+    console.error(colors.yellow(`  Warning: ${warning}`));
   }
   console.log(renderAccountsTable(displayAccounts, freshActiveAccountId));
 }
