@@ -16,7 +16,7 @@ import { Account, needsSignIn } from '../core/types.js';
 import { NO_ACCOUNTS, formatAccountShort } from '../ui/format.js';
 import { terminalWidth, truncatePadded, truncateToWidth } from '../ui/table.js';
 import { colors } from '../ui/theme.js';
-import { refreshQuota, selectRefreshable, selectStale } from './refresh.js';
+import { refreshQuota, selectStale } from './refresh.js';
 
 interface AutoOptions {
   dryRun?: boolean;
@@ -269,9 +269,12 @@ async function watchTick(registry: RegistryManager, options: AutoOptions): Promi
     };
   }
 
-  const activeRefresh = await refreshAndApply(registry, selectRefreshable([active]), options);
-  const afterRefresh = registry.getActiveAccount();
-  const signInNeeded = afterRefresh !== null && needsSignIn(afterRefresh);
+  // An account already known to need a sign-in would only fail again.
+  const activeRefresh = needsSignIn(active)
+    ? { failed: new Set<string>() }
+    : await refreshAndApply(registry, [active], options);
+  const refreshed = registry.getAccounts().find((account) => account.id === active.id);
+  const signInNeeded = refreshed !== undefined && needsSignIn(refreshed);
   if (activeRefresh.failed.has(active.id) && !signInNeeded) {
     // A failed reading is not a reading. Deciding "exhausted" from it would act
     // on data no fresher than what was already on hand, and could switch away
@@ -314,15 +317,21 @@ async function watchTick(registry: RegistryManager, options: AutoOptions): Promi
   }
 
   // The account in use is spent. Only now is a reading of the others worth its
-  // traffic, and the choice must not be made on stale ones. An account already
-  // known to need a sign-in cannot be chosen, and asking about it again would
-  // only attach its failure to every decision.
-  const others = registry
-    .getAccounts()
-    .filter((account) => account.id !== active.id && !needsSignIn(account));
-  const othersRefresh = await refreshAndApply(registry, selectRefreshable(others), options);
+  // traffic, and the choice must not be made on stale ones. selectStale leaves
+  // out accounts known to need a sign-in, which cannot be chosen anyway.
+  const others = registry.getAccounts().filter((account) => account.id !== active.id);
+  const othersRefresh = await refreshAndApply(registry, selectStale(others), options);
 
-  const { choice } = readActive();
+  const { choice, current: reread } = readActive();
+  if (choice.best && !choice.shouldSwitch && reread) {
+    // Against fresh readings of the others, the account in use is the best, or
+    // close enough that moving is not worth rewriting the session.
+    return {
+      event: 'holding',
+      detail: `${formatAccountShort(active)} is still the best use of your quota`,
+      activeAccountId: active.id,
+    };
+  }
   const reason = current?.blocked ?? 'out of quota';
   // Whoever is chosen next may be chosen on a reading that could not be
   // renewed, so the failure travels with the decision rather than being dropped.

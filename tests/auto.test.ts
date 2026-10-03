@@ -287,6 +287,69 @@ describe('Automatic switching', () => {
     expect(tick.data.chosenAccountId).toBe('acc3');
   });
 
+  it('does not switch to the account in use once the others are read', async () => {
+    // acc2's cached week is unread, so the first look ranks on 5-hour headroom
+    // and holds acc1 out for its small measured week. Once acc2 is read, every
+    // week is measured and acc1 ranks first: there is nowhere to move.
+    const unreadWeek = account('acc2', 0.5);
+    delete unreadWeek.rateLimit?.gemini?.rateWeekly;
+    fs.writeFileSync(
+      path.join(process.env.AGY_AUTH_HOME as string, 'registry.json'),
+      `${JSON.stringify({
+        schemaVersion: 3,
+        activeAccountId: 'acc1',
+        previousAccountId: null,
+        accounts: [account('acc1', 0.8), unreadWeek],
+        settings: { defaultLocation: 'global' },
+      })}\n`,
+      { mode: 0o600 }
+    );
+    const week = (usedPercent: number) => ({
+      usedPercent,
+      windowMinutes: 10_080,
+      resetsAt: NOW_SEC + 6 * 86_400,
+    });
+    const readings: Record<string, Account['rateLimit']> = {
+      acc1: {
+        gemini: {
+          rate5h: { usedPercent: 20, windowMinutes: 300, resetsAt: NOW_SEC + 3600 },
+          rateWeekly: week(95),
+        },
+      },
+      acc2: {
+        gemini: {
+          rate5h: { usedPercent: 50, windowMinutes: 300, resetsAt: NOW_SEC + 3600 },
+          rateWeekly: week(94),
+        },
+      },
+    };
+    vi.spyOn(QuotaClient, 'refreshAccountQuotas').mockImplementation(async (accounts) => {
+      const results = new Map<string, QuotaRefresh>();
+      for (const target of accounts) {
+        results.set(target.id, {
+          result: {
+            accountId: target.id,
+            observedUpdatedAt: target.updatedAt,
+            ok: true,
+            status: 'valid',
+            quotaCheckedAt: Date.now(),
+            rateLimit: readings[target.id],
+          },
+        });
+      }
+      return results;
+    });
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const watching = autoCommand({ json: true, dryRun: true, watch: true, interval: '1' });
+    process.emit('SIGINT');
+    await expect(watching).rejects.toThrow(/Stopped watching/);
+
+    const tick = JSON.parse(String(logSpy.mock.calls.at(-1)?.[0]));
+    expect(tick.data.event).toBe('holding');
+    expect(tick.data.chosenAccountId).toBeUndefined();
+  });
+
   it('does not call an unread account spent alongside an exhausted one', async () => {
     // acc1 was read and is out; acc2 was never read. Nothing is known to be
     // usable, but only acc1 is known to be spent.
@@ -506,6 +569,18 @@ describe('Automatic switching', () => {
     expect(tick.data.chosenAccountId).toBe('acc3');
     expect(asked).not.toContain('acc2');
     expect(tick.data.detail).not.toMatch(/could not refresh/);
+
+    // Nor about the account in use when it is the one needing a sign-in.
+    const registryFile = path.join(process.env.AGY_AUTH_HOME as string, 'registry.json');
+    const stored = JSON.parse(fs.readFileSync(registryFile, 'utf8'));
+    stored.activeAccountId = 'acc2';
+    fs.writeFileSync(registryFile, `${JSON.stringify(stored)}\n`, { mode: 0o600 });
+    asked.length = 0;
+    const again = autoCommand({ json: true, dryRun: true, watch: true, interval: '1' });
+    process.emit('SIGINT');
+    await expect(again).rejects.toThrow(/Stopped watching/);
+    expect(asked).not.toContain('acc2');
+    expect(JSON.parse(String(logSpy.mock.calls.at(-1)?.[0])).data.chosenAccountId).toBe('acc3');
   });
 
   it("does not credit the account kept in use with the leader's reasons", async () => {

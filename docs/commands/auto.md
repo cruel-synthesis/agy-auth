@@ -21,7 +21,8 @@ Options:
 `agy-auth auto --watch` stays running and takes a live reading of the account in
 use every few minutes. While that account still has room it does nothing but say
 so. The moment it runs out, the others are read and the best one is switched to,
-by the same choice described below.
+by the same choice described below. If the account in use still ranks first
+against those fresh readings, or is beaten by less than the margin, it stays.
 
 ```
   Watching the account in use, switching when it runs out. Checking every 5 min.
