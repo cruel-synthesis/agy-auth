@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { readAntigravityToken } from '../core/antigravity-store.js';
 import { CredentialFiles } from '../core/credential-files.js';
-import { CliError } from '../core/errors.js';
+import { CliError, describeSchemaFailure, errorMessage } from '../core/errors.js';
 import { KeychainManager } from '../core/keychain.js';
 import { migrateRegistry } from '../core/migration.js';
 import { Paths } from '../core/paths.js';
@@ -42,10 +42,6 @@ interface CheckResult {
   name: string;
   status: 'ok' | 'warn' | 'fail';
   message: string;
-}
-
-function formatError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 /**
@@ -188,7 +184,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
     checks.push({
       name: 'Storage Directories',
       status: 'fail',
-      message: err instanceof Error ? err.message : String(err),
+      message: errorMessage(err),
     });
   }
 
@@ -201,8 +197,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
         checks.push({
           name: 'Registry Schema & Integrity',
           status: 'warn',
-          message:
-            'Legacy ~/.agy-auth/accounts.json detected. It is not imported automatically; back it up and copy it to ~/.agy-auth/registry.json with owner-only permissions before starting agy-auth.',
+          message: `Found ${legacyPath} from an early release, which this version cannot read. It is left untouched; run \`agy-auth add\` to save your accounts again.`,
         });
       } else {
         checks.push({
@@ -267,7 +262,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
             checks.push({
               name: 'Registry Schema & Integrity',
               status: 'fail',
-              message: `Registry cannot be migrated: ${migrateErr instanceof Error ? migrateErr.message : String(migrateErr)}`,
+              message: `Registry cannot be migrated: ${errorMessage(migrateErr)}`,
             });
           }
         } else {
@@ -276,7 +271,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
             checks.push({
               name: 'Registry Schema & Integrity',
               status: 'fail',
-              message: `Registry schema validation failed: ${parsedResult.error.issues.map((i) => i.message).join(', ')}`,
+              message: `Registry schema validation failed: ${describeSchemaFailure(parsedResult.error)}`,
             });
           } else {
             try {
@@ -290,7 +285,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
               checks.push({
                 name: 'Registry Schema & Integrity',
                 status: 'fail',
-                message: `Registry validation failed: ${formatError(validationError)}`,
+                message: `Registry validation failed: ${errorMessage(validationError)}`,
               });
             }
           }
@@ -301,7 +296,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
     checks.push({
       name: 'Registry Schema & Integrity',
       status: 'fail',
-      message: err instanceof Error ? err.message : String(err),
+      message: errorMessage(err),
     });
   } finally {
     if (registryFd !== null) {
@@ -316,7 +311,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
     checks.push({
       name: 'Antigravity Session Store',
       status: 'warn',
-      message: `Session store could not be read: ${formatError(err)}`,
+      message: `Session store could not be read: ${errorMessage(err)}`,
     });
   }
 
@@ -353,7 +348,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
     checks.push({
       name: 'Antigravity Settings File',
       status: 'fail',
-      message: `Invalid settings.json: ${err instanceof Error ? err.message : String(err)}`,
+      message: `Invalid settings.json: ${errorMessage(err)}`,
     });
   } finally {
     if (settingsFd !== null) {
@@ -381,7 +376,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
     checks.push({
       name: 'Application Default Credentials (ADC)',
       status: 'warn',
-      message: err instanceof Error ? err.message : String(err),
+      message: errorMessage(err),
     });
   }
 

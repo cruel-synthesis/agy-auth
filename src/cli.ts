@@ -16,7 +16,13 @@ import { modelClearCommand, modelSetCommand } from './commands/model.js';
 import { projectClearCommand, projectSetCommand } from './commands/project.js';
 import { removeCommand } from './commands/remove.js';
 import { switchCommand } from './commands/switch.js';
-import { CancellationError, CliError, UsageError, describeSchemaFailure } from './core/errors.js';
+import {
+  CancellationError,
+  CliError,
+  UsageError,
+  describeSchemaFailure,
+  errorMessage,
+} from './core/errors.js';
 import { printTopLevelHelp } from './ui/help.js';
 import { colors } from './ui/theme.js';
 import { VERSION } from './version.js';
@@ -457,11 +463,7 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
     }
 
     const message =
-      err instanceof ZodError
-        ? `Invalid file: ${describeSchemaFailure(err)}`
-        : err instanceof Error
-          ? err.message
-          : String(err);
+      err instanceof ZodError ? `Invalid file: ${describeSchemaFailure(err)}` : errorMessage(err);
     if (isJson()) {
       console.log(
         JSON.stringify(

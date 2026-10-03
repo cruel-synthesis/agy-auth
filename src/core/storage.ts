@@ -1,8 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ZodError } from 'zod';
-import { describeSchemaFailure } from './errors.js';
+import { errorMessage } from './errors.js';
 import { Paths } from './paths.js';
 
 export const MAX_BACKUP_RETENTION = 10;
@@ -127,14 +126,8 @@ export class CorruptedRegistryError extends Error {
     public readonly backupPath: string | null,
     public readonly cause: unknown
   ) {
-    const reason =
-      cause instanceof ZodError
-        ? describeSchemaFailure(cause)
-        : cause instanceof Error
-          ? cause.message
-          : String(cause);
     super(
-      `Corrupted registry file at ${filePath}. Emergency backup created at ${backupPath || 'none'}. Error: ${reason}`
+      `Corrupted registry file at ${filePath}. Emergency backup created at ${backupPath || 'none'}. Error: ${errorMessage(cause)}`
     );
     this.name = 'CorruptedRegistryError';
   }

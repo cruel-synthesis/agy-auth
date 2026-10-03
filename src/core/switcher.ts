@@ -5,7 +5,7 @@ import { type AdcDocument, CredentialFiles } from './credential-files.js';
 import { validateServiceAccountKey } from './credential-validation.js';
 import { AntigravitySettings } from './discovery.js';
 import { MANAGED_ENV_VARS, shellEnvChanges } from './env-vars.js';
-import { CliError } from './errors.js';
+import { CliError, errorMessage } from './errors.js';
 import { KeychainManager } from './keychain.js';
 import { Paths } from './paths.js';
 import { RegistryManager } from './registry.js';
@@ -21,10 +21,6 @@ interface FileSnapshot {
   readonly inode: number | null;
   readonly backupDevice: number | null;
   readonly backupInode: number | null;
-}
-
-function formatError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function pathExists(filePath: string): boolean {
@@ -274,7 +270,7 @@ export class Switcher {
         validatedAdc = CredentialFiles.loadAdcFile(adcPath);
       } catch (err) {
         throw new CliError(
-          `Invalid ADC credentials for account '${canonical.email}': ${formatError(err)}`,
+          `Invalid ADC credentials for account '${canonical.email}': ${errorMessage(err)}`,
           'invalid_profile_credentials',
           1
         );
@@ -471,13 +467,13 @@ export class Switcher {
         try {
           rollbackActions[i]();
         } catch (rollbackError) {
-          rollbackErrors.push(formatError(rollbackError));
+          rollbackErrors.push(errorMessage(rollbackError));
         }
       }
 
       if (rollbackErrors.length > 0) {
         const combined = new Error(
-          `Account switch failed: ${formatError(error)} Rollback also failed: ${rollbackErrors.join('; ')}`
+          `Account switch failed: ${errorMessage(error)} Rollback also failed: ${rollbackErrors.join('; ')}`
         );
         (combined as Error & { cause?: unknown }).cause = error;
         throw combined;

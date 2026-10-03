@@ -80,6 +80,13 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
         })
       );
       await doctorCommand({ offline: true, json: true });
+      const legacy = lastJson().data.checks.find(
+        (c: { name: string }) => c.name === 'Registry Schema & Integrity'
+      );
+      expect(legacy.status).toBe('warn');
+      // Copying it into place is no longer a way in: schema 1 is not read.
+      expect(legacy.message).toContain('agy-auth add');
+      expect(legacy.message).not.toMatch(/copy it/);
       fs.unlinkSync(legacyPath);
 
       // 2. A schema 2 registry is readable, so it warns rather than failing.
@@ -184,7 +191,24 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
     );
     await expect(doctorCommand({ offline: true, json: true })).rejects.toThrow(CliError);
 
-    // 4. Schema v2 schema validation failure (missing settings or accounts)
+    // 4. A current registry that fails its schema names the field, not a JSON dump.
+    fs.writeFileSync(
+      Paths.registryFile,
+      JSON.stringify({
+        schemaVersion: 3,
+        activeAccountId: null,
+        previousAccountId: null,
+        accounts: [{ ...duplicateBase, id: 'bad_email', email: 'not-an-email' }],
+        settings: {},
+      })
+    );
+    const thrown = await doctorCommand({ offline: true, json: true }).catch((e) => e);
+    const schemaCheck = (
+      (thrown as CliError).details.checks as { name: string; message: string }[]
+    ).find((c) => c.name === 'Registry Schema & Integrity');
+    expect(schemaCheck?.message).toContain('accounts.0.email: invalid email');
+
+    // 5. Schema v2 schema validation failure (missing settings or accounts)
     fs.writeFileSync(
       Paths.registryFile,
       JSON.stringify({

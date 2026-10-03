@@ -16,6 +16,12 @@ export function describeSchemaFailure(error: ZodError): string {
   return `${field}: ${detail}${others}`;
 }
 
+/** What went wrong, in one line: a schema failure names its field, not a JSON dump. */
+export function errorMessage(error: unknown): string {
+  if (error instanceof ZodError) return describeSchemaFailure(error);
+  return error instanceof Error ? error.message : String(error);
+}
+
 export class CliError extends Error {
   public readonly code: string;
   public readonly exitCode: number;
