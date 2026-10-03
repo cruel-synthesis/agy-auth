@@ -149,7 +149,7 @@ Invoke-Expression (agy-auth env --shell powershell)
 | `agy-auth export [file]` | Export sanitized account backup (`--include-secrets`, `--yes`, `--json`) |
 | `agy-auth import <file>` | Import accounts with schema migration (`--overwrite`, `--json`) |
 | `agy-auth clean` | Prune managed recovery snapshots (`~/.agy-auth/backups/`) |
-| `agy-auth doctor` | Run environment and configuration diagnostics (`--offline`, `--json`) |
+| `agy-auth doctor` | Run environment and configuration diagnostics (`--offline`, `--quota`, `--json`) |
 
 ---
 

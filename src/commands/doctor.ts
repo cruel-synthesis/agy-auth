@@ -24,17 +24,14 @@ interface DoctorOptions {
  */
 async function probeQuota(): Promise<QuotaProbe> {
   const registry = new RegistryManager();
+  const active = registry.getActiveAccount();
   const account =
-    registry.getActiveAccount() ?? registry.getAccounts().find((a) => a.authType === 'oauth');
-
-  if (!account || account.authType !== 'oauth') {
-    throw new CliError(
-      'No OAuth account to probe. Run `agy-auth switch` to select one first.',
-      'no_oauth_account',
-      1
-    );
+    active?.authType === 'oauth'
+      ? active
+      : registry.getAccounts().find((a) => a.authType === 'oauth');
+  if (!account) {
+    throw new Error('No Google sign-in account to probe; run `agy-auth add` to save one.');
   }
-
   return probeQuotaEndpoints(account);
 }
 
@@ -401,7 +398,15 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
     }
   }
 
-  const quotaProbe = options.quota ? await probeQuota() : undefined;
+  let quotaProbe: QuotaProbe | undefined;
+  if (options.quota) {
+    // A probe that cannot start is one failed check, not the end of the report.
+    try {
+      quotaProbe = await probeQuota();
+    } catch (err) {
+      checks.push({ name: 'Quota Endpoint Probe', status: 'fail', message: errorMessage(err) });
+    }
+  }
 
   const hasFail = checks.some((c) => c.status === 'fail');
 

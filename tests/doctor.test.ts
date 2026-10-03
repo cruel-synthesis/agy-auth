@@ -53,6 +53,19 @@ describe('Doctor Diagnostic Command Comprehensive Suite', () => {
     }
   });
 
+  it('reports a quota probe with no account to probe as one failed check', async () => {
+    useEmptyNativeStore();
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const thrown = await doctorCommand({ offline: true, json: true, quota: true }).catch((e) => e);
+    logSpy.mockRestore();
+    expect(thrown).toBeInstanceOf(CliError);
+    const checks = (thrown as CliError).details.checks as { name: string; message: string }[];
+    expect(checks.length).toBeGreaterThan(1);
+    expect(checks.find((c) => c.name === 'Quota Endpoint Probe')?.message).toContain(
+      'agy-auth add'
+    );
+  });
+
   it('warns about a legacy accounts.json or a schema 2 registry, and fails on one it cannot read', async () => {
     const isSupportedSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(false);
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
