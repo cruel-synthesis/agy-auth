@@ -117,10 +117,11 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
     return;
   }
 
-  const prefix = options.dryRun ? '[Dry Run] ' : '';
-  console.log(
-    `\n  ${colors.green('[ok]')} ${prefix}Cleaned ${removedNames.length} backup file(s) (retaining ${kept.length} newest backups).`
-  );
+  const rule = options.all ? '' : ` (the newest ${MAX_BACKUP_RETENTION} of each kind)`;
+  const summary = options.dryRun
+    ? `[Dry Run] Would remove ${removedNames.length} backup file(s) and keep ${kept.length}${rule}.`
+    : `Removed ${removedNames.length} backup file(s); kept ${kept.length}${rule}.`;
+  console.log(`\n  ${colors.green('[ok]')} ${summary}`);
   if (removedNames.length > 0) {
     for (const name of removedNames) {
       console.log(`    - ${colors.dim(name)}`);
