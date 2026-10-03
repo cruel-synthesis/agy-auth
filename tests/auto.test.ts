@@ -501,6 +501,34 @@ describe('Automatic switching', () => {
     expect(refreshSpy).not.toHaveBeenCalled();
   });
 
+  it('says once why a watch check kept the last reading', async () => {
+    vi.spyOn(QuotaClient, 'refreshAccountQuotas').mockImplementation(async (accounts) => {
+      const results = new Map<string, QuotaRefresh>();
+      for (const target of accounts) {
+        results.set(target.id, {
+          result: {
+            accountId: target.id,
+            observedUpdatedAt: target.updatedAt,
+            ok: false,
+            reason: 'network-error',
+          },
+        });
+      }
+      return results;
+    });
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const watching = autoCommand({ json: true, dryRun: true, watch: true, interval: '1' });
+    process.emit('SIGINT');
+    await expect(watching).rejects.toThrow(/Stopped watching/);
+
+    const tick = JSON.parse(String(logSpy.mock.calls.at(-1)?.[0]));
+    expect(tick.data.event).toBe('holding');
+    expect(tick.data.detail).toMatch(
+      /: could not refresh quota \(network or service error\); using the last known reading$/
+    );
+  });
+
   it('stays on the account in use when its reading has no 5-hour window', async () => {
     const asked: string[] = [];
     vi.spyOn(QuotaClient, 'refreshAccountQuotas').mockImplementation(async (accounts) => {

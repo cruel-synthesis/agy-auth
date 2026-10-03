@@ -21,7 +21,7 @@ const REASON_TEXT: Record<QuotaFailureReason, string> = {
   'network-error': 'network or service error',
 };
 
-function describeQuotaFailure(reason: QuotaFailureReason | undefined): string {
+export function describeQuotaFailure(reason: QuotaFailureReason | undefined): string {
   return reason ? REASON_TEXT[reason] : 'unknown error';
 }
 

@@ -16,7 +16,7 @@ import { Account, needsSignIn } from '../core/types.js';
 import { NO_ACCOUNTS, formatAccountShort } from '../ui/format.js';
 import { terminalWidth, truncatePadded, truncateToWidth } from '../ui/table.js';
 import { colors } from '../ui/theme.js';
-import { refreshQuota, selectStale } from './refresh.js';
+import { describeQuotaFailure, refreshQuota, selectStale } from './refresh.js';
 
 interface AutoOptions {
   dryRun?: boolean;
@@ -217,8 +217,8 @@ function explain(best: AccountScore, nowMs: number, basis: ChoiceBasis): string 
 interface RefreshOutcome {
   /** One-line human warning, present only when a refresh failed. */
   warning?: string;
-  /** Ids of accounts whose refresh did not succeed this call. */
-  failed: Set<string>;
+  /** Why each account whose refresh did not succeed this call failed. */
+  failed: Map<string, string>;
 }
 
 /** Take a live reading for these accounts and write it to the registry. */
@@ -231,7 +231,11 @@ async function refreshAndApply(
   await applyQuotaResults(registry, refresh.refreshes);
   return {
     warning: refresh.warning,
-    failed: new Set(refresh.refreshes.filter((r) => !r.result.ok).map((r) => r.result.accountId)),
+    failed: new Map(
+      refresh.refreshes
+        .filter((r) => !r.result.ok)
+        .map((r) => [r.result.accountId, describeQuotaFailure(r.result.reason)])
+    ),
   };
 }
 
@@ -273,7 +277,7 @@ async function watchTick(registry: RegistryManager, options: AutoOptions): Promi
 
   // An account already known to need a sign-in would only fail again.
   const activeRefresh = needsSignIn(active)
-    ? { failed: new Set<string>() }
+    ? { failed: new Map<string, string>() }
     : await refreshAndApply(registry, [active], options);
   const refreshed = registry.getAccounts().find((account) => account.id === active.id);
   const signInNeeded = refreshed !== undefined && needsSignIn(refreshed);
@@ -285,7 +289,7 @@ async function watchTick(registry: RegistryManager, options: AutoOptions): Promi
     // holding on it would wait for a token that cannot come back on its own.
     return {
       event: 'holding',
-      detail: `${formatAccountShort(active)}: ${activeRefresh.warning ?? 'could not refresh quota this check'}; using the last known reading`,
+      detail: `${formatAccountShort(active)}: could not refresh quota (${activeRefresh.failed.get(active.id)}); using the last known reading`,
       activeAccountId: active.id,
     };
   }
