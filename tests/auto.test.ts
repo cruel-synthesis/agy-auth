@@ -94,6 +94,40 @@ describe('Automatic switching', () => {
     }
   });
 
+  it('prints the same 5-hour figure as list, and a score that is not zero', async () => {
+    const half = account('acc1', 0.5);
+    half.rateLimit = {
+      gemini: {
+        rate5h: { usedPercent: 42.5, windowMinutes: 300, resetsAt: NOW_SEC + 3600 },
+        rateWeekly: { usedPercent: 99, windowMinutes: 10_080, resetsAt: NOW_SEC + 6 * 86_400 },
+      },
+    };
+    fs.writeFileSync(
+      path.join(process.env.AGY_AUTH_HOME as string, 'registry.json'),
+      `${JSON.stringify({
+        schemaVersion: 3,
+        activeAccountId: 'acc1',
+        previousAccountId: null,
+        accounts: [half],
+        settings: { defaultLocation: 'global' },
+      })}\n`,
+      { mode: 0o600 }
+    );
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const originalColumns = process.env.COLUMNS;
+    process.env.COLUMNS = '120';
+
+    try {
+      await autoCommand({ dryRun: true, offline: true });
+    } finally {
+      process.env.COLUMNS = originalColumns;
+    }
+
+    const row = logSpy.mock.calls.map((call) => String(call[0])).find((l) => l.includes('acc1@'));
+    expect(row).toContain('58%');
+    expect(row).toMatch(/0\.00020$/);
+  });
+
   it('says so when it had to decide on readings it could not renew', async () => {
     vi.spyOn(QuotaClient, 'refreshAccountQuotas').mockImplementation(async (accounts) => {
       const results = new Map<string, QuotaRefresh>();

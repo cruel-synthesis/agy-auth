@@ -218,10 +218,15 @@ function scoreAccount(account: Account, nowMs: number): AccountScore {
   }
 
   const headroom = scored.reduce((sum, s) => sum + s.headroom, 0) / scored.length;
-  // The allowance with the most to lose soonest is the one worth explaining.
-  const perishing = scored.reduce((worst, s) =>
-    expiresAt(s.weekly) < expiresAt(worst.weekly) ? s : worst
-  ).weekly;
+  // The allowance with the most to lose soonest is the one worth explaining. On
+  // a tie a reading beats the untouched week assumed in a missing one's place.
+  const perishing = scored.reduce((worst, s) => {
+    const at = expiresAt(s.weekly);
+    const worstAt = expiresAt(worst.weekly);
+    return at < worstAt || (at === worstAt && s.weekly.measured && !worst.weekly.measured)
+      ? s
+      : worst;
+  }).weekly;
   const refills = scored.map((s) => s.refillsAt).filter((at): at is number => at !== undefined);
   const weeks = scored.filter((s) => s.weekly.measured).map((s) => s.weekly);
   const weekResets = weeks.map((w) => w.resetsAt).filter((at): at is number => at !== undefined);
@@ -247,9 +252,10 @@ function scoreAccount(account: Account, nowMs: number): AccountScore {
   };
 
   const score = scored.reduce((sum, s) => sum + s.value, 0) / scored.length;
-  // Nothing left to work with in any family: every one that still has 5-hour room
-  // has a spent week. Checked first, because a 5-hour reset would not free it.
-  if (score === 0 && headroom >= MIN_HEADROOM) {
+  // Every week spent, or every family with 5-hour room has a spent week: a
+  // 5-hour reset would not free it, so it is held by the week, not the window.
+  const weekSpent = scored.every((s) => s.weekly.measured && s.weekly.remaining === 0);
+  if (weekSpent || (score === 0 && headroom >= MIN_HEADROOM)) {
     return { ...base, ...common, blocked: BLOCKED.weekly };
   }
   if (headroom < MIN_HEADROOM) {

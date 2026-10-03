@@ -338,4 +338,28 @@ describe('choosing the account that wastes the least quota', () => {
     expect(choice.ranked[0].blocked).toBe('weekly limit nearly spent');
     expect(choice.ranked[0].refillsAt).toBe(hoursFromNow(48));
   });
+
+  it('blames the week, not the window, when both are spent', () => {
+    const both = account('both', { rateLimit: { gemini: family(0.05, 0, 48, 2) } });
+
+    const [entry] = chooseBestAccount([both], null, NOW).ranked;
+
+    expect(entry.blocked).toBe('weekly limit nearly spent');
+    expect(entry.refillsAt).toBe(hoursFromNow(48));
+  });
+
+  it('explains a measured week over an assumed one when neither gives a reset', () => {
+    const measured = { usedPercent: 70, windowMinutes: 10_080 };
+    const mixed = account('mixed', {
+      rateLimit: {
+        gemini: { rate5h: fiveHourOnly(0.9) },
+        claude: { rate5h: fiveHourOnly(0.9), rateWeekly: measured },
+      },
+    });
+
+    const [entry] = chooseBestAccount([mixed], null, NOW).ranked;
+
+    expect(entry.perishing?.measured).toBe(true);
+    expect(entry.perishing?.family).toBe('claude');
+  });
 });

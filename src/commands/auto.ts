@@ -41,7 +41,8 @@ function formatUntil(resetsAt: number | undefined, nowMs: number): string {
 }
 
 function percent(fraction: number | undefined): string {
-  return fraction === undefined ? '-' : `${Math.round(fraction * 100)}%`;
+  // The nudge undoes float error, so 42.5% used reads 58% left here as in `list`.
+  return fraction === undefined ? '-' : `${Math.round(fraction * 100 + 1e-9)}%`;
 }
 
 /**
@@ -77,7 +78,9 @@ function renderRanking(
     // The score is only shown where it decided the order. On 5-hour headroom it
     // still holds an assumed week, and printing it beside a ranking it did not
     // produce would read as one that ignored its own numbers.
-    note: entry.blocked ?? (basis === 'weekly' ? entry.score.toFixed(3) : ''),
+    // Two significant figures: scores are small, and a fixed three decimals
+    // rounds a workable account to 0.000.
+    note: entry.blocked ?? (basis === 'weekly' ? entry.score.toPrecision(2) : ''),
   }));
 
   const width = (pick: (row: (typeof rows)[number]) => string, header: string) =>
@@ -203,13 +206,12 @@ function refusal(ranked: AccountScore[], nowMs: number): string {
 /** Why the winner won, in the terms that decided it. */
 function explain(best: AccountScore, nowMs: number, basis: ChoiceBasis): string {
   const weekly = best.perishing;
-  if (basis === 'headroom' || !weekly || weekly.resetsAt === undefined) {
+  if (basis === 'headroom' || !weekly) {
     return `It has the most room to work: ${percent(best.headroom)} of the 5-hour limit left${coverage(best)}.`;
   }
-  return (
-    `${percent(weekly.remaining)} of its weekly limit is unspent and expires in ` +
-    `${formatUntil(weekly.resetsAt, nowMs)} - the quota most likely to go to waste.`
-  );
+  const expires =
+    weekly.resetsAt === undefined ? '' : ` and expires in ${formatUntil(weekly.resetsAt, nowMs)}`;
+  return `${percent(weekly.remaining)} of its weekly limit is unspent${expires} - the quota most likely to go to waste.`;
 }
 
 interface RefreshOutcome {
