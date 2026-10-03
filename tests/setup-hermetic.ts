@@ -1,3 +1,7 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
 /**
  * Hermetic environment for the normal suite: no network, no native stores.
  *
@@ -24,3 +28,24 @@ globalThis.fetch = blocked as unknown as typeof fetch;
  * here means no test file can opt out by omission, and no test may unset it.
  */
 process.env.AGY_AUTH_NO_NATIVE = '1';
+
+/**
+ * Home-directory guard. Every store path defaults to one under the home
+ * directory, or to an override inherited from the shell. A test file that does
+ * not call `setupTestEnvironment()` must still resolve them into scratch space,
+ * never into the developer's own agy-auth, Antigravity or gcloud files.
+ */
+const scratchHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agy-hermetic-'));
+process.env.HOME = scratchHome;
+process.env.USERPROFILE = scratchHome;
+process.env.APPDATA = path.join(scratchHome, 'AppData', 'Roaming');
+for (const key of [
+  'AGY_AUTH_HOME',
+  'AGY_CLI_DIR',
+  'AGY_SETTINGS_FILE',
+  'AGY_TOKEN_FILE',
+  'AGY_GCLOUD_ADC_FILE',
+]) {
+  delete process.env[key];
+}
+process.on('exit', () => fs.rmSync(scratchHome, { recursive: true, force: true }));
