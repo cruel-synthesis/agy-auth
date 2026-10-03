@@ -6,7 +6,7 @@ import {
 } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
 import { Switcher } from '../core/switcher.js';
-import { Account, SwitchResult } from '../core/types.js';
+import { Account, SwitchResult, needsSignIn } from '../core/types.js';
 import { NO_ACCOUNTS, formatAccountShort } from '../ui/format.js';
 import { colors } from '../ui/theme.js';
 import { promptSelectAccount } from '../ui/tui.js';
@@ -65,6 +65,15 @@ export async function switchCommand(query?: string, options: SwitchOptions = {})
   if (!target) return;
 
   const result: SwitchResult = Switcher.switchAccount(target);
+  // Switching is still allowed: the user may be about to sign in again.
+  const warnings = [...(result.warnings ?? [])];
+  if (needsSignIn(result.currentAccount)) {
+    warnings.push(
+      result.currentAccount.authType === 'oauth'
+        ? `${formatAccountShort(result.currentAccount)} needs a sign-in; sign in to it through Antigravity, then run \`agy-auth add\`.`
+        : `${formatAccountShort(result.currentAccount)} was rejected; add it again with a working credential.`
+    );
+  }
 
   if (options.json) {
     console.log(
@@ -80,7 +89,7 @@ export async function switchCommand(query?: string, options: SwitchOptions = {})
             adcUpdated: result.adcUpdated,
             requiresShellUpdate: result.requiresShellUpdate,
             managedEnvVars: result.managedEnvVars,
-            warnings: result.warnings && result.warnings.length > 0 ? result.warnings : undefined,
+            warnings: warnings.length > 0 ? warnings : undefined,
           },
         },
         null,
@@ -90,10 +99,8 @@ export async function switchCommand(query?: string, options: SwitchOptions = {})
     return;
   }
 
-  if (result.warnings && result.warnings.length > 0) {
-    for (const warning of result.warnings) {
-      console.error(colors.yellow(`  Warning: ${warning}`));
-    }
+  for (const warning of warnings) {
+    console.error(colors.yellow(`  Warning: ${warning}`));
   }
 
   console.log(`\n  Switched to ${colors.green(formatAccountShort(result.currentAccount))}`);

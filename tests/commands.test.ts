@@ -206,6 +206,26 @@ describe('Command Modules Behavioral & Regression Suite', () => {
     }
   });
 
+  it('switches to a rejected account but says so', async () => {
+    new RegistryManager().addOrUpdateAccount({
+      email: 'stale@example.com',
+      authType: 'api-key',
+      status: 'invalid',
+      credentials: { apiKey: 'AIzaSyStale' },
+    });
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await switchCommand('stale@example.com', { json: true });
+      const out = JSON.parse(String(logSpy.mock.calls.at(-1)?.[0]));
+      expect(out.data.currentAccount.email).toBe('stale@example.com');
+      expect(out.data.warnings).toEqual([
+        'stale@example.com was rejected; add it again with a working credential.',
+      ]);
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
   it('executes switchCommand by alias, index, previous (-), and rejects ambiguous selectors', async () => {
     const registry = new RegistryManager();
     const acc1 = registry.addOrUpdateAccount({
