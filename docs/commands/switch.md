@@ -16,3 +16,6 @@ Options:
 
 - `-j, --json`: Machine-readable output
 - `-h, --help`: Show this help
+
+Switching to an account that needs a sign-in still goes ahead, with a warning
+that says how to renew it.
