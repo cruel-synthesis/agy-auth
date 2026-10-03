@@ -151,7 +151,7 @@ export async function detailsCommand(query?: string, options: DetailsOptions = {
   }
 
   if (warning) {
-    console.log(colors.yellow(warning));
+    console.log(colors.yellow(`Warning: ${warning}`));
   }
   renderAccountDetails(target, isActive);
 }

@@ -28,7 +28,7 @@ function describeQuotaFailure(reason: QuotaFailureReason | undefined): string {
 export interface QuotaRefreshOutcome {
   refreshes: QuotaRefresh[];
   summary: QuotaRefreshSummary;
-  /** One concise human-mode warning, present only when a refresh failed. */
+  /** One concise warning, without a `Warning:` prefix, present only when a refresh failed. */
   warning?: string;
 }
 
@@ -100,14 +100,14 @@ export async function refreshQuota(
   if (failed.length === 1) {
     const account = targets.find((a) => a.id === failed[0].result.accountId);
     warning =
-      `Warning: could not refresh live quota for ${account?.alias || account?.email || failed[0].result.accountId} ` +
+      `Could not refresh live quota for ${account?.alias || account?.email || failed[0].result.accountId} ` +
       `(${describeQuotaFailure(failed[0].result.reason)}). Showing cached quota where available.`;
   } else if (failed.length > 1) {
     const reasons = [...new Set(failed.map((f) => describeQuotaFailure(f.result.reason)))].join(
       '; '
     );
     warning =
-      `Warning: could not refresh live quota for ${failed.length} of ${refreshes.length} accounts ` +
+      `Could not refresh live quota for ${failed.length} of ${refreshes.length} accounts ` +
       `(${reasons}). Showing cached quota where available.`;
   }
 

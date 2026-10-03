@@ -151,7 +151,9 @@ describe('Automatic switching', () => {
     expect(envelope.data.chosenAccountId).toBe('acc2');
     expect(envelope.data.switched).toBe(false);
     expect(envelope.data.warnings).toHaveLength(1);
-    expect(envelope.data.warnings[0]).toMatch(/could not refresh live quota for 2 of 2 accounts/);
+    expect(envelope.data.warnings[0]).toMatch(/could not refresh live quota for 2 of 2 accounts/i);
+    // The prefix is for people; JSON warnings are plain messages like switch's.
+    expect(envelope.data.warnings[0]).not.toMatch(/^Warning/);
   });
 
   it('carries a failed reading of the other accounts into the switch it decides', async () => {
@@ -200,7 +202,7 @@ describe('Automatic switching', () => {
     expect(tick.data.event).toBe('would-switch');
     expect(tick.data.chosenAccountId).toBe('acc2');
     expect(tick.data.detail).toMatch(/would switch to acc2@example.com/);
-    expect(tick.data.detail).toMatch(/could not refresh live quota for acc2@example.com/);
+    expect(tick.data.detail).toMatch(/could not refresh live quota for acc2@example.com/i);
   });
 
   it('says the quota is unknown, not spent, when nothing could be read', async () => {
@@ -245,11 +247,11 @@ describe('Automatic switching', () => {
     // The reason the readings are missing belongs with the refusal, not only
     // with the runs that end in a choice.
     expect(errorSpy.mock.calls.map((call) => String(call[0])).join('\n')).toMatch(
-      /could not refresh live quota for 2 of 2 accounts/
+      /could not refresh live quota for 2 of 2 accounts/i
     );
 
     await expect(autoCommand({ dryRun: true, json: true })).rejects.toMatchObject({
-      details: { warnings: [expect.stringMatching(/could not refresh live quota/)] },
+      details: { warnings: [expect.stringMatching(/could not refresh live quota/i)] },
     });
   });
 

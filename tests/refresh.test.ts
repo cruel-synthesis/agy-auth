@@ -158,7 +158,7 @@ describe('Quota refresh outcomes', () => {
     expect(outcome.summary.accounts).toEqual([
       { accountId: account.id, ok: false, reason: 'network-error' },
     ]);
-    expect(outcome.warning).toMatch(/could not refresh live quota for work/);
+    expect(outcome.warning).toMatch(/could not refresh live quota for work/i);
     expect(outcome.warning).toMatch(/network or service error/);
     expect(outcome.warning).toMatch(/Showing cached quota where available/);
   });

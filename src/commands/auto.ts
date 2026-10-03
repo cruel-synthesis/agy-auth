@@ -142,7 +142,7 @@ function renderRanking(
 /** Warning lines as the human output shows them. */
 function printWarnings(lines: string[]): void {
   for (const line of lines) {
-    console.error(colors.yellow(`  ${line.startsWith('Warning') ? line : `Warning: ${line}`}`));
+    console.error(colors.yellow(`  Warning: ${line}`));
   }
 }
 
