@@ -311,6 +311,7 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
   // a command runs, the error path answers in the shape it ran in. A parse error
   // can stop before the flag is reached, so there the raw words decide.
   let jsonFlag = false;
+  let streaming = false;
   let parsed = false;
   const jsonWord = argv.includes('--json') || argv.includes('-j');
   const isJson = (): boolean => jsonFlag || (!parsed && jsonWord);
@@ -318,6 +319,9 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
   const listenForJson = (command: Command): void => {
     command.on('option:json', () => {
       jsonFlag = true;
+    });
+    command.on('option:watch', () => {
+      streaming = true;
     });
     for (const sub of command.commands) listenForJson(sub);
   };
@@ -359,6 +363,17 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
     commandName = 'switch';
   }
 
+  // A watch writes one JSON object per line, so its last word must be one too.
+  const printJsonError = (error: { code: string; message: string; details?: unknown }): void => {
+    console.log(
+      JSON.stringify(
+        { schemaVersion: 1, command: commandName, ok: false, error },
+        null,
+        streaming ? undefined : 2
+      )
+    );
+  };
+
   // Configure commander error handling
   cli.exitOverride();
 
@@ -391,21 +406,7 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
           ? missingSubcommandMessage(nonFlagArgs)
           : raw.replace(/^error:\s*/, '');
       if (isJson()) {
-        console.log(
-          JSON.stringify(
-            {
-              schemaVersion: 1,
-              command: commandName,
-              ok: false,
-              error: {
-                code: 'invalid_usage',
-                message,
-              },
-            },
-            null,
-            2
-          )
-        );
+        printJsonError({ code: 'invalid_usage', message });
       } else {
         console.error(`${colors.red('Error:')} ${message}`);
       }
@@ -417,43 +418,18 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
       (err instanceof Error && err.name === 'ExitPromptError')
     ) {
       if (isJson()) {
-        console.log(
-          JSON.stringify(
-            {
-              schemaVersion: 1,
-              command: commandName,
-              ok: false,
-              error: {
-                code: 'cancelled',
-                message: 'Operation cancelled.',
-              },
-            },
-            null,
-            2
-          )
-        );
+        printJsonError({ code: 'cancelled', message: 'Operation cancelled.' });
       }
       return 130;
     }
 
     if (err instanceof CliError) {
       if (isJson()) {
-        console.log(
-          JSON.stringify(
-            {
-              schemaVersion: 1,
-              command: commandName,
-              ok: false,
-              error: {
-                code: err.code,
-                message: err.message,
-                details: Object.keys(err.details).length > 0 ? err.details : undefined,
-              },
-            },
-            null,
-            2
-          )
-        );
+        printJsonError({
+          code: err.code,
+          message: err.message,
+          details: Object.keys(err.details).length > 0 ? err.details : undefined,
+        });
       } else {
         if (err.exitCode !== 130) {
           console.error(`${colors.red('Error:')} ${err.message}`);
@@ -465,21 +441,7 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
     const message =
       err instanceof ZodError ? `Invalid file: ${describeSchemaFailure(err)}` : errorMessage(err);
     if (isJson()) {
-      console.log(
-        JSON.stringify(
-          {
-            schemaVersion: 1,
-            command: commandName,
-            ok: false,
-            error: {
-              code: 'internal_error',
-              message,
-            },
-          },
-          null,
-          2
-        )
-      );
+      printJsonError({ code: 'internal_error', message });
     } else {
       console.error(`${colors.red('Error:')} ${message}`);
     }
