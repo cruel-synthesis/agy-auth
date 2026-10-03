@@ -46,6 +46,16 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
     );
   }
 
+  const alias = options.alias ? options.alias.trim() : undefined;
+  if (alias && !ALIAS_REGEX.test(alias)) {
+    throw new UsageError(
+      `Invalid alias '${alias}'. Alias must start with alphanumeric and contain up to 32 alphanumeric, hyphen, or underscore characters.`
+    );
+  }
+  checkInputLength('gcpProject', options.project?.trim(), '--project');
+  checkInputLength('gcpLocation', options.location?.trim(), '--location');
+  checkInputLength('model', options.model?.trim(), '--model');
+
   // Plain `add` means the account the user is already signed into, which is the
   // only one most people ever need. The flags below cover credential types that
   // Antigravity does not hold.
@@ -54,20 +64,10 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
     return;
   }
 
-  const alias = options.alias ? options.alias.trim() : undefined;
-  if (alias && !ALIAS_REGEX.test(alias)) {
-    throw new UsageError(
-      `Invalid alias '${alias}'. Alias must start with alphanumeric and contain up to 32 alphanumeric, hyphen, or underscore characters.`
-    );
-  }
-
   let authType: AuthType;
   let email: string;
   let credentials: AccountCredentials | undefined;
   let defaultProject = options.project?.trim();
-  checkInputLength('gcpProject', defaultProject, '--project');
-  checkInputLength('gcpLocation', options.location?.trim(), '--location');
-  checkInputLength('model', options.model?.trim(), '--model');
 
   if (options.apiKey !== undefined) {
     authType = 'api-key';
@@ -231,7 +231,15 @@ async function addAntigravityAccount(options: AddOptions, services?: AddServices
   }
 
   const importSession = async (email?: string): Promise<ImportKeychainOAuthResult> =>
-    importKeychainOAuth({ email, fetchFn: services?.fetchFn, registry });
+    importKeychainOAuth({
+      email,
+      alias: options.alias,
+      project: options.project,
+      location: options.location,
+      model: options.model,
+      fetchFn: services?.fetchFn,
+      registry,
+    });
 
   let result = await importSession(options.email?.trim());
 

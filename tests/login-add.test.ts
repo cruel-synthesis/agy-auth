@@ -453,6 +453,44 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
     }
   });
 
+  it('keeps the alias and settings given to a plain add', async () => {
+    const supportedSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+    const readSpy = vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
+      status: 'found',
+      payload: {
+        auth_method: 'consumer',
+        token: { access_token: 'ya29.tok', refresh_token: '1//ref', expiry: futureExpiry() },
+      },
+    });
+    const fetchFn = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ email: 'signed-in@example.com', email_verified: true }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+    );
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    try {
+      await addCommand(
+        { alias: 'work', project: 'my-proj', json: true, yes: true },
+        { fetchFn: fetchFn as unknown as typeof fetch }
+      );
+      const [saved] = new RegistryManager().getAccounts();
+      expect(saved.alias).toBe('work');
+      expect(saved.gcpProject).toBe('my-proj');
+
+      // A bad alias is refused before the session is even read.
+      readSpy.mockClear();
+      await expect(addCommand({ alias: '-bad', json: true })).rejects.toThrow(UsageError);
+      expect(readSpy).not.toHaveBeenCalled();
+    } finally {
+      logSpy.mockRestore();
+      supportedSpy.mockRestore();
+      readSpy.mockRestore();
+    }
+  });
+
   it('throws CliError when the session store cannot be read', async () => {
     const supportedSpy = vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
     const readSpy = vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
