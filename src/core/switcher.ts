@@ -399,27 +399,18 @@ export class Switcher {
       const currentSettings = readAntigravitySettings(settingsSnapshot);
       const newSettings: AntigravitySettings = { ...currentSettings };
 
+      // Only values the account saves are written. The rest are the user's own
+      // Antigravity choices, such as the model picked in its menu, and stay.
       if (canonical.gcpProject || canonical.gcpLocation) {
         newSettings.gcp = {
           ...(newSettings.gcp || {}),
           ...(canonical.gcpProject ? { project: canonical.gcpProject } : {}),
           ...(canonical.gcpLocation ? { location: canonical.gcpLocation } : {}),
         };
-      } else if (newSettings.gcp) {
-        const remainingGcp = { ...newSettings.gcp };
-        delete remainingGcp.project;
-        delete remainingGcp.location;
-        if (Object.keys(remainingGcp).length > 0) {
-          newSettings.gcp = remainingGcp;
-        } else {
-          delete newSettings.gcp;
-        }
       }
 
       if (canonical.model) {
         newSettings.model = canonical.model;
-      } else {
-        delete newSettings.model;
       }
 
       Storage.writeJson(settingsPath, newSettings);

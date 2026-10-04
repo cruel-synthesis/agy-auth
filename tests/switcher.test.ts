@@ -72,7 +72,9 @@ describe('Switcher Transactional State Machine & Rollback', () => {
     const expectedSaFile = path.join(Paths.accountsDir, `${accSa.id}.json`);
     expect(fs.existsSync(expectedSaFile)).toBe(true);
 
-    // 3. Add and switch to ADC profile (which also cleans gcp/model from settings.json)
+    // 3. Add and switch to ADC profile, which saves no gcp or model and so leaves
+    // the ones already in settings.json alone
+    const settingsBefore = JSON.parse(fs.readFileSync(Paths.antigravitySettingsFile, 'utf-8'));
     const customAdc = path.join(testEnv.dir, 'custom-adc.json');
     fs.writeFileSync(
       customAdc,
@@ -92,9 +94,9 @@ describe('Switcher Transactional State Machine & Rollback', () => {
     const resultAdc = Switcher.switchAccount(accAdc);
     expect(resultAdc.adcUpdated).toBe(true);
     expect(fs.existsSync(Paths.gcloudAdcFile)).toBe(true);
-    const cleanedSettings = JSON.parse(fs.readFileSync(Paths.antigravitySettingsFile, 'utf-8'));
-    expect(cleanedSettings.gcp).toBeUndefined();
-    expect(cleanedSettings.model).toBeUndefined();
+    const settingsAfter = JSON.parse(fs.readFileSync(Paths.antigravitySettingsFile, 'utf-8'));
+    expect(settingsAfter.gcp).toEqual(settingsBefore.gcp);
+    expect(settingsAfter.model).toEqual(settingsBefore.model);
   });
 
   it('returns the post-activation registry state in SwitchResult', () => {
@@ -505,11 +507,12 @@ describe('Switcher Transactional State Machine & Rollback', () => {
       credentials: { adcPath: Paths.gcloudAdcFile },
     });
 
-    // Antigravity settings with custom fields in gcp
+    // Settings the user chose in Antigravity, beside a custom gcp field
     fs.writeFileSync(
       Paths.antigravitySettingsFile,
       JSON.stringify({
         gcp: { project: 'proj', customField: 'preserve_me' },
+        model: 'model-picked-in-antigravity',
       })
     );
 
@@ -517,7 +520,8 @@ describe('Switcher Transactional State Machine & Rollback', () => {
     expect(result.adcUpdated).toBe(true);
     const settings = JSON.parse(fs.readFileSync(Paths.antigravitySettingsFile, 'utf-8'));
     expect(settings.gcp.customField).toBe('preserve_me');
-    expect(settings.gcp.project).toBeUndefined();
+    expect(settings.gcp.project).toBe('proj');
+    expect(settings.model).toBe('model-picked-in-antigravity');
   });
 
   it('combines rollback errors when rollback actions fail', () => {
