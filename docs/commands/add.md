@@ -14,14 +14,19 @@ the same account refreshes the stored session rather than creating a duplicate.
 agy-auth add
 ```
 
+Since Antigravity is already using that session, the account is recorded as the
+one in use; there is nothing to switch. To add another Google account, run
+[`agy-auth login`](./login.md), or sign in to Antigravity with it and run `add`
+again.
+
 Antigravity owns the sign-in itself. If no session is present, sign in to
 Antigravity first. If Google does not return the account address with the
 session, `add` asks for it, or you can pass `--email`.
 
 Options:
 
-- `--email <email>`: Account email address
 - `--alias <alias>`: Account alias
+- `--email <email>`: Account email address
 - `-y, --yes`: Do not prompt
 - `-j, --json`: Output as JSON
 - `-h, --help`: Show this help

@@ -273,7 +273,9 @@ async function addAntigravityAccount(options: AddOptions, services?: AddServices
     );
   }
 
-  const account = result.account;
+  // The session came from Antigravity, so this is already the account in use;
+  // recording that spares a switch that would only write the same session back.
+  const account = registry.setActiveAccount(result.account.id) ?? result.account;
 
   if (options.json) {
     console.log(
@@ -287,7 +289,5 @@ async function addAntigravityAccount(options: AddOptions, services?: AddServices
   }
 
   console.log(`\n  ${colors.green('[ok]')} Added ${colors.green(formatAccountShort(account))}`);
-  console.log(
-    `  Run ${colors.cyan(`agy-auth switch "${account.alias || account.email}"`)} to use it.\n`
-  );
+  console.log('  It is the account in use. Run `agy-auth login` to add another.\n');
 }

@@ -476,9 +476,12 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
         { alias: 'work', project: 'my-proj', json: true, yes: true },
         { fetchFn: fetchFn as unknown as typeof fetch }
       );
-      const [saved] = new RegistryManager().getAccounts();
+      const registry = new RegistryManager();
+      const [saved] = registry.getAccounts();
       expect(saved.alias).toBe('work');
       expect(saved.gcpProject).toBe('my-proj');
+      // Antigravity is signed in with it, so no switch is needed to use it.
+      expect(registry.getActiveAccount()?.id).toBe(saved.id);
 
       // A bad alias is refused before the session is even read.
       readSpy.mockClear();
