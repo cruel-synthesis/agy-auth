@@ -25,6 +25,6 @@
 
 On macOS, Google Antigravity stores OAuth tokens inside the macOS Keychain under service `gemini` / account `antigravity`.
 
-`agy-auth` integrates with Apple Keychain and Antigravity's `~/.gemini/antigravity-cli/antigravity-oauth-token` file. It reads the freshest valid session during `login` or `add` and writes the token file during `switch`; on macOS it also updates Apple Keychain.
+`agy-auth` integrates with Apple Keychain and Antigravity's `~/.gemini/antigravity-cli/antigravity-oauth-token` file. It reads the freshest valid session during `add` and writes the token file during `switch`; on macOS it also updates Apple Keychain.
 
 Antigravity can use native OS keyrings. Version 0.1 does not integrate with Linux Secret Service or Windows Credential Manager, so OAuth interoperability on those platforms requires Antigravity's file-backed token store. Browser sign-in remains available on every platform.
