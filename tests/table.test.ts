@@ -89,6 +89,27 @@ describe('Table & TUI presentation', () => {
     }
   });
 
+  it('keeps accounts that share a long prefix distinguishable at any width', () => {
+    const lookalikes: Account[] = ['teamaccount@example.com', 'teamaccount2@example.com'].map(
+      (email, i) => ({
+        id: `look_${i}`,
+        email,
+        authType: 'oauth',
+        status: 'valid',
+        createdAt: 0,
+        updatedAt: 0,
+      })
+    );
+
+    for (let width = 24; width <= 120; width++) {
+      const { rows } = getTableComponents(lookalikes, 'look_0', width);
+      // Each row is "* 01 " or "  01 ", then the account cell.
+      const cells = rows.map((row) => row.choiceText.slice(5).split('  ')[0]);
+      expect(new Set(cells).size, `width ${width}: ${cells.join(' | ')}`).toBe(2);
+      for (const row of rows) expect(stringWidth(row.coloredText)).toBeLessThanOrEqual(width);
+    }
+  });
+
   it('renders interactive selection menu with ASCII navigation hints and active indicators', () => {
     const menu = renderSelectMenu(sampleAccounts, 'acc_1', 1, '', 'Select profile:', 100);
     expect(menu).toContain('Select profile:');

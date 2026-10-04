@@ -214,6 +214,18 @@ export function getTableComponents(
     ...rawRows.map((r) => stringWidth(r.accountCell))
   );
 
+  // Accounts are chosen by this column, so it keeps the width at which no two
+  // labels truncate alike, such as two addresses sharing their first ten letters.
+  const labels = rawRows.map((r) => r.accountCell);
+  const distinctLabels = new Set(labels).size;
+  let minAccountW = Math.min(maxNaturalAccount, MIN_ACCOUNT_WIDTH);
+  while (
+    minAccountW < maxNaturalAccount &&
+    new Set(labels.map((label) => truncateAccount(label, minAccountW))).size < distinctLabels
+  ) {
+    minAccountW++;
+  }
+
   let visible: ColumnKey[] = ['plan', 'gemini5h', 'geminiWk', 'claude5h', 'claudeWk', 'last'];
 
   const getOtherColumnsWidth = (): number =>
@@ -221,10 +233,7 @@ export function getTableComponents(
 
   // Drop columns if minimum account width plus columns exceeds terminal width
   for (const key of COLUMN_DROP_ORDER) {
-    if (
-      prefixWidth + Math.min(maxNaturalAccount, MIN_ACCOUNT_WIDTH) + getOtherColumnsWidth() <=
-      termWidth
-    ) {
+    if (prefixWidth + minAccountW + getOtherColumnsWidth() <= termWidth) {
       break;
     }
     visible = visible.filter((candidate) => candidate !== key);
@@ -232,7 +241,7 @@ export function getTableComponents(
 
   // Allocate account column width using available slack up to natural width
   const availableForAccount = Math.max(
-    MIN_ACCOUNT_WIDTH,
+    minAccountW,
     termWidth - prefixWidth - getOtherColumnsWidth()
   );
   let accountW = Math.min(maxNaturalAccount, availableForAccount);

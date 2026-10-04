@@ -82,7 +82,7 @@ The wide table shows:
   02 alt (alt@example.com)       Pro    stale         41% (27 Aug)  -          -          3h ago
 ```
 
-Percentages are quota **remaining**. `-` means no cached value; `stale` means the cached window's reset time has passed and only a refresh can tell you the new figure. Narrow terminals drop columns in order: `LAST` first, then the weekly columns, then `CLAUDE 5H`, `GEMINI 5H`, and `PLAN`, down to an account-only list.
+Percentages are quota **remaining**. `-` means no cached value; `stale` means the cached window's reset time has passed and only a refresh can tell you the new figure. Narrow terminals drop columns in order: `LAST` first, then the weekly columns, then `CLAUDE 5H`, `GEMINI 5H`, and `PLAN`, down to an account-only list. They drop sooner when that is what it takes to keep similar account names apart.
 
 ### 4. Let It Choose
 
