@@ -49,3 +49,10 @@ for (const key of [
 ]) {
   delete process.env[key];
 }
+
+/**
+ * Plain output everywhere. picocolors turns color on whenever `CI` is set or the
+ * platform is Windows, so assertions on rendered text would otherwise pass
+ * locally and fail on every CI runner.
+ */
+process.env.NO_COLOR = '1';
