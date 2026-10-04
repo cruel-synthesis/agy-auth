@@ -1,15 +1,7 @@
 import { QuotaRefresh } from './quota.js';
-import { RegistryManager } from './registry.js';
+import { RegistryManager, clone, nextTimestamp } from './registry.js';
 import { Account, Registry } from './types.js';
 import { VerificationResult } from './verifier.js';
-
-function clone<T>(value: T): T {
-  return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);
-}
-
-function nextTimestamp(previous: number): number {
-  return Math.max(Date.now(), previous + 1);
-}
 
 /** Quota-derived state worth persisting for this account, if any. */
 export function hasApplicableQuotaState(refresh: QuotaRefresh): boolean {

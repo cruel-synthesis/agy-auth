@@ -14,11 +14,11 @@ import {
   RegistrySchema,
 } from './types.js';
 
-function clone<T>(value: T): T {
+export function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function nextTimestamp(previous = 0): number {
+export function nextTimestamp(previous = 0): number {
   return Math.max(Date.now(), previous + 1);
 }
 
