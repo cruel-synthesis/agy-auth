@@ -280,19 +280,21 @@ export function readAntigravityToken(): AntigravityTokenReadResult {
  * Writes Antigravity OAuth tokens to both halves of the composite store:
  * 1. File store at Paths.antigravityTokenFile (atomic write, mode 0600)
  * 2. System Keyring (macOS Keychain)
+ *
+ * Elsewhere only the file can be written, and Antigravity there may keep its
+ * sign-in in Secret Service or Credential Manager instead, so the result warns
+ * that the switch may not reach it.
  */
 export function writeAntigravityToken(payload: KeychainPayload): AntigravityTokenWriteResult {
   const tokenFile = Paths.antigravityTokenFile;
   const parentDir = path.dirname(tokenFile);
 
-  let fileWritten = false;
   try {
     if (!fs.existsSync(parentDir)) {
       fs.mkdirSync(parentDir, { recursive: true, mode: 0o700 });
     }
     const jsonStr = JSON.stringify(payload, null, 2);
     Storage.writeFileAtomic(tokenFile, jsonStr, 0o600);
-    fileWritten = true;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return {
@@ -303,12 +305,17 @@ export function writeAntigravityToken(payload: KeychainPayload): AntigravityToke
     };
   }
 
-  let keyringWritten = false;
-  if (KeychainManager.isSupported()) {
-    keyringWritten = KeychainManager.writeAgyToken(payload);
+  if (!KeychainManager.isSupported()) {
+    return {
+      ok: true,
+      fileWritten: true,
+      keyringWritten: false,
+      warning:
+        "Only Antigravity's token file was updated; if Antigravity keeps its sign-in in this system's keyring, it stays on the previous account.",
+    };
   }
 
-  if (!keyringWritten && KeychainManager.isSupported()) {
+  if (!KeychainManager.writeAgyToken(payload)) {
     return {
       ok: true,
       fileWritten: true,
@@ -320,6 +327,6 @@ export function writeAntigravityToken(payload: KeychainPayload): AntigravityToke
   return {
     ok: true,
     fileWritten: true,
-    keyringWritten,
+    keyringWritten: true,
   };
 }

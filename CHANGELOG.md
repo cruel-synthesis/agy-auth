@@ -30,3 +30,4 @@ First release.
 
 - Registry schema version 3, with automatic migration from schema 2. Any other schema version is refused with the registry left as it was found.
 - Node.js 22 or later.
+- On Linux and Windows, OAuth switching updates only Antigravity's token file, and `switch` warns that Antigravity may not follow.

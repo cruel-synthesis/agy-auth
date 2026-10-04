@@ -254,6 +254,29 @@ describe('Switcher Transactional State Machine & Rollback', () => {
     expect(writeSpy).toHaveBeenCalled();
   });
 
+  it('warns that an OAuth switch may not reach Antigravity where only its token file can be written', () => {
+    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(false);
+    const registry = new RegistryManager();
+    const oauthAcc = registry.addOrUpdateAccount({
+      email: 'synthetic.user@example.com',
+      authType: 'oauth',
+      credentials: {
+        keychainPayload: {
+          auth_method: 'consumer',
+          token: { access_token: 'valid-access-token', refresh_token: 'refresh' },
+        },
+      },
+    });
+
+    const result = Switcher.switchAccount(oauthAcc);
+
+    expect(result.currentAccount.id).toBe(oauthAcc.id);
+    expect(fs.existsSync(Paths.antigravityTokenFile)).toBe(true);
+    expect(result.warnings).toEqual([
+      expect.stringMatching(/Only Antigravity's token file was updated/),
+    ]);
+  });
+
   it('rolls back external settings and files if state mutation fails midway', () => {
     const registry = new RegistryManager();
 

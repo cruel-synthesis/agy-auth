@@ -19,3 +19,7 @@ Options:
 
 Switching to an account that needs a sign-in still goes ahead, with a warning
 that says how to renew it.
+
+On Linux and Windows, agy-auth can update only Antigravity's token file, not the
+system keyring, so switching to a Google sign-in account warns that Antigravity
+may stay on the previous account.
