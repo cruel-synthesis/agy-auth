@@ -20,7 +20,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        node-version: [22.x, 24.x]
+        node-version: [22.x, 24.x, 26.x]
+        include:
+          # The oldest release package.json accepts, not only the newest 22.x.
+          - os: ubuntu-latest
+            node-version: 22.0.0
 
     steps:
       - name: Checkout Code
@@ -40,17 +44,116 @@ jobs:
       - name: Check source, tests, and build
         run: npm run check
 
-      - name: Install and smoke-test the package tarball
-        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '24.x'
+      # The steps below run the packed tarball the way users install it, so the
+      # npm launchers (agy-auth.cmd and agy-auth.ps1 on Windows) are exercised.
+      - name: Install the package tarball globally
         shell: bash
         run: |
           expected_version="$(node -p "require('./package.json').version")"
           package_file="cruel-synthesis-agy-auth-${expected_version}.tgz"
-          install_dir="$(mktemp -d)"
-          trap 'rm -rf "${install_dir}" "${package_file}"' EXIT
+          trap 'rm -f "${package_file}"' EXIT
           npm pack --ignore-scripts
-          test -f "${package_file}"
-          npm install --prefix "${install_dir}" --ignore-scripts "./${package_file}"
-          version_out="$("${install_dir}/node_modules/.bin/agy-auth" --version)"
-          test "${version_out}" = "${expected_version}"
-          "${install_dir}/node_modules/.bin/agy-auth" --help
+          npm install --global --ignore-scripts "./${package_file}"
+          test "$(agy-auth --version)" = "${expected_version}"
+          agy-auth --help
+
+      - name: Point the installed CLI at scratch stores
+        shell: bash
+        run: |
+          {
+            echo "AGY_AUTH_HOME=${RUNNER_TEMP}/agy/auth"
+            echo "AGY_CLI_DIR=${RUNNER_TEMP}/agy/cli"
+            echo "AGY_SETTINGS_FILE=${RUNNER_TEMP}/agy/settings.json"
+            echo "AGY_TOKEN_FILE=${RUNNER_TEMP}/agy/token.json"
+            echo "AGY_GCLOUD_ADC_FILE=${RUNNER_TEMP}/agy/adc.json"
+            echo "AGY_AUTH_NO_NATIVE=1"
+          } >> "${GITHUB_ENV}"
+
+      - name: Load an account's environment in bash
+        shell: bash
+        run: |
+          agy-auth add --api-key FAKE-CI-KEY --email ci@example.com --alias ci
+          agy-auth switch ci
+          eval "$(agy-auth env --shell posix)"
+          test "${GEMINI_API_KEY}" = FAKE-CI-KEY
+          eval "$(agy-auth env --shell posix --clear)"
+          test -z "${GEMINI_API_KEY+set}"
+
+      - name: Load an account's environment in PowerShell 7
+        shell: pwsh
+        run: |
+          agy-auth env --shell powershell | Out-String | Invoke-Expression
+          if ($env:GEMINI_API_KEY -cne 'FAKE-CI-KEY') { throw 'agy-auth env did not set GEMINI_API_KEY.' }
+          agy-auth env --shell powershell --clear | Out-String | Invoke-Expression
+          if (Test-Path Env:GEMINI_API_KEY) { throw 'agy-auth env --clear left GEMINI_API_KEY set.' }
+
+      - name: Load an account's environment in Windows PowerShell 5.1
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          if ($PSVersionTable.PSVersion.Major -ne 5) { throw "Expected Windows PowerShell 5.1, got $($PSVersionTable.PSVersion)." }
+          agy-auth env | Out-String | Invoke-Expression
+          if ($env:GEMINI_API_KEY -cne 'FAKE-CI-KEY') { throw 'agy-auth env did not set GEMINI_API_KEY.' }
+          agy-auth env --clear | Out-String | Invoke-Expression
+          if (Test-Path Env:GEMINI_API_KEY) { throw 'agy-auth env --clear left GEMINI_API_KEY set.' }
+
+      - name: List accounts from cmd
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: call agy-auth list --offline
+
+      # Only on GitHub's macOS machines, which are discarded after the job: the
+      # step makes a new keychain the user's default, which on anyone's own Mac
+      # would redirect their real Keychain lookups.
+      - name: Read and write sessions in a throwaway Keychain
+        if: runner.os == 'macOS' && runner.environment == 'github-hosted'
+        shell: bash
+        run: |
+          scratch="${RUNNER_TEMP}/agy-keychain"
+          mkdir -p "${scratch}"
+          export AGY_AUTH_NO_NATIVE=0
+          export AGY_AUTH_HOME="${scratch}/auth" AGY_CLI_DIR="${scratch}/cli"
+          export AGY_SETTINGS_FILE="${scratch}/settings.json" AGY_TOKEN_FILE="${scratch}/token.json"
+          export AGY_GCLOUD_ADC_FILE="${scratch}/adc.json"
+          # The sessions are fake, so keep them away from Google.
+          echo 'globalThis.fetch = () => { throw new Error("network disabled for this check"); };' > "${scratch}/no-fetch.mjs"
+          export NODE_OPTIONS="${NODE_OPTIONS:-} --import=${scratch}/no-fetch.mjs"
+
+          keychain="${scratch}/ci.keychain-db"
+          security create-keychain -p ci "${keychain}"
+          security set-keychain-settings "${keychain}"
+          security unlock-keychain -p ci "${keychain}"
+          security list-keychains -d user -s "${keychain}"
+          security default-keychain -d user -s "${keychain}"
+
+          # A session the way Antigravity stores it: JSON, base64-encoded behind
+          # go-keyring's prefix.
+          seed() {
+            node -e 'const t = process.argv[1]; const session = { auth_method: "consumer", token: { access_token: t, refresh_token: "refresh-" + t, token_type: "Bearer", expiry: "2099-01-01T00:00:00Z" } }; process.stdout.write("go-keyring-base64:" + Buffer.from(JSON.stringify(session)).toString("base64"));' "$1"
+          }
+          stored() {
+            security find-generic-password -s gemini -a antigravity -w |
+              node -e 'let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => console.log(JSON.parse(Buffer.from(s.trim().replace(/^go-keyring-base64:/, ""), "base64").toString()).token.access_token));'
+          }
+
+          # Reading: each session Antigravity left behind becomes an account.
+          security add-generic-password -U -s gemini -a antigravity -w "$(seed first-token)"
+          agy-auth add --email first@example.com --alias first
+          security add-generic-password -U -s gemini -a antigravity -w "$(seed second-token)"
+          agy-auth add --email second@example.com --alias second
+
+          # Writing: a switch replaces the item and the token file with the
+          # chosen account's session.
+          agy-auth switch first
+          test "$(stored)" = first-token
+          agy-auth switch second
+          test "$(stored)" = second-token
+          test "$(node -p 'JSON.parse(require("fs").readFileSync(process.env.AGY_TOKEN_FILE, "utf8")).token.access_token')" = second-token
+          agy-auth doctor --offline --json > "${scratch}/doctor.json" || true
+          node -e 'const c = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).data.checks.find((x) => x.name === "Antigravity Session Store"); if (c?.status !== "ok" || !c.message.includes("system Keychain")) { console.error(c); process.exit(1); }' "${scratch}/doctor.json"
+
+          # A missing item means no session, not a Keychain failure.
+          security delete-generic-password -s gemini -a antigravity
+          rm "${AGY_TOKEN_FILE}"
+          agy-auth add --email third@example.com --json > "${scratch}/missing.json" || true
+          node -e 'const e = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).error; if (e?.code !== "no_session") { console.error(e); process.exit(1); }' "${scratch}/missing.json"
