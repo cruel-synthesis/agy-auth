@@ -32,6 +32,13 @@ Or run directly without global installation:
 npx @cruel-synthesis/agy-auth --help
 ```
 
+Requires Node.js 22 or later. Use the scoped name above: the unscoped `agy-auth`
+package on npm belongs to an unrelated project.
+
+macOS is fully supported. On Linux and Windows you can sign in, list, and track
+quota, but a switch reaches Antigravity only when it signs in from its token
+file rather than the system keyring; see [Platform Support](./docs/platform-support.md).
+
 ---
 
 ## Quick Start
