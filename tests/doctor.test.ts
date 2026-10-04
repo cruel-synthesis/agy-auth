@@ -8,7 +8,6 @@ import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
 import {
   futureExpiry,
-  generateSyntheticPrivateKey,
   installNativeStoreDouble,
   type NativeStoreDouble,
   setupTestEnvironment,

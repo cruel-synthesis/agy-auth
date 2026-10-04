@@ -66,7 +66,7 @@ import { addCommand, validateEmailInput } from '../src/commands/add.js';
 import { exportCommand } from '../src/commands/export.js';
 import { loginCommand, validateAliasInput } from '../src/commands/login.js';
 import { removeCommand } from '../src/commands/remove.js';
-import { CancellationError, CliError, UsageError } from '../src/core/errors.js';
+import { CancellationError, UsageError } from '../src/core/errors.js';
 import { KeychainManager } from '../src/core/keychain.js';
 import { RegistryManager } from '../src/core/registry.js';
 import { TestEnv, futureExpiry, pastExpiry, setupTestEnvironment } from './test-utils.js';

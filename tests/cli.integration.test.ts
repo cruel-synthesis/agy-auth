@@ -2,7 +2,6 @@ import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { RegistryManager } from '../src/core/registry.js';
 import { VERSION } from '../src/version.js';
 import { guardedNodeArgs, TestEnv, setupTestEnvironment } from './test-utils.js';
 

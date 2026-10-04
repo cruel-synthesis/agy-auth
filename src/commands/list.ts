@@ -2,7 +2,7 @@ import { UsageError } from '../core/errors.js';
 import { applyCheckResults, applyQuotaResults } from '../core/quota-apply.js';
 import { QuotaOptions, summarizeQuotaRefresh } from '../core/quota.js';
 import { RegistryManager } from '../core/registry.js';
-import { Account, sanitizeAccounts } from '../core/types.js';
+import { sanitizeAccounts } from '../core/types.js';
 import { Verifier } from '../core/verifier.js';
 import { renderAccountsTable } from '../ui/table.js';
 import { colors } from '../ui/theme.js';

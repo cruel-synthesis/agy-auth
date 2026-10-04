@@ -1,13 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCli, runCli } from '../src/cli.js';
-import { CancellationError, CliError } from '../src/core/errors.js';
+import { CancellationError } from '../src/core/errors.js';
 import { RegistryManager } from '../src/core/registry.js';
-import {
-  TestEnv,
-  generateSyntheticPrivateKey,
-  installNativeStoreDouble,
-  setupTestEnvironment,
-} from './test-utils.js';
+import { TestEnv, installNativeStoreDouble, setupTestEnvironment } from './test-utils.js';
 
 describe('CLI unit tests and option dispatch', () => {
   let testEnv: TestEnv;
@@ -356,7 +351,6 @@ describe('CLI unit tests and option dispatch', () => {
 
   it('handles unexpected non-CliError exceptions in JSON and text modes', async () => {
     const cli = createCli();
-    const origParse = cli.parseAsync.bind(cli);
     vi.spyOn(cli, 'parseAsync').mockRejectedValue(new Error('Unexpected disk read error'));
 
     let jsonCaptured = '';

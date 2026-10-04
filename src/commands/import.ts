@@ -1,8 +1,5 @@
 import { CredentialFiles } from '../core/credential-files.js';
-import {
-  validateAccountCredentials,
-  validateServiceAccountKey,
-} from '../core/credential-validation.js';
+import { validateAccountCredentials } from '../core/credential-validation.js';
 import { UsageError } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
 import { Account, sanitizeAccount } from '../core/types.js';

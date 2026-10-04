@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Paths } from '../src/core/paths.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RegistryManager } from '../src/core/registry.js';
 import { Account } from '../src/core/types.js';
 import { Verifier } from '../src/core/verifier.js';

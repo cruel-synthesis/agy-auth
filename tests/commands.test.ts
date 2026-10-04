@@ -15,13 +15,7 @@ import { modelClearCommand, modelSetCommand } from '../src/commands/model.js';
 import { projectClearCommand, projectSetCommand } from '../src/commands/project.js';
 import { removeCommand } from '../src/commands/remove.js';
 import { switchCommand } from '../src/commands/switch.js';
-import {
-  AccountNotFoundError,
-  AmbiguousSelectorError,
-  CancellationError,
-  CliError,
-  UsageError,
-} from '../src/core/errors.js';
+import { AccountNotFoundError, AmbiguousSelectorError, UsageError } from '../src/core/errors.js';
 import { KeychainManager } from '../src/core/keychain.js';
 import { Paths } from '../src/core/paths.js';
 import { RegistryManager } from '../src/core/registry.js';
@@ -471,13 +465,13 @@ describe('Command Modules Behavioral & Regression Suite', () => {
         },
       },
     });
-    const acc2 = registry.addOrUpdateAccount({
+    registry.addOrUpdateAccount({
       email: 'user2@example.com',
       alias: 'api-rem2',
       authType: 'api-key',
       credentials: { apiKey: 'AIzaSyKey' },
     });
-    const acc3 = registry.addOrUpdateAccount({
+    registry.addOrUpdateAccount({
       email: 'user3@example.com',
       alias: 'api-rem3',
       authType: 'api-key',
