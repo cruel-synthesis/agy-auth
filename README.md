@@ -1,6 +1,8 @@
 # agy-auth
 
-`agy-auth` is a local account manager and switcher for Google Antigravity and Google AI development. It enables switching between multiple accounts for Antigravity OAuth sessions (Apple Keychain or Antigravity's token file), Gemini API keys (`GEMINI_API_KEY`), Service Account keys (`GOOGLE_APPLICATION_CREDENTIALS`), and Google Cloud Application Default Credentials (ADC).
+`agy-auth` keeps several Google accounts signed in for Google Antigravity and switches between them in one command. If you have more than one Google AI Pro or Ultra account, add each once, see every plan and its remaining quota side by side, and move to whichever account has room.
+
+It also manages Gemini API keys, Service Account keys, and Google Cloud Application Default Credentials; see [Other Credentials](#other-credentials).
 
 > `agy-auth` is an independent project. It is **not affiliated with, endorsed by, or supported by Google**.
 
@@ -34,44 +36,35 @@ npx @cruel-synthesis/agy-auth --help
 
 ## Quick Start
 
-### 1. Add the Account You Are Signed In To
-Import the Google account currently signed in to Antigravity. Running it again
-for the same account refreshes its stored session rather than duplicating it:
+### 1. Add the Account Antigravity Is Signed In To
 
 ```bash
 agy-auth add
 ```
 
-### 2. Add Another Account
-Sign in to a different Google account in the browser:
+It becomes the account in use. Running it again for the same account refreshes
+its stored session rather than duplicating it.
+
+### 2. Add Your Other Accounts
+Sign in to each in the browser:
 
 ```bash
-agy-auth login
+agy-auth login --alias work
 ```
 
-Or add an API key through a masked prompt:
+### 3. See Them and Switch
 
 ```bash
-agy-auth add --api-key --email work@example.com --alias work
-```
-
-For automation, `--api-key <key>` remains available, but command-line values can be retained in shell history or exposed to local process inspection.
-
-### 3. List and Switch Accounts
-List your registered accounts and switch between them:
-
-```bash
-agy-auth list              # refreshes live quota for any account whose reading has aged out
-agy-auth list --offline    # cached data only, no network request
-agy-auth list --check      # verify accounts and refresh quota for every OAuth account
-agy-auth switch work       # cached data only; never makes a network request
+agy-auth list              # every account, its plan, and the quota it has left
+agy-auth switch work       # by alias, email, or the number shown in `list`
 agy-auth switch 2
-agy-auth auto              # switch to whichever account wastes the least quota
-agy-auth auto --dry-run    # show the ranking and the choice without switching
-agy-auth auto --watch      # keep running; switch whenever the account in use runs out
-agy-auth -                 # Switch to previous account
-agy-auth current
+agy-auth -                 # back to the previous account
+agy-auth current           # the account in use
 ```
+
+`switch` never makes a network request. `list` refreshes quota readings that
+have aged out; `list --offline` shows cached data only, and `list --check`
+re-verifies every account.
 
 The wide table shows:
 
@@ -83,6 +76,14 @@ The wide table shows:
 ```
 
 Percentages are quota **remaining**. `-` means no cached value; `stale` means the cached window's reset time has passed and only a refresh can tell you the new figure. Narrow terminals drop columns in order: `LAST` first, then the weekly columns, then `CLAUDE 5H`, `GEMINI 5H`, and `PLAN`, down to an account-only list.
+
+### 4. Let It Choose
+
+```bash
+agy-auth auto              # switch to whichever account wastes the least quota
+agy-auth auto --dry-run    # show the ranking and the choice without switching
+agy-auth auto --watch      # keep running; switch whenever the account in use runs out
+```
 
 ---
 
@@ -96,7 +97,7 @@ This feature is **experimental** because it depends on undocumented upstream con
 - Only OAuth accounts are probed. API key, service account, and ADC accounts are never quota-probed.
 - `agy-auth switch` never makes a network request.
 
-### OAuth Onboarding and Token Refresh
+## Sign-In and Token Refresh
 
 - **Existing Antigravity Session (Out-of-the-box)**:
   `agy-auth add` imports an active Antigravity session from Apple Keychain on macOS or from Antigravity's token file on any platform. This flow verifies your identity via Google's `userinfo` endpoint using the access token and **requires no OAuth client ID**.
@@ -114,8 +115,19 @@ export AGY_OAUTH_CLIENT_SECRET='only-if-your-client-requires-one'   # optional
 
 Token refresh (exchanging an existing refresh token for an access token), browser authorization (interactive sign-in via PKCE loopback callback), and Antigravity session import are distinct operations. Quota refresh and login never write Antigravity's token file or Apple Keychain; only `agy-auth switch` applies credentials to external state. When renewal fails, the account is listed as `expired`; sign in again through Antigravity and run `agy-auth add`.
 
-### 4. Apply Shell Environment Variables
-When using API key or service account credentials, apply environment variables to your current POSIX shell session:
+## Other Credentials
+
+`add` also saves credentials Antigravity does not hold. An API key goes through a masked prompt:
+
+```bash
+agy-auth add --api-key --email work@example.com --alias work-key
+agy-auth add --service-account /path/to/sa-key.json --alias sa-prod
+agy-auth add --adc
+```
+
+For automation, `--api-key <key>` remains available, but command-line values can be retained in shell history or exposed to local process inspection. See [`add`](./docs/commands/add.md) for every option.
+
+After switching to one of these, apply its environment variables to your current POSIX shell session:
 
 ```bash
 eval "$(agy-auth env)"
@@ -133,15 +145,15 @@ Invoke-Expression (agy-auth env --shell powershell)
 
 | Command | Purpose |
 |---|---|
-| `agy-auth list` (or `ls`) | List accounts with plan and quota (`--active`, `--check`, `--offline`, `--json`); refreshes any OAuth account whose reading is over ten minutes old |
-| `agy-auth switch [selector]` | Switch active account by number, alias, email, or interactive picker (cached data only, no network request) |
-| `agy-auth -` | Switch to the previously active account |
+| `agy-auth add` | Add the account signed in to Antigravity, or another credential (`--alias`, `--api-key`, `--service-account`, `--adc`) |
+| `agy-auth login` | Sign in to another Google account in a browser, or renew a saved one (`--alias`) |
+| `agy-auth list` (or `ls`) | Show saved accounts, plan and quota (`--active`, `--check`, `--offline`, `--json`); refreshes any OAuth account whose reading is over ten minutes old |
+| `agy-auth switch [account]` (or `sw`) | Switch to a saved account by number, alias, email, or interactive picker (cached data only, no network request) |
+| `agy-auth -` | Switch back to the previous account |
+| `agy-auth current` | Show the account in use (`--offline`, `--json`); refreshes live quota by default |
 | `agy-auth auto` (or `best`) | Switch to the account whose quota is most at risk of going to waste (`--dry-run`, `--watch`, `--interval`, `--offline`, `--json`) |
-| `agy-auth current` | Display details for the currently active account (`--offline`, `--json`); refreshes live quota by default |
-| `agy-auth details [selector]` | Display in-depth account, model, project, plan, and quota configuration (`--offline`, `--json`) |
-| `agy-auth login` | Add or refresh a Google OAuth account |
-| `agy-auth add` | Add the account signed in to Antigravity, or another credential (`--api-key`, `--service-account`, `--adc`) |
-| `agy-auth remove [selector...]` | Remove accounts (`--all`, `--yes`, `--json`) |
+| `agy-auth details [account]` | Show everything stored for one account: model, project, plan, and quota (`--offline`, `--json`) |
+| `agy-auth remove [account...]` | Remove saved accounts (`--all`, `--yes`, `--json`) |
 | `agy-auth alias <set\|clear>` | Assign or remove friendly nicknames for accounts |
 | `agy-auth project <set\|clear>` | Configure Google Cloud Project ID and compute region |
 | `agy-auth model <set\|clear>` | Configure preferred Gemini model setting |
