@@ -20,7 +20,7 @@ Usage Examples:
 eval "$(agy-auth env)"
 
 # Apply variables in PowerShell
-Invoke-Expression (agy-auth env --shell powershell)
+agy-auth env --shell powershell | Out-String | Invoke-Expression
 
 # Reset environment variables
 eval "$(agy-auth env --clear)"

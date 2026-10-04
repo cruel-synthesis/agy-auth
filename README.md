@@ -143,7 +143,7 @@ eval "$(agy-auth env)"
 Or in PowerShell:
 
 ```powershell
-Invoke-Expression (agy-auth env --shell powershell)
+agy-auth env --shell powershell | Out-String | Invoke-Expression
 ```
 
 ---
