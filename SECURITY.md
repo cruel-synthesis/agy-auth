@@ -22,7 +22,7 @@ Please provide:
 - Registry and switch mutations use lock files to serialize concurrent `agy-auth` processes.
 - Credential file readers strictly reject symlinks, irregular files, and files exceeding size limits (1 MiB for credentials, 5 MiB for imports).
 - Account and status JSON redact credentials. `agy-auth env` deliberately emits shell values and its JSON form is marked `containsSecrets`; `agy-auth export --include-secrets` deliberately writes credentials to a file.
-- Managed recovery snapshots can contain a pre-mutation registry, ADC file, service-account key, or Antigravity settings. `agy-auth clean --all` deletes all managed snapshots.
+- Managed recovery snapshots can contain a pre-mutation registry, Antigravity token file, ADC file, service-account key, or Antigravity settings. `agy-auth clean --all` deletes all managed snapshots.
 
 ## Network Boundary
 

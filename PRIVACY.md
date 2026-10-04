@@ -21,7 +21,7 @@
 
    - Hosts contacted: `daily-cloudcode-pa.googleapis.com` and `cloudcode-pa.googleapis.com`.
    - Contracts used: `v1internal:retrieveUserQuotaSummary`, `v1internal:loadCodeAssist`, `v1internal:retrieveUserQuota`.
-   - What is sent: your OAuth access token as a `Bearer` header, an `agy-auth/<version>` user agent, and, for `retrieveUserQuota`, the GCP project ID associated with the account. These requests do not include local filenames, hostnames, or registry contents.
+   - What is sent: your OAuth access token as a `Bearer` header, Antigravity's own user agent (and, for `loadCodeAssist`, `ideType: ANTIGRAVITY`), because these endpoints answer only Antigravity, and, for `retrieveUserQuota`, the GCP project ID associated with the account. These requests do not include local filenames, hostnames, or registry contents. Token renewal identifies itself as `agy-auth/<version>`.
    - Token refresh and browser OAuth login contact `accounts.google.com`, `oauth2.googleapis.com`, and `www.googleapis.com`, using Antigravity's client unless `AGY_OAUTH_CLIENT_ID` names your own. Antigravity session import contacts `www.googleapis.com` to verify the account email.
 
    `agy-auth` embeds the OAuth client ID and secret published in Antigravity's own binary, because Google's individual tier answers that client and refuses others. An installed application cannot keep a secret (RFC 8252 section 8.5), so that pair identifies the application, never you. See [SECURITY.md](./SECURITY.md#network-boundary).
@@ -49,7 +49,8 @@
 
    | Command | Default behaviour |
    |---|---|
-   | `agy-auth login` | Contacts Google userinfo when importing an Antigravity session. Interactive macOS onboarding may open Antigravity, which performs its own Google sign-in. Browser sign-in contacts Google's OAuth and token endpoints. |
+   | `agy-auth login` | Browser sign-in contacts Google's OAuth, token, and userinfo endpoints. |
+   | `agy-auth add` | Contacts Google userinfo to confirm which account Antigravity is signed in to. Adding an API key, service account, or ADC makes no request. |
    | `agy-auth switch` | **Never** makes a network request. Renders cached plan and quota only. |
    | `agy-auth list` | Refreshes live plan and quota for **every OAuth account whose cached reading is over ten minutes old**. |
    | `agy-auth list --check` | Verifies selected accounts (API keys use Google's official models endpoint) and refreshes live plan and quota for **every selected OAuth account** (at most 4 concurrent requests). |
@@ -83,7 +84,7 @@
    - Account and status JSON responses redact credentials. `agy-auth env` is the deliberate exception: its shell and JSON forms can emit the active API key so the caller can configure a shell. Do not log or share that output.
 
 9. **Recovery Backups Retain Pre-Mutation State**:
-   Switching, syncing, importing, and removing accounts may create owner-readable recovery snapshots under `~/.agy-auth/backups/`. Registry, ADC, and service-account snapshots can contain credentials; settings snapshots can contain other local Antigravity configuration. The 10 newest snapshots of each kind (switch, remove, import, and so on) are retained, so one busy operation cannot push out another's. Run `agy-auth clean --all` to delete them when recovery is no longer needed.
+   Switching, importing, and removing accounts, and upgrading or recovering a damaged registry, may create owner-readable recovery snapshots under `~/.agy-auth/backups/`. Registry, Antigravity token-file, ADC, and service-account snapshots can contain credentials; settings snapshots can contain other local Antigravity configuration. The 10 newest snapshots of each kind (switch, remove, import, and so on) are retained, so one busy operation cannot push out another's. Run `agy-auth clean --all` to delete them when recovery is no longer needed.
 
 ---
 
@@ -91,7 +92,7 @@
 
 | Auth Type | Where It Originates | How It Is Stored |
 |---|---|---|
-| **OAuth (Antigravity CLI)** | Google Sign-in inside official Antigravity | Saved to `~/.agy-auth/registry.json`; `switch` writes Antigravity's token file and, on macOS, Apple Keychain |
+| **OAuth (Google sign-in)** | The account Antigravity is signed in to (`agy-auth add`), or browser sign-in (`agy-auth login`) | Saved to `~/.agy-auth/registry.json`; `switch` writes Antigravity's token file and, on macOS, Apple Keychain |
 | **API Key** | Google AI Studio (`GEMINI_API_KEY`) | Saved to `~/.agy-auth/registry.json` |
 | **Service Account** | Google Cloud Console IAM service account JSON | Stored in the registry; switching to the account materializes `~/.agy-auth/accounts/<id>.json` (0600 on POSIX systems), which remains until that account is removed |
 | **Application Default Credentials (ADC)** | `gcloud auth application-default login` | Path stored in the registry; switching a custom path copies its validated contents to the configured global ADC destination |
