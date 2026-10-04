@@ -1,6 +1,6 @@
 # login
 
-Sign in to a Google account in the browser.
+Sign in to another Google account in a browser.
 
 ```shell
 agy-auth login [options]

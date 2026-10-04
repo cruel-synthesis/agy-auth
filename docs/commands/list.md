@@ -1,6 +1,6 @@
 # list
 
-List registered accounts.
+Show saved accounts, plan and quota.
 
 ```shell
 agy-auth list [options]

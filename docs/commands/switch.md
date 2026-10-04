@@ -1,6 +1,6 @@
 # switch
 
-Switch the active account from cached data (makes no network request).
+Switch to a saved account (makes no network request).
 
 ```shell
 agy-auth switch [options] [query]

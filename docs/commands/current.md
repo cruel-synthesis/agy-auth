@@ -1,6 +1,6 @@
 # current
 
-Show the active account: auth method, status, plan, quota and reset times, and
+Show the account in use: auth method, status, plan, quota and reset times, and
 last use. Project, model and verification details are shown by
 [`details`](./details.md) or in `--json` output.
 

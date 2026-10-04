@@ -6,13 +6,13 @@ Overview of commands available in `agy-auth`.
 
 ## Core Commands
 
-- [`list`](./list.md) (`ls`): List registered accounts (`-a`, `-c`, `--offline`, `-j`)
-- [`switch`](./switch.md) (`sw`): Switch active account (`-j`)
-- [`auto`](./auto.md) (`best`): Switch to the account whose quota is most at risk of going to waste (`-n`, `-w`, `--interval`, `--offline`, `-j`)
-- [`current`](./current.md) (`whoami`): Show active account (`--offline`, `-j`)
-- [`details`](./details.md) (`info`): Show detailed metadata for an account (`--offline`, `-j`)
-- [`login`](./login.md): Sign in to a Google account in the browser
 - [`add`](./add.md): Add the account signed in to Antigravity, or another credential (`--api-key`, `--service-account`, `--adc`, `-y`, `-j`)
+- [`login`](./login.md): Sign in to another Google account in a browser
+- [`list`](./list.md) (`ls`): Show saved accounts, plan and quota (`-a`, `-c`, `--offline`, `-j`)
+- [`switch`](./switch.md) (`sw`): Switch to a saved account (`-j`)
+- [`current`](./current.md) (`whoami`): Show the account in use (`--offline`, `-j`)
+- [`auto`](./auto.md) (`best`): Switch to the account whose quota is most at risk of going to waste (`-n`, `-w`, `--interval`, `--offline`, `-j`)
+- [`details`](./details.md) (`info`): Show everything stored for one account (`--offline`, `-j`)
 - [`remove`](./remove.md) (`rm`): Remove one or more accounts (`--all`, `-y`, `-j`)
 
 ---
@@ -26,4 +26,4 @@ Overview of commands available in `agy-auth`.
 - [`export`](./export.md): Export accounts to a backup file (`--include-secrets`, `-y`, `-j`)
 - [`import`](./import.md): Import accounts from a backup file (`--overwrite`, `-j`)
 - [`clean`](./clean.md): Remove old managed backup files (`--dry-run`, `--all`, `-j`)
-- [`doctor`](./doctor.md): Inspect the local installation and environment (`--offline`, `-j`)
+- [`doctor`](./doctor.md): Check for problems (`--offline`, `-j`)

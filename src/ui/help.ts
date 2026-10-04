@@ -9,11 +9,11 @@ type CommandRow = [command: string, description: string, common?: true];
 
 const ALL_ACCOUNT_COMMANDS: CommandRow[] = [
   ['add', 'Add the account signed in to Antigravity', true],
+  ['login', 'Sign in to another Google account in a browser', true],
   ['add --api-key', 'Add an API key, service account, or ADC credential'],
-  ['login', 'Sign in to another Google account in a browser'],
   ['list', 'Show saved accounts, plan and quota', true],
   ['switch [account]', 'Switch to a saved account', true],
-  ['switch -', 'Switch back to the previous account'],
+  ['switch -', 'Switch back to the previous account', true],
   ['auto', 'Switch to the account with the most quota at risk', true],
   ['auto --watch', 'Keep switching as each account runs out'],
   ['current', 'Show the account in use', true],
@@ -48,7 +48,7 @@ export function printTopLevelHelp(all = false, version = VERSION): void {
     console.log('');
     console.log(colors.cyan('Notes:'));
     console.log('  Run `agy-auth help --all` for every command.');
-    console.log('  Run `agy-auth <command> --help` for options and examples.\n');
+    console.log('  Run `agy-auth <command> --help` for its options.\n');
     return;
   }
 
@@ -65,7 +65,7 @@ export function printTopLevelHelp(all = false, version = VERSION): void {
 
   console.log('');
   console.log(colors.cyan('Notes:'));
-  console.log('  Run `agy-auth <command> --help` for options and examples.');
+  console.log('  Run `agy-auth <command> --help` for its options.');
   console.log('');
   console.log('  Live plan and quota reporting is experimental: it uses undocumented Antigravity');
   console.log('  endpoints that may change without notice. `list`, `current` and `details`');

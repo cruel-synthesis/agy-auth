@@ -1,6 +1,6 @@
 # details
 
-Show detailed metadata for an account.
+Show everything stored for one account.
 
 ```shell
 agy-auth details [options] [query]

@@ -1,6 +1,6 @@
 # doctor
 
-Inspect the local installation and environment.
+Check for problems.
 
 ```shell
 agy-auth doctor [options]

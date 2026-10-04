@@ -3,7 +3,7 @@ import { colors } from './theme.js';
 
 /** Said the same way wherever a command finds the registry empty. */
 export const NO_ACCOUNTS =
-  'No accounts yet. Run `agy-auth add` to import the account you are signed in to Antigravity with.';
+  'No accounts yet. Run `agy-auth add` to save the account Antigravity is signed in to, or `agy-auth login` to sign in to another.';
 
 export function formatAccountShort(account: Account): string {
   if (account.alias) {

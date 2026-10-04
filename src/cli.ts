@@ -69,7 +69,7 @@ export function createCli(): Command {
   program
     .command('list')
     .alias('ls')
-    .description('List registered accounts')
+    .description('Show saved accounts, plan and quota')
     .option('-a, --active', 'Show only the active account')
     .option('-c, --check', 'Verify listed accounts and refresh live quota for OAuth accounts')
     .option('--offline', 'Skip the live plan and quota refresh; show cached data only', false)
@@ -82,7 +82,7 @@ export function createCli(): Command {
   program
     .command('switch')
     .alias('sw')
-    .description('Switch the active account from cached data (makes no network request)')
+    .description('Switch to a saved account (makes no network request)')
     .argument('[query]', 'Account selector (number, alias, email, id, or - for previous)')
     .option('-j, --json', 'Machine-readable output')
     .action(async (query, options) => {
@@ -107,7 +107,7 @@ export function createCli(): Command {
   program
     .command('current')
     .alias('whoami')
-    .description('Show the active account')
+    .description('Show the account in use')
     .option('--offline', 'Skip the live plan and quota refresh; show cached data only', false)
     .option('-j, --json', 'Output as JSON')
     .action(async (options) => {
@@ -118,7 +118,7 @@ export function createCli(): Command {
   program
     .command('details')
     .alias('info')
-    .description('Show detailed metadata for an account')
+    .description('Show everything stored for one account')
     .argument('[query]', 'Account selector (number, alias, email, ID)')
     .option('--offline', 'Skip the live plan and quota refresh; show cached data only', false)
     .option('-j, --json', 'Output as JSON')
@@ -129,7 +129,7 @@ export function createCli(): Command {
   // login
   program
     .command('login')
-    .description('Sign in to a Google account in the browser')
+    .description('Sign in to another Google account in a browser')
     .option('--alias <alias>', 'Account alias')
     .option('--project <id>', 'GCP project ID')
     .option('--location <location>', 'Compute region/location')
@@ -142,8 +142,8 @@ export function createCli(): Command {
   program
     .command('add')
     .description('Add the account signed in to Antigravity, or another credential')
-    .option('--email <email>', 'Account email address')
     .option('--alias <alias>', 'Account alias')
+    .option('--email <email>', 'Account email address')
     .option('--api-key [key]', 'Gemini API key (omit value for masked entry)')
     .option('--service-account <path>', 'Path to Service Account JSON key file')
     .option('--adc [path]', 'Use Application Default Credentials (optional custom path)')
@@ -284,7 +284,7 @@ export function createCli(): Command {
   // doctor
   program
     .command('doctor')
-    .description('Inspect the local installation and environment')
+    .description('Check for problems')
     .option('--offline', 'Skip external network reachability probe', false)
     .option('--quota', 'Ask the quota service directly and report its answers')
     .option('-j, --json', 'Output as JSON')
