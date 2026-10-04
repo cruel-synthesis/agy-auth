@@ -52,3 +52,13 @@ export function shellEnvChanges(from: Account | null, to: Account | null): boole
   const after = environmentFor(to);
   return MANAGED_ENV_VARS.some((name) => before[name] !== after[name]);
 }
+
+/**
+ * The line that loads `agy-auth env` into the current shell. It follows env's
+ * default format, which is PowerShell on Windows, where `eval` does not exist.
+ */
+export function applyEnvCommand(platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32'
+    ? 'agy-auth env | Out-String | Invoke-Expression'
+    : 'eval "$(agy-auth env)"';
+}

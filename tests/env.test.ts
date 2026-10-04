@@ -5,6 +5,8 @@ import {
   escapePowerShell,
   generateEnvStatements,
 } from '../src/commands/env.js';
+import { switchCommand } from '../src/commands/switch.js';
+import { applyEnvCommand } from '../src/core/env-vars.js';
 import { RegistryManager } from '../src/core/registry.js';
 import { TestEnv, setupTestEnvironment } from './test-utils.js';
 
@@ -104,6 +106,34 @@ describe('Shell Environment Generation and Escaping', () => {
       expect(stdout).toContain('unset GOOGLE_APPLICATION_CREDENTIALS');
       expect(stdout).toContain('unset GOOGLE_CLOUD_PROJECT');
       expect(stdout).toContain('unset GOOGLE_CLOUD_LOCATION');
+    } finally {
+      console.log = origLog;
+    }
+  });
+
+  it('tells switch users the env loader for the format env prints by default', async () => {
+    // On Windows env prints PowerShell, which `eval` cannot run.
+    expect(applyEnvCommand('win32')).toBe('agy-auth env | Out-String | Invoke-Expression');
+    expect(applyEnvCommand('darwin')).toBe('eval "$(agy-auth env)"');
+    expect(applyEnvCommand('linux')).toBe('eval "$(agy-auth env)"');
+
+    const registry = new RegistryManager();
+    registry.addOrUpdateAccount({
+      email: 'one@example.com',
+      alias: 'one',
+      authType: 'api-key',
+      credentials: { apiKey: 'key-one' },
+    });
+
+    let stdout = '';
+    const origLog = console.log;
+    console.log = (msg: string) => {
+      stdout += `${msg}\n`;
+    };
+
+    try {
+      await switchCommand('one');
+      expect(stdout).toContain(applyEnvCommand());
     } finally {
       console.log = origLog;
     }

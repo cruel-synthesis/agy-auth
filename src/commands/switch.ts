@@ -1,3 +1,4 @@
+import { applyEnvCommand } from '../core/env-vars.js';
 import {
   AccountNotFoundError,
   AmbiguousSelectorError,
@@ -106,6 +107,6 @@ export async function switchCommand(query?: string, options: SwitchOptions = {})
   console.log(`\n  Switched to ${colors.green(formatAccountShort(result.currentAccount))}`);
   if (result.requiresShellUpdate) {
     console.log(`  ${colors.dim('To apply environment changes to your current shell session:')}`);
-    console.log(`    ${colors.cyan('eval "$(agy-auth env)"')}\n`);
+    console.log(`    ${colors.cyan(applyEnvCommand())}\n`);
   }
 }
