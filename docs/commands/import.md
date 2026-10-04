@@ -1,6 +1,6 @@
 # import
 
-Import accounts from a backup file.
+Read a backup of saved accounts.
 
 ```shell
 agy-auth import [options] <file>
@@ -12,6 +12,6 @@ Arguments:
 
 Options:
 
-- `--overwrite`: Overwrite existing accounts with imported metadata (default: false)
+- `--overwrite`: Update existing accounts from the file, including any credentials it holds
 - `-j, --json`: Output as JSON
 - `-h, --help`: Show this help

@@ -9,13 +9,13 @@ agy-auth rm [options] [selectors...]
 
 Arguments:
 
-- `selectors`: Account selectors to remove (number, email, ID, alias)
+- `selectors`: Account selectors (number, alias, email, ID)
 
 Options:
 
-- `--all`: Remove all accounts (default: false)
-- `-y, --yes`: Skip confirmation prompt (default: false)
-- `-j, --json`: Output removal result as JSON
+- `--all`: Remove all accounts
+- `-y, --yes`: Skip confirmation prompt
+- `-j, --json`: Output as JSON
 - `-h, --help`: Show this help
 
 Do not combine account selectors with `--all`; the command rejects that ambiguous destructive request. With `--json`, name the accounts or pass `--all`; JSON mode never opens the account picker.

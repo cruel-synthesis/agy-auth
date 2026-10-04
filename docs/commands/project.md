@@ -9,7 +9,7 @@ agy-auth project clear <account> [options]
 
 Arguments:
 
-- `account`: Account selector (number, email, ID, alias)
+- `account`: Account selector (number, alias, email, ID)
 - `project`: GCP project ID
 - `location`: Optional compute region/location (positional)
 
@@ -25,6 +25,6 @@ Examples:
 agy-auth project set 1 my-gcp-project us-central1
 agy-auth project set work my-prod-project
 
-# Clear project configuration
+# Clear the project and location
 agy-auth project clear work
 ```

@@ -1,6 +1,6 @@
 # env
 
-Print shell export commands for active account.
+Print shell export commands for the active account.
 
 ```shell
 agy-auth env [options]
@@ -9,7 +9,7 @@ agy-auth env [options]
 Options:
 
 - `--shell <posix|powershell>`: Shell output format (default: `posix` on Unix/macOS, `powershell` on Windows)
-- `--clear`: Print unset statements to reset environment (default: false)
+- `--clear`: Print unset statements to reset environment
 - `-j, --json`: Output as JSON
 - `-h, --help`: Show this help
 

@@ -9,7 +9,7 @@ agy-auth model clear <account> [options]
 
 Arguments:
 
-- `account`: Account selector (number, email, ID, alias)
+- `account`: Account selector (number, alias, email, ID)
 - `model`: Model name (e.g. `gemini-2.5-pro`)
 
 Options:

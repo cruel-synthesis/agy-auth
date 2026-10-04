@@ -74,8 +74,8 @@ export function createCli(): Command {
     .description('Show saved accounts, plan and quota')
     .option('-a, --active', 'Show only the active account')
     .option('-c, --check', 'Verify listed accounts and refresh live quota for OAuth accounts')
-    .option('--offline', 'Skip the live plan and quota refresh; show cached data only', false)
-    .option('-j, --json', 'Output results as JSON')
+    .option('--offline', 'Skip the live plan and quota refresh; show cached data only')
+    .option('-j, --json', 'Output as JSON')
     .action(async (options) => {
       await listCommand(options);
     });
@@ -85,8 +85,8 @@ export function createCli(): Command {
     .command('switch')
     .alias('sw')
     .description('Switch to a saved account (makes no network request)')
-    .argument('[query]', 'Account selector (number, alias, email, id, or - for previous)')
-    .option('-j, --json', 'Machine-readable output')
+    .argument('[query]', 'Account selector (number, alias, email, ID, or - for previous)')
+    .option('-j, --json', 'Output as JSON')
     .action(async (query, options) => {
       await switchCommand(query, options);
     });
@@ -99,8 +99,8 @@ export function createCli(): Command {
     .option('-n, --dry-run', 'Show the ranking and the choice without switching')
     .option('-w, --watch', 'Keep running and switch whenever the account in use runs out')
     .option('--interval <minutes>', 'Minutes between checks while watching (default: 5)')
-    .option('--offline', 'Decide from cached quota only; make no network request', false)
-    .option('-j, --json', 'Machine-readable output')
+    .option('--offline', 'Decide from cached quota only; make no network request')
+    .option('-j, --json', 'Output as JSON')
     .action(async (options) => {
       await autoCommand(options);
     });
@@ -110,7 +110,7 @@ export function createCli(): Command {
     .command('current')
     .alias('whoami')
     .description('Show the account in use')
-    .option('--offline', 'Skip the live plan and quota refresh; show cached data only', false)
+    .option('--offline', 'Skip the live plan and quota refresh; show cached data only')
     .option('-j, --json', 'Output as JSON')
     .action(async (options) => {
       await currentCommand(options);
@@ -122,7 +122,7 @@ export function createCli(): Command {
     .alias('info')
     .description('Show everything stored for one account')
     .argument('[query]', 'Account selector (number, alias, email, ID)')
-    .option('--offline', 'Skip the live plan and quota refresh; show cached data only', false)
+    .option('--offline', 'Skip the live plan and quota refresh; show cached data only')
     .option('-j, --json', 'Output as JSON')
     .action(async (query, options) => {
       await detailsCommand(query, options);
@@ -152,7 +152,7 @@ export function createCli(): Command {
     .option('--project <id>', 'GCP project ID')
     .option('--location <location>', 'Compute region/location')
     .option('--model <model>', 'Preferred model name')
-    .option('-y, --yes', 'Do not prompt', false)
+    .option('-y, --yes', 'Do not prompt')
     .option('-j, --json', 'Output as JSON')
     .action(async (options) => {
       await addCommand(options);
@@ -162,22 +162,25 @@ export function createCli(): Command {
   program
     .command('remove')
     .alias('rm')
-    .description('Remove one or more accounts from agy-auth')
-    .argument('[selectors...]', 'Account selectors to remove')
-    .option('--all', 'Remove all accounts', false)
-    .option('-y, --yes', 'Skip confirmation prompt', false)
+    .description('Remove saved accounts')
+    .argument('[selectors...]', 'Account selectors (number, alias, email, ID)')
+    .option('--all', 'Remove all accounts')
+    .option('-y, --yes', 'Skip confirmation prompt')
     .option('-j, --json', 'Output as JSON')
     .action(async (selectors, options) => {
       await removeCommand(selectors, options);
     });
 
   // alias
-  const aliasCmd = program.command('alias').description('Manage account aliases');
+  const aliasCmd = program
+    .command('alias')
+    .description('Set or clear an account alias')
+    .helpCommand('help [command]', 'Show help for a subcommand');
 
   aliasCmd
     .command('set')
-    .description('Set an alias for an account')
-    .argument('<account>', 'Account selector (number, email, ID)')
+    .description('Set the alias for an account')
+    .argument('<account>', 'Account selector (number, alias, email, ID)')
     .argument('<alias>', 'Alias name')
     .option('-j, --json', 'Output as JSON')
     .action(async (account, alias, options) => {
@@ -186,20 +189,23 @@ export function createCli(): Command {
 
   aliasCmd
     .command('clear')
-    .description('Clear the alias from an account')
-    .argument('<account>', 'Account selector (number, email, ID, alias)')
+    .description('Clear the alias for an account')
+    .argument('<account>', 'Account selector (number, alias, email, ID)')
     .option('-j, --json', 'Output as JSON')
     .action(async (account, options) => {
       await aliasClearCommand(account, options);
     });
 
   // project
-  const projectCmd = program.command('project').description('Manage GCP project settings');
+  const projectCmd = program
+    .command('project')
+    .description('Set or clear the GCP project')
+    .helpCommand('help [command]', 'Show help for a subcommand');
 
   projectCmd
     .command('set')
-    .description('Set the GCP project ID for an account')
-    .argument('<account>', 'Account selector (number, email, ID, alias)')
+    .description('Set the GCP project and optional location for an account')
+    .argument('<account>', 'Account selector (number, alias, email, ID)')
     .argument('<project>', 'GCP project ID')
     .argument('[location]', 'GCP compute region/location')
     .option('-j, --json', 'Output as JSON')
@@ -209,20 +215,23 @@ export function createCli(): Command {
 
   projectCmd
     .command('clear')
-    .description('Clear the GCP project setting from an account')
-    .argument('<account>', 'Account selector (number, email, ID, alias)')
+    .description('Clear the GCP project and location for an account')
+    .argument('<account>', 'Account selector (number, alias, email, ID)')
     .option('-j, --json', 'Output as JSON')
     .action(async (account, options) => {
       await projectClearCommand(account, options);
     });
 
   // model
-  const modelCmd = program.command('model').description('Manage model preferences');
+  const modelCmd = program
+    .command('model')
+    .description('Set or clear the preferred model')
+    .helpCommand('help [command]', 'Show help for a subcommand');
 
   modelCmd
     .command('set')
-    .description('Set preferred model for an account')
-    .argument('<account>', 'Account selector (number, email, ID, alias)')
+    .description('Set the preferred model for an account')
+    .argument('<account>', 'Account selector (number, alias, email, ID)')
     .argument('<model>', 'Model name (e.g. gemini-2.5-pro)')
     .option('-j, --json', 'Output as JSON')
     .action(async (account, model, options) => {
@@ -231,8 +240,8 @@ export function createCli(): Command {
 
   modelCmd
     .command('clear')
-    .description('Clear the preferred model setting from an account')
-    .argument('<account>', 'Account selector (number, email, ID, alias)')
+    .description('Clear the preferred model for an account')
+    .argument('<account>', 'Account selector (number, alias, email, ID)')
     .option('-j, --json', 'Output as JSON')
     .action(async (account, options) => {
       await modelClearCommand(account, options);
@@ -242,8 +251,11 @@ export function createCli(): Command {
   program
     .command('env')
     .description('Print shell export commands for the active account')
-    .option('--shell <posix|powershell>', 'Shell output format')
-    .option('--clear', 'Print unset statements to reset environment', false)
+    .option(
+      '--shell <posix|powershell>',
+      'Shell output format (default: powershell on Windows, posix elsewhere)'
+    )
+    .option('--clear', 'Print unset statements to reset environment')
     .option('-j, --json', 'Output as JSON')
     .action(async (options) => {
       await envCommand(options);
@@ -252,10 +264,10 @@ export function createCli(): Command {
   // export
   program
     .command('export')
-    .description('Export accounts to a backup file')
+    .description('Write a backup of saved accounts')
     .argument('[output]', 'Output destination file path or directory')
-    .option('--include-secrets', 'Include API keys and tokens in plaintext', false)
-    .option('-y, --yes', 'Skip plaintext warning confirmation', false)
+    .option('--include-secrets', 'Include API keys and tokens in plaintext')
+    .option('-y, --yes', 'Skip plaintext warning confirmation')
     .option('-j, --json', 'Output as JSON')
     .action(async (output, options) => {
       await exportCommand({ output, ...options });
@@ -264,9 +276,12 @@ export function createCli(): Command {
   // import
   program
     .command('import')
-    .description('Import accounts from a backup file')
+    .description('Read a backup of saved accounts')
     .argument('<file>', 'Path to export JSON file')
-    .option('--overwrite', 'Overwrite existing accounts with imported metadata', false)
+    .option(
+      '--overwrite',
+      'Update existing accounts from the file, including any credentials it holds'
+    )
     .option('-j, --json', 'Output as JSON')
     .action(async (file, options) => {
       await importCommand(file, options);
@@ -275,9 +290,9 @@ export function createCli(): Command {
   // clean
   program
     .command('clean')
-    .description('Remove old managed backup files')
-    .option('--dry-run', 'Show files that would be removed without deleting', false)
-    .option('--all', 'Remove all managed backups (retain 0 files)', false)
+    .description('Delete old managed backup files')
+    .option('--dry-run', 'Show files that would be removed without deleting')
+    .option('--all', 'Remove every managed backup, keeping none')
     .option('-j, --json', 'Output as JSON')
     .action(async (options) => {
       await cleanCommand(options);
@@ -287,7 +302,7 @@ export function createCli(): Command {
   program
     .command('doctor')
     .description('Check for problems')
-    .option('--offline', 'Skip external network reachability probe', false)
+    .option('--offline', 'Skip external network reachability probe')
     .option('--quota', 'Ask the quota service directly and report its answers')
     .option('-j, --json', 'Output as JSON')
     .action(async (options) => {

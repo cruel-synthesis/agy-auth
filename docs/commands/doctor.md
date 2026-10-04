@@ -8,9 +8,9 @@ agy-auth doctor [options]
 
 Options:
 
-- `--offline`: Skip external network reachability probe (default: false)
+- `--offline`: Skip external network reachability probe
 - `--quota`: Ask the quota service directly and report its answers
-- `-j, --json`: Output diagnostics as JSON
+- `-j, --json`: Output as JSON
 - `-h, --help`: Show this help
 
 Diagnostics checked:

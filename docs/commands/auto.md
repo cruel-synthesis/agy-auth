@@ -12,8 +12,8 @@ Options:
 - `-n, --dry-run`: Show the ranking and the choice without switching
 - `-w, --watch`: Keep running and switch whenever the account in use runs out
 - `--interval <minutes>`: Minutes between checks while watching (default: 5)
-- `--offline`: Decide from cached quota only; make no network request (default: false)
-- `-j, --json`: Output results as JSON
+- `--offline`: Decide from cached quota only; make no network request
+- `-j, --json`: Output as JSON
 - `-h, --help`: Show this help
 
 ## Switching on its own

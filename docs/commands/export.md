@@ -1,6 +1,6 @@
 # export
 
-Export stored accounts to a backup file on disk.
+Write a backup of saved accounts to a file.
 
 ```shell
 agy-auth export [options] [output]
@@ -12,8 +12,8 @@ Arguments:
 
 Options:
 
-- `--include-secrets`: Include API keys and tokens in plaintext (default: false)
-- `-y, --yes`: Skip plaintext warning confirmation (default: false)
+- `--include-secrets`: Include API keys and tokens in plaintext
+- `-y, --yes`: Skip plaintext warning confirmation
 - `-j, --json`: Output export summary metadata as JSON (destination, account count, and secrets flag)
 - `-h, --help`: Show this help
 

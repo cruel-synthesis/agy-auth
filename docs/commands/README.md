@@ -13,17 +13,17 @@ Overview of commands available in `agy-auth`.
 - [`current`](./current.md) (`whoami`): Show the account in use (`--offline`, `-j`)
 - [`auto`](./auto.md) (`best`): Switch to the account whose quota is most at risk of going to waste (`-n`, `-w`, `--interval`, `--offline`, `-j`)
 - [`details`](./details.md) (`info`): Show everything stored for one account (`--offline`, `-j`)
-- [`remove`](./remove.md) (`rm`): Remove one or more accounts (`--all`, `-y`, `-j`)
+- [`remove`](./remove.md) (`rm`): Remove saved accounts (`--all`, `-y`, `-j`)
 
 ---
 
 ## Configuration and Maintenance
 
-- [`alias`](./alias.md): Manage account aliases (`set`, `clear`)
-- [`project`](./project.md): Manage GCP project settings (`set`, `clear`)
-- [`model`](./model.md): Manage model preferences (`set`, `clear`)
-- [`env`](./env.md): Print shell export commands for active account (`--shell`, `--clear`, `-j`)
-- [`export`](./export.md): Export accounts to a backup file (`--include-secrets`, `-y`, `-j`)
-- [`import`](./import.md): Import accounts from a backup file (`--overwrite`, `-j`)
-- [`clean`](./clean.md): Remove old managed backup files (`--dry-run`, `--all`, `-j`)
-- [`doctor`](./doctor.md): Check for problems (`--offline`, `-j`)
+- [`alias`](./alias.md): Set or clear an account alias (`set`, `clear`)
+- [`project`](./project.md): Set or clear the GCP project (`set`, `clear`)
+- [`model`](./model.md): Set or clear the preferred model (`set`, `clear`)
+- [`env`](./env.md): Print shell export commands for the active account (`--shell`, `--clear`, `-j`)
+- [`export`](./export.md): Write a backup of saved accounts (`--include-secrets`, `-y`, `-j`)
+- [`import`](./import.md): Read a backup of saved accounts (`--overwrite`, `-j`)
+- [`clean`](./clean.md): Delete old managed backup files (`--dry-run`, `--all`, `-j`)
+- [`doctor`](./doctor.md): Check for problems (`--offline`, `--quota`, `-j`)

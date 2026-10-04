@@ -14,7 +14,7 @@ Arguments:
 
 Options:
 
-- `-j, --json`: Machine-readable output
+- `-j, --json`: Output as JSON
 - `-h, --help`: Show this help
 
 Switching to an account that needs a sign-in still goes ahead, with a warning

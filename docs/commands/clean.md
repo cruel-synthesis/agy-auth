@@ -1,6 +1,7 @@
 # clean
 
-Remove old managed backup files from `~/.agy-auth/backups/`.
+Delete old managed backup files from `~/.agy-auth/backups/`, keeping the newest
+10 of each kind.
 
 ```shell
 agy-auth clean [options]
@@ -8,7 +9,7 @@ agy-auth clean [options]
 
 Options:
 
-- `--dry-run`: Show files that would be removed without deleting (default: false)
-- `--all`: Remove all managed backups (retain 0 files) (default: false)
-- `-j, --json`: Output removal results as JSON
+- `--dry-run`: Show files that would be removed without deleting
+- `--all`: Remove every managed backup, keeping none
+- `-j, --json`: Output as JSON
 - `-h, --help`: Show this help

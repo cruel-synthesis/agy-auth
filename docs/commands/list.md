@@ -9,10 +9,10 @@ agy-auth ls [options]
 
 Options:
 
-- `-a, --active`: Show only currently active account
-- `-c, --check`: Verify listed accounts and refresh live quota for listed OAuth accounts
-- `--offline`: Skip the live plan and quota refresh; show cached data only (default: false)
-- `-j, --json`: Output results as JSON
+- `-a, --active`: Show only the active account
+- `-c, --check`: Verify listed accounts and refresh live quota for OAuth accounts
+- `--offline`: Skip the live plan and quota refresh; show cached data only
+- `-j, --json`: Output as JSON
 - `-h, --help`: Show this help
 
 Quota readings are cached for ten minutes. An ordinary `list` refreshes every OAuth
