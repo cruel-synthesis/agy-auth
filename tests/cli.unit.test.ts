@@ -41,6 +41,21 @@ describe('CLI unit tests and option dispatch', () => {
     }
   });
 
+  it('shows a subcommand help when help names it after its group', async () => {
+    const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      expect(await runCli(['node', 'agy-auth', 'help', 'alias', 'set'])).toBe(0);
+      expect(stdoutSpy.mock.calls.join('')).toContain('Usage: agy-auth alias set');
+
+      expect(await runCli(['node', 'agy-auth', 'help', 'alias', 'bogus'])).toBe(2);
+      expect(String(errorSpy.mock.calls[0]?.[0])).toContain("Unknown command 'alias bogus'.");
+    } finally {
+      stdoutSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
+
   it('runs add, list, current, details, doctor, clean, env commands via runCli returning exit code 0', async () => {
     const nativeStore = installNativeStoreDouble({ supported: false });
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});

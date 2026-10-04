@@ -45,24 +45,26 @@ export function createCli(): Command {
 
   // help subcommand
   program
-    .command('help [command]')
+    .command('help [command...]')
     .description('Show command-specific help')
-    .option('--all', 'Show all commands including advanced and maintenance utilities', false)
-    .action((cmd, options) => {
-      if (options?.all || cmd === '--all') {
+    .option('--all', 'Show all commands including advanced and maintenance utilities')
+    .action((words: string[], options) => {
+      if (options?.all || words[0] === '--all') {
         printTopLevelHelp(true, VERSION);
         return;
       }
-      if (!cmd) {
+      if (words.length === 0) {
         printTopLevelHelp(false, VERSION);
         return;
       }
-      const target = program.commands.find((c) => c.name() === cmd || c.aliases().includes(cmd));
-      if (target) {
-        target.outputHelp();
-      } else {
-        throw new UsageError(`Unknown command '${cmd}'.`);
+      // `help alias set` names a subcommand after its group.
+      let target: Command = program;
+      for (const word of words) {
+        const next = target.commands.find((c) => c.name() === word || c.aliases().includes(word));
+        if (!next) throw new UsageError(`Unknown command '${words.join(' ')}'.`);
+        target = next;
       }
+      target.outputHelp();
     });
 
   // list
