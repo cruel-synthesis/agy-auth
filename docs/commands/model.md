@@ -2,6 +2,8 @@
 
 Manage preferred Gemini model settings for accounts.
 
+A switch writes an account's model into Antigravity's settings. An account without one leaves the model chosen in Antigravity as it is.
+
 ```shell
 agy-auth model set <account> <model> [options]
 agy-auth model clear <account> [options]

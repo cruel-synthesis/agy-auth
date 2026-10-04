@@ -31,7 +31,6 @@ export type ImportKeychainOAuthResult =
       payload: KeychainPayload;
       defaultProject?: string;
       defaultLocation?: string;
-      defaultModel?: string;
     };
 
 /**
@@ -173,7 +172,6 @@ export async function importKeychainOAuth(
   const settings = Discovery.readAntigravitySettings();
   const defaultProject = settings?.gcp?.project;
   const defaultLocation = settings?.gcp?.location;
-  const defaultModel = settings?.model;
 
   if (!finalEmail) {
     return {
@@ -182,7 +180,6 @@ export async function importKeychainOAuth(
       payload,
       defaultProject,
       defaultLocation,
-      defaultModel,
     };
   }
 
@@ -261,10 +258,10 @@ export async function importKeychainOAuth(
       options.location !== undefined
         ? options.location.trim() || undefined
         : existing?.gcpLocation || defaultLocation,
-    model:
-      options.model !== undefined
-        ? options.model.trim() || undefined
-        : existing?.model || defaultModel,
+    // The project belongs to this account, but the model selected in Antigravity
+    // is the user's current choice: saving it would make every later switch
+    // put this snapshot back over whatever they pick next.
+    model: options.model !== undefined ? options.model.trim() || undefined : existing?.model,
     credentials: {
       keychainPayload: mergedPayload,
     },

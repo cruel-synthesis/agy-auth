@@ -101,6 +101,41 @@ describe('Keychain OAuth Import Module', () => {
     }
   });
 
+  it("saves the account's project from Antigravity's settings but not its model", async () => {
+    fs.writeFileSync(
+      Paths.antigravitySettingsFile,
+      JSON.stringify({ gcp: { project: 'own-project' }, model: 'model-picked-in-antigravity' })
+    );
+    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
+      status: 'found',
+      payload: {
+        auth_method: 'consumer',
+        token: {
+          access_token: 'synthetic-access-token',
+          refresh_token: 'synthetic-refresh-token',
+          token_type: 'Bearer',
+          expiry: futureExpiry(),
+        },
+      },
+    });
+    const fetchFn = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ email: 'settings@example.com', email_verified: true }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+    );
+
+    const result = await importKeychainOAuth({ fetchFn: fetchFn as unknown as typeof fetch });
+
+    expect(result.status).toBe('success');
+    if (result.status === 'success') {
+      expect(result.account.gcpProject).toBe('own-project');
+      expect(result.account.model).toBeUndefined();
+    }
+  });
+
   it('separates a rejected session from an identity it merely could not check', async () => {
     vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
     vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({
