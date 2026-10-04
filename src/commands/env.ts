@@ -14,8 +14,9 @@ export function escapePosix(value: string): string {
 }
 
 export function escapePowerShell(value: string): string {
-  // PowerShell single-quote escaping: replace ' with ''
-  return `'${value.replace(/'/g, "''")}'`;
+  // PowerShell also ends a single-quoted string at the curly quotes U+2018-U+201B,
+  // so each of them is doubled like ' itself.
+  return `'${value.replace(/['\u2018-\u201B]/g, '$&$&')}'`;
 }
 
 export function generateEnvStatements(

@@ -29,6 +29,10 @@ describe('Shell Environment Generation and Escaping', () => {
     expect(escapePowerShell('simple')).toBe("'simple'");
     expect(escapePowerShell("don't fail")).toBe("'don''t fail'");
     expect(escapePowerShell('$env:PATH; "evil"')).toBe('\'$env:PATH; "evil"\'');
+    // PowerShell treats these as single quotes too; any of them would end the string.
+    expect(escapePowerShell('a\u2019; calc; \u2018b \u201A\u201B')).toBe(
+      "'a\u2019\u2019; calc; \u2018\u2018b \u201A\u201A\u201B\u201B'"
+    );
   });
 
   it('generates POSIX export and unset statements', () => {
