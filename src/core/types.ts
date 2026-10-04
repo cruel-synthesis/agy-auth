@@ -177,6 +177,15 @@ export function checkInputLength(
   }
 }
 
+/** Refuses an alias the account schema would reject, before anything is saved. */
+export function checkAlias(alias: string): void {
+  if (!AccountSchema.shape.alias.safeParse(alias).success) {
+    throw new UsageError(
+      `Invalid alias '${alias}': use up to 32 letters, digits, _ or -, starting with a letter or digit.`
+    );
+  }
+}
+
 /** Statuses that cannot improve until the user signs in again. */
 const NEEDS_SIGN_IN: ReadonlySet<AccountStatus> = new Set(['expired', 'invalid', 'needs-reauth']);
 

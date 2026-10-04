@@ -7,11 +7,15 @@ import { CancellationError, CliError, UsageError } from '../core/errors.js';
 import { type ImportKeychainOAuthResult, importKeychainOAuth } from '../core/keychain-import.js';
 import { Paths } from '../core/paths.js';
 import { RegistryManager } from '../core/registry.js';
-import { AccountCredentials, AuthType, checkInputLength, sanitizeAccount } from '../core/types.js';
+import {
+  AccountCredentials,
+  AuthType,
+  checkAlias,
+  checkInputLength,
+  sanitizeAccount,
+} from '../core/types.js';
 import { formatAccountShort } from '../ui/format.js';
 import { colors } from '../ui/theme.js';
-
-const ALIAS_REGEX = /^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/;
 
 interface AddOptions {
   apiKey?: string | boolean;
@@ -47,11 +51,7 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
   }
 
   const alias = options.alias ? options.alias.trim() : undefined;
-  if (alias && !ALIAS_REGEX.test(alias)) {
-    throw new UsageError(
-      `Invalid alias '${alias}'. Alias must start with alphanumeric and contain up to 32 alphanumeric, hyphen, or underscore characters.`
-    );
-  }
+  if (alias) checkAlias(alias);
   checkInputLength('gcpProject', options.project?.trim(), '--project');
   checkInputLength('gcpLocation', options.location?.trim(), '--location');
   checkInputLength('model', options.model?.trim(), '--model');

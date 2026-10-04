@@ -64,11 +64,12 @@ vi.mock('../src/ui/tui.js', () => ({
 
 import { addCommand, validateEmailInput } from '../src/commands/add.js';
 import { exportCommand } from '../src/commands/export.js';
-import { loginCommand, validateAliasInput } from '../src/commands/login.js';
+import { loginCommand } from '../src/commands/login.js';
 import { removeCommand } from '../src/commands/remove.js';
 import { CancellationError, UsageError } from '../src/core/errors.js';
 import { KeychainManager } from '../src/core/keychain.js';
 import { RegistryManager } from '../src/core/registry.js';
+import { checkAlias } from '../src/core/types.js';
 import { TestEnv, futureExpiry, pastExpiry, setupTestEnvironment } from './test-utils.js';
 
 describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () => {
@@ -89,9 +90,10 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
   });
 
   it('validates login aliases and sync emails', () => {
-    expect(validateAliasInput('valid-alias')).toBe(true);
-    expect(validateAliasInput('')).toBe(true);
-    expect(typeof validateAliasInput('invalid spaces')).toBe('string');
+    expect(() => checkAlias('valid-alias')).not.toThrow();
+    expect(() => checkAlias('invalid spaces')).toThrow(UsageError);
+    // The rule names the first character, which `_x` breaks without being otherwise wrong.
+    expect(() => checkAlias('_x')).toThrow(/starting with a letter or digit/);
 
     expect(validateEmailInput('valid@example.com')).toBe(true);
     expect(typeof validateEmailInput('invalid')).toBe('string');

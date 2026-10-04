@@ -1,9 +1,7 @@
 import { AccountNotFoundError, AmbiguousSelectorError, UsageError } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
-import { sanitizeAccount } from '../core/types.js';
+import { checkAlias, sanitizeAccount } from '../core/types.js';
 import { colors } from '../ui/theme.js';
-
-const ALIAS_REGEX = /^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/;
 
 interface AliasOptions {
   json?: boolean;
@@ -31,12 +29,7 @@ export async function aliasSetCommand(
   if (!trimmedAlias) {
     throw new UsageError('Alias cannot be empty.');
   }
-
-  if (!ALIAS_REGEX.test(trimmedAlias)) {
-    throw new UsageError(
-      `Invalid alias '${trimmedAlias}'. Alias must start with an alphanumeric character and contain up to 32 alphanumeric, hyphen, or underscore characters.`
-    );
-  }
+  checkAlias(trimmedAlias);
 
   registry.setAlias(account.id, trimmedAlias);
   const updated = registry.findAccount(account.id);
