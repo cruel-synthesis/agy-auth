@@ -140,8 +140,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
       checks.push({
         name: 'Storage Directories',
         status: 'ok',
-        message:
-          'Storage directory ~/.agy-auth not yet initialized (will be created on first account add).',
+        message: `Storage directory ${Paths.authHome} not yet initialized (will be created on first account add).`,
       });
     } else {
       const stat = fs.lstatSync(Paths.authHome);
@@ -149,19 +148,19 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
         checks.push({
           name: 'Storage Directories',
           status: 'fail',
-          message: 'Storage path ~/.agy-auth is a symbolic link (must be a directory).',
+          message: `Storage path ${Paths.authHome} is a symbolic link (must be a directory).`,
         });
       } else if (!stat.isDirectory()) {
         checks.push({
           name: 'Storage Directories',
           status: 'fail',
-          message: 'Storage path ~/.agy-auth is not a directory.',
+          message: `Storage path ${Paths.authHome} is not a directory.`,
         });
       } else if (process.platform !== 'win32' && (stat.mode & 0o777) !== 0o700) {
         checks.push({
           name: 'Storage Directory Permissions',
           status: 'warn',
-          message: `~/.agy-auth permissions are 0${(stat.mode & 0o777).toString(8)}, expected 0700.`,
+          message: `${Paths.authHome} permissions are 0${(stat.mode & 0o777).toString(8)}, expected 0700.`,
         });
       } else if (process.platform === 'win32') {
         checks.push({
