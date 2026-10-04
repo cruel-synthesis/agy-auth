@@ -11,5 +11,4 @@ export default defineConfig({
   sourcemap: false,
   minify: false,
   shims: true,
-  noExternal: ['string-width', 'strip-ansi', 'eastasianwidth', 'emoji-regex'],
 });
