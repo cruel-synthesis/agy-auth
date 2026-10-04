@@ -164,18 +164,6 @@ export async function removeCommand(
       'Select account to remove:'
     );
     if (!selected) return;
-
-    if (!options.yes) {
-      const proceed = await confirm({
-        message: `Remove account '${formatAccountShort(selected)}'?`,
-        default: true,
-      });
-      if (!proceed) {
-        console.log('Cancelled.');
-        return;
-      }
-    }
-
     selectors = [selected.id];
   }
 
@@ -203,7 +191,10 @@ export async function removeCommand(
 
   if (!options.yes && process.stdin.isTTY && targetsToRemove.length > 0) {
     const proceed = await confirm({
-      message: `Remove ${targetsToRemove.length} account(s)?`,
+      message:
+        targetsToRemove.length === 1
+          ? `Remove account '${formatAccountShort(targetsToRemove[0])}'?`
+          : `Remove ${targetsToRemove.length} accounts?`,
       default: true,
     });
     if (!proceed) {

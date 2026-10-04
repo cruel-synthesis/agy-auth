@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { confirm } from '@inquirer/prompts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockState = {
@@ -53,6 +54,12 @@ vi.mock('@inquirer/prompts', () => ({
     }
     return mockState.checkboxValue;
   }),
+}));
+
+const mockPicker = { selected: null as unknown };
+
+vi.mock('../src/ui/tui.js', () => ({
+  promptSelectAccount: vi.fn(async () => mockPicker.selected),
 }));
 
 import { addCommand, validateEmailInput } from '../src/commands/add.js';
@@ -287,6 +294,33 @@ describe('Interactive Login, Sync, and Remove Commands with Prompt Mocking', () 
       expect(new RegistryManager().findAccount('rem-cancel')).toBeTruthy();
     } finally {
       process.stdin.isTTY = origTTY;
+      logSpy.mockRestore();
+    }
+  });
+
+  it('asks once before removing an account chosen in the picker', async () => {
+    const picked = new RegistryManager().addOrUpdateAccount({
+      email: 'picked@example.com',
+      alias: 'picked',
+      authType: 'api-key',
+      credentials: { apiKey: 'AIzaSy1' },
+    });
+    mockPicker.selected = picked;
+
+    const origTTY = process.stdin.isTTY;
+    process.stdin.isTTY = true;
+    vi.mocked(confirm).mockClear();
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await removeCommand([], { yes: false });
+      expect(vi.mocked(confirm)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(confirm).mock.calls[0][0].message).toBe(
+        "Remove account 'picked (picked@example.com)'?"
+      );
+      expect(new RegistryManager().findAccount('picked')).toBeFalsy();
+    } finally {
+      process.stdin.isTTY = origTTY;
+      mockPicker.selected = null;
       logSpy.mockRestore();
     }
   });
