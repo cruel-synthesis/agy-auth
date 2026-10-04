@@ -69,6 +69,12 @@ agy-auth -                 # back to the previous account
 agy-auth current           # the account in use
 ```
 
+A switch changes which Google account Antigravity is signed in to, and nothing
+else you set up: every account shares the same Antigravity settings, model
+choice, workspaces, and conversations. Only two settings follow the account:
+the Google Cloud project Google assigns it (shown by `details`), and a model if
+you saved one for it with `model set`.
+
 `switch` never makes a network request. `list` refreshes quota readings that
 have aged out; `list --offline` shows cached data only, and `list --check`
 re-verifies every account.

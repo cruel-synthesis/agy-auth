@@ -17,6 +17,11 @@ Options:
 - `-j, --json`: Output as JSON
 - `-h, --help`: Show this help
 
+A switch replaces Antigravity's signed-in session. In Antigravity's settings it
+writes only the account's own Google Cloud project and location, and a model if
+one was saved with `model set`; every other setting stays as it is and is shared
+by all accounts.
+
 Switching to an account that needs a sign-in still goes ahead, with a warning
 that says how to renew it.
 
