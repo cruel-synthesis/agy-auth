@@ -120,6 +120,13 @@ interface LockOwner {
   fd: number | null;
 }
 
+/** A lock held past the timeout is either still in use or left by a crashed run. */
+function lockTimeout(lockFilePath: string): Error {
+  return new Error(
+    `Another agy-auth command is holding ${lockFilePath}; if none is running, delete that file and try again.`
+  );
+}
+
 export class CorruptedRegistryError extends Error {
   constructor(
     public readonly filePath: string,
@@ -224,7 +231,7 @@ export class Storage {
     }
 
     if (!owner) {
-      throw new Error(`Timeout acquiring lock on ${lockFilePath} after ${timeoutMs}ms`);
+      throw lockTimeout(lockFilePath);
     }
 
     try {
@@ -255,7 +262,7 @@ export class Storage {
     }
 
     if (!owner) {
-      throw new Error(`Timeout acquiring lock on ${lockFilePath} after ${timeoutMs}ms`);
+      throw lockTimeout(lockFilePath);
     }
 
     try {

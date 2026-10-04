@@ -73,6 +73,16 @@ describe('Storage and Concurrency Subsystem', () => {
     expect(fs.existsSync(lockFile)).toBe(false);
   });
 
+  it('names the lock and how to clear it when it stays held', () => {
+    const lockFile = path.join(testEnv.dir, 'held.lock');
+    // This process's own PID is never treated as dead, so the lock stays held.
+    fs.writeFileSync(lockFile, JSON.stringify({ pid: process.pid, time: Date.now(), token: 'x' }));
+
+    expect(() => Storage.withLockSync(lockFile, () => {}, 100)).toThrow(
+      `Another agy-auth command is holding ${lockFile}; if none is running, delete that file and try again.`
+    );
+  });
+
   it('rejects lock acquisition when lock path is a directory or symlink', () => {
     const dirLock = path.join(testEnv.dir, 'dir.lock');
     fs.mkdirSync(dirLock, { recursive: true });
