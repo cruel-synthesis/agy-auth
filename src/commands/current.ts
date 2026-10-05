@@ -4,6 +4,7 @@ import { RegistryManager } from '../core/registry.js';
 import { sanitizeAccount } from '../core/types.js';
 import {
   NO_ACCOUNTS,
+  detailLine,
   formatAccountShort,
   formatAuthType,
   formatStatus,
@@ -85,15 +86,14 @@ export async function currentCommand(options: CurrentOptions = {}): Promise<void
     console.error(colors.yellow(`Warning: ${warning}`));
   }
 
-  console.log(`Account:      ${colors.green(formatAccountShort(active))}`);
-  console.log(`Auth method:  ${formatAuthType(active.authType)}`);
-  console.log(`Status:       ${formatStatus(active.status, true)}`);
-  for (const line of quotaSummaryLines(active)) {
-    console.log(line);
-  }
-  if (active.lastUsedAt) {
-    console.log(`Last active:  ${formatTimeAgo(active.lastUsedAt)}`);
-  }
+  const lines = [
+    detailLine('Account', colors.bold(colors.green(formatAccountShort(active)))),
+    detailLine('Auth method', formatAuthType(active.authType)),
+    detailLine('Status', formatStatus(active.status, true)),
+    ...quotaSummaryLines(active),
+  ];
+  if (active.lastUsedAt) lines.push(detailLine('Last active', formatTimeAgo(active.lastUsedAt)));
+  console.log(lines.join('\n'));
 
   // Project, model and verification detail are configuration rather than
   // status, so they live in `details`. Point there only when this account

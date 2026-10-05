@@ -6,7 +6,9 @@ import { Account, sanitizeAccount } from '../core/types.js';
 import {
   NO_ACCOUNTS,
   formatAccountShort,
+  detailLine,
   formatAuthType,
+  formatDay,
   formatStatus,
   formatTimeAgo,
   quotaSummaryLines,
@@ -23,27 +25,31 @@ interface DetailsOptions {
 
 export function renderAccountDetails(account: Account, isActive: boolean): void {
   const activeBadge = isActive ? colors.green(' (Active Account)') : '';
-  console.log(`Account:      ${colors.cyan(formatAccountShort(account))}${activeBadge}`);
-  console.log(`Auth method:  ${formatAuthType(account.authType)}`);
-  console.log(`Status:       ${formatStatus(account.status, isActive)}`);
-  console.log(
-    `GCP project:  ${account.gcpProject || 'Not set'}${account.gcpLocation ? ` (${account.gcpLocation})` : ''}`
-  );
-  console.log(
-    `Model:        ${account.model || 'Not set'}${account.reasoningEffort ? ` [Effort: ${account.reasoningEffort}]` : ''}`
-  );
-  for (const line of quotaSummaryLines(account)) {
-    console.log(line);
-  }
-  if (account.lastUsedAt) {
-    console.log(`Last active:  ${formatTimeAgo(account.lastUsedAt)}`);
-  }
-  console.log(`Added:        ${new Date(account.createdAt).toLocaleDateString()}`);
+  const lines = [
+    detailLine('Account', `${colors.cyanBold(formatAccountShort(account))}${activeBadge}`),
+    detailLine('Auth method', formatAuthType(account.authType)),
+    detailLine('Status', formatStatus(account.status, isActive)),
+    detailLine(
+      'GCP project',
+      `${account.gcpProject || colors.dim('Not set')}${account.gcpLocation ? ` (${account.gcpLocation})` : ''}`
+    ),
+    detailLine(
+      'Model',
+      `${account.model || colors.dim('Not set')}${account.reasoningEffort ? ` [Effort: ${account.reasoningEffort}]` : ''}`
+    ),
+    ...quotaSummaryLines(account),
+  ];
+  if (account.lastUsedAt) lines.push(detailLine('Last active', formatTimeAgo(account.lastUsedAt)));
+  lines.push(detailLine('Added', formatDay(new Date(account.createdAt))));
   if (account.verification) {
-    console.log(
-      `Verification: Checked ${formatTimeAgo(account.verification.checkedAt)} (${account.verification.source}) - ${account.verification.message || 'OK'}`
+    lines.push(
+      detailLine(
+        'Verification',
+        `Checked ${formatTimeAgo(account.verification.checkedAt)} (${account.verification.source}) - ${account.verification.message || 'OK'}`
+      )
     );
   }
+  console.log(lines.join('\n'));
 }
 
 export async function detailsCommand(query?: string, options: DetailsOptions = {}): Promise<void> {
