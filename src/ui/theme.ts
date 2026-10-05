@@ -17,3 +17,17 @@ export const colors = {
   dim: (str: string) => pc.dim(str),
   bold: (str: string) => pc.bold(str),
 };
+
+/** Status marks shared by every command that reports an outcome. */
+export const marks = {
+  ok: colors.green('✓'),
+  warn: colors.yellow('!'),
+  fail: colors.red('✗'),
+};
+
+/** Colour for a remaining-quota percentage: plenty, getting low, nearly gone. */
+export function quotaColor(remaining: number): (str: string) => string {
+  if (remaining < 20) return colors.red;
+  if (remaining < 50) return colors.yellow;
+  return colors.green;
+}

@@ -1,5 +1,5 @@
 import { Account, AccountStatus, AuthType, RateLimitWindow } from '../core/types.js';
-import { colors } from './theme.js';
+import { colors, quotaColor } from './theme.js';
 
 /** Said the same way wherever a command finds the registry empty. */
 export const NO_ACCOUNTS =
@@ -97,6 +97,22 @@ export function formatPlan(account: Account): string {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+/** `6 Oct`, or `6 Oct 2025` outside the current year: one date style everywhere. */
+export function formatDay(date: Date, nowMs: number = Date.now()): string {
+  const day = `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+  return date.getFullYear() === new Date(nowMs).getFullYear()
+    ? day
+    : `${day} ${date.getFullYear()}`;
+}
+
+const METER_CELLS = 10;
+
+/** A ten-cell bar for a remaining percentage, coloured by how much is left. */
+export function quotaMeter(remaining: number): string {
+  const filled = Math.round((remaining / 100) * METER_CELLS);
+  return quotaColor(remaining)('━'.repeat(filled)) + colors.dim('─'.repeat(METER_CELLS - filled));
+}
+
 /**
  * Statuses that stop a quota reading from existing at all, and the compact word
  * for each. The caller shows this once beside the account; stamping it into
@@ -125,6 +141,8 @@ export interface QuotaCell {
   state: 'unknown' | 'stale' | 'value';
   /** Remaining percentage, e.g. `35%`, present only when state is `value`. */
   percentText?: string;
+  /** The same figure as a number, 0 to 100. */
+  remaining?: number;
   /** Local reset instant, e.g. `14:30` or `1 Jan`, when the window reports one. */
   resetText?: string;
 }
@@ -147,7 +165,7 @@ export function formatQuotaCell(
   const isEmpty = remaining === 0;
 
   if (window.resetsAt === undefined) {
-    return { text: percentText, isError: isEmpty, state: 'value', percentText };
+    return { text: percentText, isError: isEmpty, state: 'value', percentText, remaining };
   }
 
   const nowSec = Math.floor(nowMs / 1000);
@@ -155,32 +173,31 @@ export function formatQuotaCell(
     return { text: 'stale', isError: false, state: 'stale' };
   }
 
+  // Within a day the clock time says more than the date: a 5-hour window that
+  // resets at 02:10 tonight is not usefully described as "tomorrow".
   const resetDate = new Date(window.resetsAt * 1000);
-  const nowDate = new Date(nowMs);
-  const sameDay =
-    resetDate.getFullYear() === nowDate.getFullYear() &&
-    resetDate.getMonth() === nowDate.getMonth() &&
-    resetDate.getDate() === nowDate.getDate();
-
-  const resetText = sameDay
-    ? `${String(resetDate.getHours()).padStart(2, '0')}:${String(resetDate.getMinutes()).padStart(2, '0')}`
-    : `${resetDate.getDate()} ${MONTHS[resetDate.getMonth()]}`;
+  const resetText =
+    window.resetsAt - nowSec < 86_400
+      ? `${String(resetDate.getHours()).padStart(2, '0')}:${String(resetDate.getMinutes()).padStart(2, '0')}`
+      : formatDay(resetDate);
 
   return {
     text: `${percentText} (${resetText})`,
     isError: isEmpty,
     state: 'value',
     percentText,
+    remaining,
     resetText,
   };
 }
 
 const DETAIL_LABEL_WIDTH = 14;
 
-function detailLine(label: string, value: string): string {
+/** One `Label:  value` row of `current` and `details`, labels aligned and dimmed. */
+export function detailLine(label: string, value: string): string {
   const key = `${label}:`;
   // Always leave at least one separating space, even for a full-width label.
-  return `${key.padEnd(Math.max(DETAIL_LABEL_WIDTH, key.length + 1))}${value}`;
+  return `${colors.dim(key.padEnd(Math.max(DETAIL_LABEL_WIDTH, key.length + 1)))}${value}`;
 }
 
 /**
@@ -202,15 +219,17 @@ export function quotaSummaryLines(account: Account, nowMs: number = Date.now()):
     let value: string;
     switch (cell.state) {
       case 'unknown':
-        value = '-';
+        value = colors.dim('-');
         break;
       case 'stale':
-        value = 'stale (window elapsed; refresh to update)';
+        value = colors.yellow('stale (window elapsed; refresh to update)');
         break;
-      default:
-        value = cell.resetText
-          ? `${cell.percentText} remaining (resets ${cell.resetText})`
-          : `${cell.percentText} remaining`;
+      default: {
+        const remaining = cell.remaining ?? 0;
+        const percent = quotaColor(remaining)(`${cell.percentText} remaining`.padEnd(15));
+        value = `${quotaMeter(remaining)}  ${percent}`;
+        if (cell.resetText) value += colors.dim(`resets ${cell.resetText}`);
+      }
     }
     lines.push(detailLine(label, value));
   }

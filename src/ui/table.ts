@@ -2,12 +2,13 @@ import stringWidth from 'string-width';
 import { Account, needsSignIn } from '../core/types.js';
 import {
   NO_ACCOUNTS,
+  QuotaCell,
   blockingStatusLabel,
   formatPlan,
   formatQuotaCell,
   formatTimeAgo,
 } from './format.js';
-import { colors } from './theme.js';
+import { colors, quotaColor } from './theme.js';
 
 export function pad(str: string, targetWidth: number): string {
   const currentWidth = stringWidth(str);
@@ -77,9 +78,33 @@ type QuotaColumnKey = 'gemini5h' | 'geminiWk' | 'claude5h' | 'claudeWk';
 type ColumnKey = 'plan' | QuotaColumnKey | 'last';
 
 /** Everything a table cell needs: rendered text plus whether to flag it. */
-interface Cell {
-  text: string;
-  isError: boolean;
+type Cell = { text: string; isError: boolean } | QuotaCell;
+
+/**
+ * Colours one padded cell. A quota reading is coloured by how much is left,
+ * with its reset time dimmed so the percentage is what the eye lands on.
+ */
+function colorCell(key: ColumnKey, cell: Cell, padded: string, isActive: boolean): string {
+  if (!padded.startsWith(cell.text)) return cell.isError ? colors.red(padded) : padded;
+  const rest = padded.slice(cell.text.length);
+  if ('state' in cell) {
+    if (cell.state === 'stale') return colors.yellow(cell.text) + rest;
+    if (cell.state === 'unknown' || cell.remaining === undefined)
+      return colors.dim(cell.text) + rest;
+    const reset = cell.resetText ? ` ${colors.dim(`(${cell.resetText})`)}` : '';
+    return quotaColor(cell.remaining)(cell.percentText ?? cell.text) + reset + rest;
+  }
+  if (cell.isError) return colors.red(padded);
+  if (key === 'last' && !isActive) return colors.dim(padded);
+  return padded;
+}
+
+/** The account label with its email dimmed beside an alias; the active one in bold green. */
+function colorAccount(account: Account, padded: string, isActive: boolean): string {
+  if (isActive) return colors.bold(colors.green(padded));
+  const alias = account.alias;
+  if (!alias || !padded.startsWith(`${alias} `)) return padded;
+  return alias + colors.dim(padded.slice(alias.length));
 }
 
 const COLUMN_HEADERS: Record<ColumnKey, string> = {
@@ -258,34 +283,33 @@ export function getTableComponents(
   }
 
   const rawHeader = ' '.repeat(prefixWidth) + headerParts.join('  ');
-  const headerLine = truncateToWidth(colors.cyan(rawHeader), termWidth, '');
+  const headerLine = truncateToWidth(colors.cyanBold(rawHeader), termWidth, '');
   const dividerLen = Math.min(stringWidth(rawHeader), termWidth);
-  const dividerLine = colors.dim('-'.repeat(Math.max(0, dividerLen)));
+  const dividerLine = colors.dim('─'.repeat(Math.max(0, dividerLen)));
 
   const rows: TableRowComponent[] = rawRows.map((r) => {
     const marker = r.isActive ? `* ${r.num} ` : `  ${r.num} `;
-    const account = pad(truncateAccount(r.accountCell, accountW), accountW);
+    // An alias alone beats an address cut off mid-word when both cannot fit.
+    const label =
+      r.acc.alias && stringWidth(r.accountCell) > accountW ? r.acc.alias : r.accountCell;
+    const account = pad(truncateAccount(label, accountW), accountW);
 
     const cellsUncolored: string[] = [account];
-    const cellsColored: string[] = [account];
+    const cellsColored: string[] = [colorAccount(r.acc, account, r.isActive)];
 
     for (const key of visible) {
       const cell = truncatePadded(r.cells[key].text, widths[key]);
       cellsUncolored.push(cell);
-      if (r.cells[key].isError) {
-        cellsColored.push(colors.red(cell));
-      } else if (key === 'last' && !r.isActive) {
-        cellsColored.push(colors.dim(cell));
-      } else {
-        cellsColored.push(cell);
-      }
+      cellsColored.push(colorCell(key, r.cells[key], cell, r.isActive));
     }
 
     const choiceText = truncateToWidth(`${marker}${cellsUncolored.join('  ')}`, termWidth, '');
-    const rawColored = r.isActive
-      ? colors.green(`${marker}${cellsColored.join('  ')}`)
-      : `${marker}${cellsColored.join('  ')}`;
-    const coloredText = truncateToWidth(rawColored, termWidth, '');
+    const coloredMarker = r.isActive ? colors.bold(colors.green(marker)) : colors.dim(marker);
+    const coloredText = truncateToWidth(
+      `${coloredMarker}${cellsColored.join('  ')}`,
+      termWidth,
+      ''
+    );
 
     return {
       account: r.acc,
@@ -374,15 +398,13 @@ export function renderSelectMenu(
       lines.push(colors.bold(colors.green(fullRow)));
     } else if (isSelected) {
       lines.push(colors.bold(colors.cyan(fullRow)));
-    } else if (isAct) {
-      lines.push(colors.green(fullRow));
     } else {
       lines.push(r.coloredText);
     }
   }
 
   lines.push('');
-  const helpText = 'Up/Down or j/k; Enter; Esc/q';
+  const helpText = '↑/↓ or j/k to move · Enter to select · Esc to cancel';
   if (typedBuffer) {
     lines.push(`  ${colors.dim(helpText)}  ${colors.dim(`(Type: ${typedBuffer})`)}`);
   } else {

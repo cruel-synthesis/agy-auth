@@ -113,7 +113,7 @@ describe('Table & TUI presentation', () => {
   it('renders interactive selection menu with ASCII navigation hints and active indicators', () => {
     const menu = renderSelectMenu(sampleAccounts, 'acc_1', 1, '', 'Select profile:', 100);
     expect(menu).toContain('Select profile:');
-    expect(menu).toContain('Up/Down or j/k; Enter; Esc/q');
+    expect(menu).toContain('↑/↓ or j/k to move · Enter to select · Esc to cancel');
     expect(menu).toContain('* 01'); // active item
     expect(menu).toContain('> 02'); // selected item
   });
