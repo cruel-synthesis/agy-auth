@@ -25,6 +25,9 @@ by all accounts.
 Switching to an account that needs a sign-in still goes ahead, with a warning
 that says how to renew it.
 
+On macOS, if Antigravity's Keychain item cannot be updated, the switch fails and
+restores what it changed, so Antigravity stays on the previous account.
+
 On Linux and Windows, agy-auth can update only Antigravity's token file, not the
 system keyring, so switching to a Google sign-in account warns that Antigravity
 may stay on the previous account.

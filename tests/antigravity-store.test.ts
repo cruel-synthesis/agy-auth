@@ -332,10 +332,21 @@ describe('Composite Antigravity Token Store Subsystem', () => {
     expect(keyringContent.token.access_token).toBe('dual-access-token');
   });
 
-  it('succeeds with warning when keyring write fails (exit 45 simulation) and file write succeeds', () => {
+  it('fails the switch and restores the token file when the Keychain write fails', () => {
     vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
     vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({ status: 'missing' });
     vi.spyOn(KeychainManager, 'writeAgyToken').mockReturnValue(false); // Simulate exit status 45 write failure
+
+    const originalContent = JSON.stringify(
+      {
+        auth_method: 'consumer',
+        token: { access_token: 'previous-account', refresh_token: 'ref' },
+      },
+      null,
+      2
+    );
+    fs.mkdirSync(path.dirname(Paths.antigravityTokenFile), { recursive: true });
+    fs.writeFileSync(Paths.antigravityTokenFile, originalContent);
 
     const registry = new RegistryManager();
     const account = registry.addOrUpdateAccount({
@@ -352,15 +363,11 @@ describe('Composite Antigravity Token Store Subsystem', () => {
       },
     });
 
-    const switchResult = Switcher.switchAccount(account);
-    expect(switchResult.antigravityUpdated).toBe(true);
-    expect(switchResult.warnings).toBeDefined();
-    expect(switchResult.warnings?.[0]).toMatch(/keyring/i);
-
-    // Verify file half was written properly
-    expect(fs.existsSync(Paths.antigravityTokenFile)).toBe(true);
-    const diskContent = JSON.parse(fs.readFileSync(Paths.antigravityTokenFile, 'utf-8'));
-    expect(diskContent.token.access_token).toBe('token-with-failed-keyring');
+    // Antigravity on macOS reads the Keychain item, so reaching only the file
+    // would report a switch that Antigravity never makes.
+    expect(() => Switcher.switchAccount(account)).toThrow(/Keychain item.*previous account/);
+    expect(fs.readFileSync(Paths.antigravityTokenFile, 'utf-8')).toBe(originalContent);
+    expect(new RegistryManager().getActiveAccount()).toBeNull();
   });
 
   it('restores original token file byte-identically when switch fails midway', () => {

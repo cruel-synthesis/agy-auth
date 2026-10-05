@@ -315,12 +315,15 @@ export function writeAntigravityToken(payload: KeychainPayload): AntigravityToke
     };
   }
 
+  // On macOS Antigravity reads the Keychain item, so a switch that reaches only
+  // the file would leave it on the previous account: fail and let the caller
+  // restore the file.
   if (!KeychainManager.writeAgyToken(payload)) {
     return {
-      ok: true,
+      ok: false,
       fileWritten: true,
       keyringWritten: false,
-      warning: 'System keyring could not be updated; file store updated successfully.',
+      error: "could not update Antigravity's Keychain item, so it stays on the previous account",
     };
   }
 

@@ -377,12 +377,11 @@ describe('Switcher Transactional State Machine & Rollback', () => {
       const result = Switcher.switchAccount(oauthAcc);
       expect(result.currentAccount.id).toBe(oauthAcc.id);
       expect(result.requiresShellUpdate).toBe(false);
-      // KeychainManager.writeAgyToken returns false -> switch still succeeds with warning because file store succeeded
+      // A failed Keychain write fails the switch and puts the token file back.
+      const tokenBefore = fs.readFileSync(Paths.antigravityTokenFile, 'utf-8');
       writeSpy.mockReturnValue(false);
-      const warnResult = Switcher.switchAccount(oauthAcc);
-      expect(warnResult.currentAccount.id).toBe(oauthAcc.id);
-      expect(warnResult.warnings).toBeDefined();
-      expect(warnResult.warnings?.[0]).toMatch(/keyring/i);
+      expect(() => Switcher.switchAccount(oauthAcc)).toThrow(/Keychain item/);
+      expect(fs.readFileSync(Paths.antigravityTokenFile, 'utf-8')).toBe(tokenBefore);
     } finally {
       supportedSpy.mockRestore();
       readSpy.mockRestore();
