@@ -16,7 +16,7 @@ import { refreshQuota } from './refresh.js';
 
 interface CurrentOptions {
   json?: boolean;
-  offline?: boolean;
+  refresh?: boolean;
   quotaOptions?: QuotaOptions;
 }
 
@@ -34,7 +34,7 @@ export async function currentCommand(options: CurrentOptions = {}): Promise<void
             ok: true,
             data: {
               account: null,
-              quotaRefresh: summarizeQuotaRefresh(Boolean(options.offline), []),
+              quotaRefresh: summarizeQuotaRefresh(!options.refresh, []),
             },
           },
           null,
@@ -51,7 +51,7 @@ export async function currentCommand(options: CurrentOptions = {}): Promise<void
     return;
   }
 
-  const offline = Boolean(options.offline);
+  const offline = !options.refresh;
   let quotaSummary: QuotaRefreshSummary = summarizeQuotaRefresh(offline, []);
   let warning: string | undefined;
 

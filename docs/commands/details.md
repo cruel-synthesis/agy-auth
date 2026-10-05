@@ -13,6 +13,6 @@ Arguments:
 
 Options:
 
-- `--offline`: Skip the live plan and quota refresh; show cached data only
+- `-r, --refresh`: Fetch live plan and quota from Google before showing
 - `-j, --json`: Output as JSON
 - `-h, --help`: Show this help

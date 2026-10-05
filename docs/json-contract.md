@@ -113,7 +113,7 @@ The account object returned by `list`, `current`, `details`, and `switch` carrie
 | Field | Meaning |
 |---|---|
 | `attempted` | `true` when at least one account was contacted. |
-| `offline` | `true` when `--offline` suppressed the refresh. |
+| `offline` | `true` when no refresh was asked for (no `--refresh`, or `auto --offline`). |
 | `accounts[].reason` | Present only on failure. One of `not-applicable`, `token-expired`, `scope-insufficient`, `auth-failed`, `quota-unavailable`, `network-error`. |
 
 A failed refresh does **not** fail the command: `ok` stays `true`, the cached values are returned, and `stderr` stays silent in JSON mode.

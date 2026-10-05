@@ -6,7 +6,6 @@ import { detailsCommand } from '../src/commands/details.js';
 import { importCommand } from '../src/commands/import.js';
 import { listCommand } from '../src/commands/list.js';
 import { switchCommand } from '../src/commands/switch.js';
-import { UsageError } from '../src/core/errors.js';
 import { KeychainManager } from '../src/core/keychain.js';
 import { QuotaOptions } from '../src/core/quota.js';
 import { RegistryManager } from '../src/core/registry.js';
@@ -115,20 +114,14 @@ describe('Plan and quota command behaviour', () => {
     testEnv.cleanup();
   });
 
-  it('rejects the contradictory combination of --check and --offline', async () => {
-    seed([oauthAccount()]);
-    await expect(listCommand({ check: true, offline: true })).rejects.toThrow(UsageError);
-    await expect(listCommand({ check: true, offline: true })).rejects.toThrow(/--offline/);
-  });
-
-  it('makes no network request in offline mode', async () => {
+  it('makes no network request unless asked to refresh', async () => {
     seed([oauthAccount()]);
     const calls: string[] = [];
     const quotaOptions: QuotaOptions = { fetchFn: quotaFetch(calls) };
 
-    await listCommand({ offline: true, json: true, quotaOptions });
-    await currentCommand({ offline: true, json: true, quotaOptions });
-    await detailsCommand('primary', { offline: true, json: true, quotaOptions });
+    await listCommand({ json: true, quotaOptions });
+    await currentCommand({ json: true, quotaOptions });
+    await detailsCommand('primary', { json: true, quotaOptions });
 
     expect(calls).toHaveLength(0);
     for (const payload of output.map((line) => JSON.parse(line))) {
@@ -136,7 +129,7 @@ describe('Plan and quota command behaviour', () => {
     }
   });
 
-  it('refreshes every OAuth profile whose reading has aged out for a default list', async () => {
+  it('refreshes every OAuth profile whose reading has aged out for list --refresh', async () => {
     const active = oauthAccount();
     const stale = oauthAccount({ id: 'oauth2', email: 'stale@example.com', alias: 'stale' });
     const recent = oauthAccount({
@@ -154,7 +147,7 @@ describe('Plan and quota command behaviour', () => {
     seed([active, stale, recent, expired], 'oauth1');
 
     const calls: string[] = [];
-    await listCommand({ json: true, quotaOptions: { fetchFn: quotaFetch(calls) } });
+    await listCommand({ refresh: true, json: true, quotaOptions: { fetchFn: quotaFetch(calls) } });
 
     const payload = JSON.parse(stdout());
     expect(payload.data.quotaRefresh.attempted).toBe(true);
@@ -227,7 +220,7 @@ describe('Plan and quota command behaviour', () => {
     vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
       errors.push(args.map(String).join(' '));
     });
-    await listCommand({ quotaOptions: { fetchFn: failingFetch } });
+    await listCommand({ refresh: true, quotaOptions: { fetchFn: failingFetch } });
 
     // The warning goes to stderr, leaving the table on stdout to pipe.
     const text = stdout();
@@ -258,7 +251,7 @@ describe('Plan and quota command behaviour', () => {
     ]);
 
     const calls: string[] = [];
-    await listCommand({ quotaOptions: { fetchFn: quotaFetch(calls), env: {} } });
+    await listCommand({ refresh: true, quotaOptions: { fetchFn: quotaFetch(calls), env: {} } });
 
     // Renewal is attempted with Antigravity's own client, so no client id of the
     // user's own is needed. It fails here, and nothing else is contacted after.
@@ -273,7 +266,7 @@ describe('Plan and quota command behaviour', () => {
     seed([oauthAccount()]);
     const quotaOptions: QuotaOptions = { fetchFn: quotaFetch() };
 
-    await currentCommand({ quotaOptions });
+    await currentCommand({ refresh: true, quotaOptions });
     let text = stdout();
     expect(text).toContain('Plan:');
     expect(text).toContain('Google AI Ultra');
@@ -282,13 +275,13 @@ describe('Plan and quota command behaviour', () => {
     expect(text).toContain('Quota check:');
 
     output = [];
-    await detailsCommand('primary', { quotaOptions });
+    await detailsCommand('primary', { refresh: true, quotaOptions });
     text = stdout();
     expect(text).toContain('Plan:');
     expect(text).toContain('Gemini week:  -');
 
     output = [];
-    await currentCommand({ json: true, quotaOptions });
+    await currentCommand({ refresh: true, json: true, quotaOptions });
     const currentPayload = JSON.parse(stdout());
     expect(currentPayload.data.account.plan).toBe('Google AI Ultra');
     expect(currentPayload.data.account.rateLimit.gemini.rate5h.usedPercent).toBe(65);
@@ -297,7 +290,7 @@ describe('Plan and quota command behaviour', () => {
     expect(currentPayload.data.quotaRefresh.attempted).toBe(true);
 
     output = [];
-    await detailsCommand('primary', { json: true, quotaOptions });
+    await detailsCommand('primary', { refresh: true, json: true, quotaOptions });
     const detailsPayload = JSON.parse(stdout());
     expect(detailsPayload.data.account.plan).toBe('Google AI Ultra');
     expect(detailsPayload.data.account.credentials).toBeUndefined();
@@ -306,7 +299,7 @@ describe('Plan and quota command behaviour', () => {
 
   it('never leaks credentials through a JSON envelope carrying quota data', async () => {
     seed([oauthAccount()]);
-    await listCommand({ json: true, quotaOptions: { fetchFn: quotaFetch() } });
+    await listCommand({ refresh: true, json: true, quotaOptions: { fetchFn: quotaFetch() } });
     const raw = stdout();
     expect(raw).not.toContain('synthetic-access-token');
     expect(raw).not.toContain('synthetic-refresh-token');
@@ -378,6 +371,7 @@ describe('Plan and quota command behaviour', () => {
     }) as unknown as typeof fetch;
 
     await currentCommand({
+      refresh: true,
       json: true,
       quotaOptions: { fetchFn, env: { AGY_OAUTH_CLIENT_ID: 'env-client-id' } },
     });

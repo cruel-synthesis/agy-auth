@@ -12,7 +12,7 @@ First release.
 - Direct Antigravity session import from Apple Keychain or the token file, with identity verification and no required client ID.
 - Browser OAuth 2.0 PKCE onboarding via `agy-auth login`, and in-place renewal of stored tokens.
 - Journaled account switching with rollback for Antigravity settings, session stores, service-account files, and ADC.
-- Experimental live plan and quota reporting for OAuth accounts, with bounded requests, cached fallback, and offline mode.
+- Experimental live plan and quota reporting for OAuth accounts, fetched only on `--refresh` (and by `auto`), with bounded requests and cached fallback.
 - `agy-auth auto` (alias `best`) ranks accounts by how much quota would otherwise go to waste and switches to the best one. `--dry-run` shows the ranking without switching.
 - A responsive account table shared by `list` and the interactive picker, with Unicode-safe column widths.
 - Versioned JSON output and exit codes for automation.

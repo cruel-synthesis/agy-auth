@@ -139,7 +139,7 @@ describe('Plan and quota support regression guard', () => {
       { mode: 0o600 }
     );
 
-    const stdout = execFileSync('node', guardedNodeArgs(cliPath, 'list', '--offline'), {
+    const stdout = execFileSync('node', guardedNodeArgs(cliPath, 'list'), {
       encoding: 'utf-8',
       env: { ...testEnv.createSubprocessEnv(), NO_COLOR: '1', COLUMNS: '140' },
       stdio: ['ignore', 'pipe', 'pipe'],

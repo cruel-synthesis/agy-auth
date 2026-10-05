@@ -73,8 +73,8 @@ export function createCli(): Command {
     .alias('ls')
     .description('Show saved accounts, plan and quota')
     .option('-a, --active', 'Show only the active account')
-    .option('-c, --check', 'Verify listed accounts and refresh live quota for OAuth accounts')
-    .option('--offline', 'Skip the live plan and quota refresh; show cached data only')
+    .option('-r, --refresh', 'Fetch live plan and quota from Google before showing')
+    .option('-c, --check', 'Also verify each account can still sign in (implies --refresh)')
     .option('-j, --json', 'Output as JSON')
     .action(async (options) => {
       await listCommand(options);
@@ -108,7 +108,7 @@ export function createCli(): Command {
     .command('current')
     .alias('whoami')
     .description('Show the account in use')
-    .option('--offline', 'Skip the live plan and quota refresh; show cached data only')
+    .option('-r, --refresh', 'Fetch live plan and quota from Google before showing')
     .option('-j, --json', 'Output as JSON')
     .action(async (options) => {
       await currentCommand(options);
@@ -120,7 +120,7 @@ export function createCli(): Command {
     .alias('info')
     .description('Show everything stored for one account')
     .argument('[query]', 'Account selector (number, alias, email, ID)')
-    .option('--offline', 'Skip the live plan and quota refresh; show cached data only')
+    .option('-r, --refresh', 'Fetch live plan and quota from Google before showing')
     .option('-j, --json', 'Output as JSON')
     .action(async (query, options) => {
       await detailsCommand(query, options);

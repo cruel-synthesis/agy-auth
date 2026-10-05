@@ -298,7 +298,7 @@ describe('Command Modules Behavioral & Regression Suite', () => {
       });
       registry.setActiveAccount(acc.id);
 
-      await currentCommand({ json: false, offline: true });
+      await currentCommand({ json: false });
       const currentOutput = output();
       expect(currentOutput).toContain('infra@example.com');
       expect(currentOutput).toContain('Plan:');
@@ -307,7 +307,7 @@ describe('Command Modules Behavioral & Regression Suite', () => {
       expect(currentOutput).toContain('agy-auth details');
 
       logSpy.mockClear();
-      await detailsCommand(acc.id, { json: false, offline: true });
+      await detailsCommand(acc.id, { json: false });
       const detailsOutput = output();
       expect(detailsOutput).toContain('my-gcp');
       expect(detailsOutput).toContain('us-central1');
@@ -315,7 +315,7 @@ describe('Command Modules Behavioral & Regression Suite', () => {
 
       // The JSON contract is unchanged: every field stays addressable there.
       logSpy.mockClear();
-      await currentCommand({ json: true, offline: true });
+      await currentCommand({ json: true });
       const payload = JSON.parse(String(logSpy.mock.calls.at(-1)?.[0]));
       expect(payload.data.account.gcpProject).toBe('my-gcp');
       expect(payload.data.account.model).toBe('gemini-2.5-flash');

@@ -1,4 +1,3 @@
-import { UsageError } from '../core/errors.js';
 import { applyCheckResults, applyQuotaResults } from '../core/quota-apply.js';
 import { QuotaOptions, summarizeQuotaRefresh } from '../core/quota.js';
 import { RegistryManager } from '../core/registry.js';
@@ -12,17 +11,11 @@ interface ListOptions {
   active?: boolean;
   check?: boolean;
   json?: boolean;
-  offline?: boolean;
+  refresh?: boolean;
   quotaOptions?: QuotaOptions;
 }
 
 export async function listCommand(options: ListOptions): Promise<void> {
-  if (options.check && options.offline) {
-    throw new UsageError(
-      '`--check` performs live verification and cannot be combined with `--offline`.'
-    );
-  }
-
   const registry = new RegistryManager();
   let accounts = registry.getAccounts();
   const activeAccountId = registry.getActiveAccount()?.id || null;
@@ -31,8 +24,7 @@ export async function listCommand(options: ListOptions): Promise<void> {
     accounts = accounts.filter((a) => a.id === activeAccountId);
   }
 
-  const offline = Boolean(options.offline);
-  let quotaSummary = summarizeQuotaRefresh(offline, []);
+  let quotaSummary = summarizeQuotaRefresh(!options.refresh, []);
   let warning: string | undefined;
 
   if (options.check && accounts.length > 0) {
@@ -46,7 +38,7 @@ export async function listCommand(options: ListOptions): Promise<void> {
 
     const quotas = new Map(refresh.refreshes.map((r) => [r.result.accountId, r]));
     await applyCheckResults(registry, verifications, quotas);
-  } else if (!offline && accounts.length > 0) {
+  } else if (options.refresh && accounts.length > 0) {
     const refresh = await refreshQuota(selectStale(accounts), false, options.quotaOptions);
     quotaSummary = refresh.summary;
     warning = refresh.warning;

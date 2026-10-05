@@ -19,7 +19,7 @@ import { refreshQuota } from './refresh.js';
 
 interface DetailsOptions {
   json?: boolean;
-  offline?: boolean;
+  refresh?: boolean;
   quotaOptions?: QuotaOptions;
 }
 
@@ -67,7 +67,7 @@ export async function detailsCommand(query?: string, options: DetailsOptions = {
             ok: true,
             data: {
               account: null,
-              quotaRefresh: summarizeQuotaRefresh(Boolean(options.offline), []),
+              quotaRefresh: summarizeQuotaRefresh(!options.refresh, []),
             },
           },
           null,
@@ -122,7 +122,7 @@ export async function detailsCommand(query?: string, options: DetailsOptions = {
 
   if (!target) return;
 
-  const offline = Boolean(options.offline);
+  const offline = !options.refresh;
   let quotaSummary: QuotaRefreshSummary = summarizeQuotaRefresh(offline, []);
   let warning: string | undefined;
 

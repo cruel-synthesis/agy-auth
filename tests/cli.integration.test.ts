@@ -123,8 +123,8 @@ describe('Built CLI Integration and Concurrency', () => {
   });
 
   it('outputs structured JSON error on invalid usage and keeps stderr silent in JSON mode', () => {
-    // Flags that contradict each other are a usage error (exit code 2)
-    const badFlagsRes = runCli(['list', '--check', '--offline', '--json']);
+    // An option the command does not take is a usage error (exit code 2)
+    const badFlagsRes = runCli(['list', '--offline', '--json']);
     expect(badFlagsRes.status).toBe(2);
     expect(badFlagsRes.stderr).toBe('');
     const badFlagsJson = JSON.parse(badFlagsRes.stdout);

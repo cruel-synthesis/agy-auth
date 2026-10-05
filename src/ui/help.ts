@@ -80,9 +80,9 @@ export function printTopLevelHelp(all = false, version = VERSION): void {
   console.log('  Run `agy-auth <command> --help` for its options.');
   console.log('');
   console.log('  Live plan and quota reporting is experimental: it uses undocumented Antigravity');
-  console.log('  endpoints that may change without notice. `list`, `current` and `details`');
-  console.log('  refresh it over the network by default; pass `--offline` for cached data only.');
-  console.log('  `switch` never makes a network request.');
+  console.log("  endpoints that may change without notice, and Google's terms may not allow it.");
+  console.log('  `list`, `current` and `details` show cached data unless given `--refresh`;');
+  console.log('  `auto` refreshes unless given `--offline`. `switch` never uses the network.');
   console.log('');
   console.log("  Sign-in and renewal use Antigravity's own OAuth client, the only one Google");
   console.log('  answers with a plan and a quota. Set AGY_OAUTH_CLIENT_ID to use your own');

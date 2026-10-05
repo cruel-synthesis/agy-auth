@@ -10,12 +10,17 @@ agy-auth ls [options]
 Options:
 
 - `-a, --active`: Show only the active account
-- `-c, --check`: Verify listed accounts and refresh live quota for OAuth accounts
-- `--offline`: Skip the live plan and quota refresh; show cached data only
+- `-r, --refresh`: Fetch live plan and quota from Google before showing
+- `-c, --check`: Also verify each account can still sign in (implies `--refresh`)
 - `-j, --json`: Output as JSON
 - `-h, --help`: Show this help
 
-Quota readings are cached for ten minutes. An ordinary `list` refreshes every OAuth
-account whose reading is older than that, so the whole table stays current without
-switching to each account in turn. Accounts that need a fresh sign-in are skipped
-until you sign in again; `--check` asks about them anyway.
+A plain `list` makes no network request and shows the last reading saved for
+each account. `--refresh` asks Google for every OAuth account whose reading is
+older than ten minutes, so the whole table is current without switching to each
+account in turn. Accounts that need a fresh sign-in are skipped until you sign
+in again; `--check` asks about them anyway.
+
+Live readings use undocumented Antigravity endpoints and Antigravity's own
+client identity, which Google's Antigravity terms may treat as third-party
+access. See [Responsible use](../../README.md#responsible-use).
