@@ -10,46 +10,9 @@ agy-auth best [options]
 Options:
 
 - `-n, --dry-run`: Show the ranking and the choice without switching
-- `-w, --watch`: Keep running and switch whenever the account in use runs out
-- `--interval <minutes>`: Minutes between checks while watching (default: 5)
 - `--offline`: Decide from cached quota only; make no network request
 - `-j, --json`: Output as JSON
 - `-h, --help`: Show this help
-
-## Switching on its own
-
-`agy-auth auto --watch` stays running and takes a live reading of the account in
-use every few minutes. While that account still has room it does nothing but say
-so. The moment it runs out, the others are read and the best one is switched to,
-by the same choice described below. If the account in use still ranks first
-against those fresh readings, or is beaten by less than the margin, it stays.
-
-```
-  Watching the account in use, switching when it runs out. Checking every 5 min.
-  Ctrl-C to stop.
-
-  14:32  work@example.com has 62% of its 5-hour limit left
-  14:37  work@example.com has 18% of its 5-hour limit left
-  14:42  work@example.com: 5-hour limit nearly spent; switched to spare@example.com
-  14:47  spare@example.com has 94% of its 5-hour limit left
-```
-
-A check that cannot reach the service changes nothing: the watcher keeps the
-account in use rather than moving off it because the network failed. Neither
-does a reading that comes back without a current 5-hour window. A rejected
-credential is different - the answer is decisive, so the watcher treats the
-account as spent and looks for another. An account in use that is not OAuth
-reports no quota at all, so the watcher leaves it alone rather than reading that
-silence as running out.
-
-Only the account in use is contacted on an ordinary check, so leaving the watcher
-running costs one account's traffic per interval rather than everyone's. With
-`--json` each check prints one JSON object per line. With `--dry-run` it reports
-what it would do and switches nothing. It cannot be combined with `--offline`.
-
-This is a process you start and can see, not a service installed behind your back:
-closing the terminal ends it. Antigravity picks up the switched session the same
-way it does after `agy-auth switch`.
 
 ## How the choice is made
 
@@ -78,8 +41,8 @@ decides on its own: the order, the account chosen, and the margin the account in
 use has to be beaten by. The ranking says which of the two it used, and leaves
 out the `SCORE` column when it was not the score, since a number printed beside
 an order it did not produce reads as one that was ignored. With `--json`,
-`data.basis` is `weekly` or `headroom`. This applies to `--watch` as it does to a
-single run, and whether or not the account in use still has room.
+`data.basis` is `weekly` or `headroom`, whether or not the account in use still
+has room.
 
 Excluded from the running:
 

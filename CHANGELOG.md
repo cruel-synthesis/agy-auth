@@ -13,7 +13,7 @@ First release.
 - Browser OAuth 2.0 PKCE onboarding via `agy-auth login`, and in-place renewal of stored tokens.
 - Journaled account switching with rollback for Antigravity settings, session stores, service-account files, and ADC.
 - Experimental live plan and quota reporting for OAuth accounts, with bounded requests, cached fallback, and offline mode.
-- `agy-auth auto` (alias `best`) ranks accounts by how much quota would otherwise go to waste and switches to the best one. `--dry-run` shows the ranking without switching; `--watch` stays in the terminal and switches when the account in use runs out.
+- `agy-auth auto` (alias `best`) ranks accounts by how much quota would otherwise go to waste and switches to the best one. `--dry-run` shows the ranking without switching.
 - A responsive account table shared by `list` and the interactive picker, with Unicode-safe column widths.
 - Versioned JSON output and exit codes for automation.
 - Export, import, migration, diagnostics, and account configuration commands.

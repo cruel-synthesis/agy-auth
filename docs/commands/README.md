@@ -11,7 +11,7 @@ Overview of commands available in `agy-auth`.
 - [`list`](./list.md) (`ls`): Show saved accounts, plan and quota (`-a`, `-c`, `--offline`, `-j`)
 - [`switch`](./switch.md) (`sw`): Switch to a saved account (`-j`)
 - [`current`](./current.md) (`whoami`): Show the account in use (`--offline`, `-j`)
-- [`auto`](./auto.md) (`best`): Switch to the account whose quota is most at risk of going to waste (`-n`, `-w`, `--interval`, `--offline`, `-j`)
+- [`auto`](./auto.md) (`best`): Switch to the account whose quota is most at risk of going to waste (`-n`, `--offline`, `-j`)
 - [`details`](./details.md) (`info`): Show everything stored for one account (`--offline`, `-j`)
 - [`remove`](./remove.md) (`rm`): Remove saved accounts (`--all`, `-y`, `-j`)
 
@@ -26,4 +26,4 @@ Overview of commands available in `agy-auth`.
 - [`export`](./export.md): Write a backup of saved accounts (`--include-secrets`, `-y`, `-j`)
 - [`import`](./import.md): Read a backup of saved accounts (`--overwrite`, `-j`)
 - [`clean`](./clean.md): Delete old managed backup files (`--dry-run`, `--all`, `-j`)
-- [`doctor`](./doctor.md): Check for problems (`--offline`, `--quota`, `-j`)
+- [`doctor`](./doctor.md): Check for problems (`--offline`, `-j`)

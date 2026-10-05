@@ -1,4 +1,3 @@
-import { setTimeout as delay } from 'node:timers/promises';
 import {
   AccountScore,
   BLOCKED,
@@ -7,27 +6,23 @@ import {
   MODEL_FAMILIES,
   chooseBestAccount,
 } from '../core/best-account.js';
-import { CancellationError, CliError, UsageError } from '../core/errors.js';
+import { CliError } from '../core/errors.js';
 import { applyQuotaResults } from '../core/quota-apply.js';
 import { QuotaOptions } from '../core/quota.js';
 import { RegistryManager } from '../core/registry.js';
 import { Switcher } from '../core/switcher.js';
-import { Account, needsSignIn } from '../core/types.js';
+import { Account } from '../core/types.js';
 import { NO_ACCOUNTS, formatAccountShort } from '../ui/format.js';
 import { terminalWidth, truncatePadded, truncateToWidth } from '../ui/table.js';
 import { colors, quotaColor } from '../ui/theme.js';
-import { describeQuotaFailure, refreshQuota, selectStale } from './refresh.js';
+import { refreshQuota, selectStale } from './refresh.js';
 
 interface AutoOptions {
   dryRun?: boolean;
-  interval?: string;
   json?: boolean;
   offline?: boolean;
   quotaOptions?: QuotaOptions;
-  watch?: boolean;
 }
-
-const DEFAULT_INTERVAL_MINUTES = 5;
 
 /** A coarse countdown: precision past the leading unit is noise here. */
 function formatUntil(resetsAt: number | undefined, nowMs: number): string {
@@ -240,233 +235,15 @@ function explain(best: AccountScore, nowMs: number, basis: ChoiceBasis): string 
   return `${percent(weekly.remaining)} of its weekly limit is unspent${expires} - the quota most likely to go to waste.`;
 }
 
-interface RefreshOutcome {
-  /** One-line human warning, present only when a refresh failed. */
-  warning?: string;
-  /** Why each account whose refresh did not succeed this call failed. */
-  failed: Map<string, string>;
-}
-
 /** Take a live reading for these accounts and write it to the registry. */
 async function refreshAndApply(
   registry: RegistryManager,
   accounts: Account[],
   options: AutoOptions
-): Promise<RefreshOutcome> {
+): Promise<string | undefined> {
   const refresh = await refreshQuota(accounts, false, options.quotaOptions);
   await applyQuotaResults(registry, refresh.refreshes);
-  return {
-    warning: refresh.warning,
-    failed: new Map(
-      refresh.refreshes
-        .filter((r) => !r.result.ok)
-        .map((r) => [r.result.accountId, describeQuotaFailure(r.result.reason)])
-    ),
-  };
-}
-
-function clockOf(nowMs: number): string {
-  const at = new Date(nowMs);
-  return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
-}
-
-/** What one watch check found, ready to print either way. */
-interface TickReport {
-  event: 'holding' | 'switched' | 'would-switch' | 'exhausted' | 'switch-failed' | 'idle';
-  detail: string;
-  activeAccountId: string | null;
-  chosenAccountId?: string;
-}
-
-/**
- * One watch check: renew the reading for the account in use and, if it can no
- * longer take work, move to the best of the others.
- *
- * Only the account in use is contacted while it still has room. The rest are
- * asked about at the moment the choice is actually made, so a watcher left
- * running costs one account's traffic per interval rather than everyone's.
- */
-async function watchTick(registry: RegistryManager, options: AutoOptions): Promise<TickReport> {
-  const active = registry.getActiveAccount();
-  if (!active) {
-    return { event: 'idle', detail: 'no account in use', activeAccountId: null };
-  }
-  if (active.authType !== 'oauth') {
-    // Only OAuth accounts report quota, so this one can never be seen to run out.
-    // Scoring it as spent would move off an account chosen on purpose.
-    return {
-      event: 'idle',
-      detail: `${formatAccountShort(active)} is not an OAuth account, so it has no quota to watch`,
-      activeAccountId: active.id,
-    };
-  }
-
-  // An account already known to need a sign-in would only fail again.
-  const activeRefresh = needsSignIn(active)
-    ? { failed: new Map<string, string>() }
-    : await refreshAndApply(registry, [active], options);
-  const refreshed = registry.getAccounts().find((account) => account.id === active.id);
-  const signInNeeded = refreshed !== undefined && needsSignIn(refreshed);
-  if (activeRefresh.failed.has(active.id) && !signInNeeded) {
-    // A failed reading is not a reading. Deciding "exhausted" from it would act
-    // on data no fresher than what was already on hand, and could switch away
-    // from an account that still has quota simply because the network didn't.
-    // A rejected credential is the exception: that answer is decisive, and
-    // holding on it would wait for a token that cannot come back on its own.
-    return {
-      event: 'holding',
-      detail: `${formatAccountShort(active)}: could not refresh quota (${activeRefresh.failed.get(active.id)}); using the last known reading`,
-      activeAccountId: active.id,
-    };
-  }
-
-  const readActive = () => {
-    const fresh = registry.getRegistry();
-    const choice = chooseBestAccount(fresh.accounts, fresh.activeAccountId, Date.now());
-    return {
-      choice,
-      current: choice.ranked.find((entry) => entry.account.id === fresh.activeAccountId),
-    };
-  };
-
-  const { current } = readActive();
-  if (current && current.score > 0) {
-    return {
-      event: 'holding',
-      detail: `${formatAccountShort(active)} has ${percent(current.headroom)} of its 5-hour limit left${coverage(current)}`,
-      activeAccountId: active.id,
-    };
-  }
-
-  if (current?.blocked === BLOCKED.unread) {
-    // The reading came back without a current 5-hour window, which says nothing
-    // about whether the account ran out. Moving on it would act on no evidence.
-    return {
-      event: 'holding',
-      detail: `${formatAccountShort(active)}: ${BLOCKED.unread}; staying until one comes back`,
-      activeAccountId: active.id,
-    };
-  }
-
-  // The account in use is spent. Only now is a reading of the others worth its
-  // traffic, and the choice must not be made on stale ones. selectStale leaves
-  // out accounts known to need a sign-in, which cannot be chosen anyway.
-  const others = registry.getAccounts().filter((account) => account.id !== active.id);
-  const othersRefresh = await refreshAndApply(registry, selectStale(others), options);
-
-  const { choice, current: reread } = readActive();
-  if (choice.best && !choice.shouldSwitch && reread) {
-    // Against fresh readings of the others, the account in use is the best, or
-    // close enough that moving is not worth rewriting the session.
-    return {
-      event: 'holding',
-      detail: `${formatAccountShort(active)} is still the best use of your quota`,
-      activeAccountId: active.id,
-    };
-  }
-  const reason = current?.blocked ?? 'out of quota';
-  // Whoever is chosen next may be chosen on a reading that could not be
-  // renewed, so the failure travels with the decision rather than being dropped.
-  const stale = othersRefresh.warning ? ` - ${othersRefresh.warning}` : '';
-
-  if (!choice.best) {
-    return {
-      event: 'exhausted',
-      detail: `${formatAccountShort(active)}: ${reason}, and no other account has known usable quota${stale}`,
-      activeAccountId: active.id,
-    };
-  }
-
-  const target = formatAccountShort(choice.best.account);
-  if (options.dryRun) {
-    return {
-      event: 'would-switch',
-      detail: `${formatAccountShort(active)}: ${reason}; would switch to ${target}${stale}`,
-      activeAccountId: active.id,
-      chosenAccountId: choice.best.account.id,
-    };
-  }
-
-  try {
-    Switcher.switchAccount(choice.best.account);
-  } catch (error) {
-    // The watcher outlives any one bad switch attempt - a stale keychain entry
-    // or a lock held by another command is reported, not fatal.
-    const message = error instanceof Error ? error.message : String(error);
-    return {
-      event: 'switch-failed',
-      detail: `${formatAccountShort(active)}: ${reason}; could not switch to ${target} (${message})${stale}`,
-      activeAccountId: active.id,
-    };
-  }
-
-  return {
-    event: 'switched',
-    detail: `${formatAccountShort(active)}: ${reason}; switched to ${target}${stale}`,
-    activeAccountId: choice.best.account.id,
-    chosenAccountId: choice.best.account.id,
-  };
-}
-
-function intervalMs(raw: string | undefined): number {
-  if (raw === undefined) return DEFAULT_INTERVAL_MINUTES * 60_000;
-  const minutes = Number(raw);
-  if (!Number.isFinite(minutes) || minutes < 1) {
-    throw new UsageError('`--interval` takes a number of minutes, at least 1.');
-  }
-  return minutes * 60_000;
-}
-
-/**
- * Watch the account in use and move off it when it runs out, until interrupted.
- *
- * This is a process you start and can see, not a service installed behind your
- * back: closing the terminal ends it.
- */
-async function watchCommand(registry: RegistryManager, options: AutoOptions): Promise<void> {
-  const period = intervalMs(options.interval);
-  const controller = new AbortController();
-  const onSigInt = () => controller.abort();
-  process.once('SIGINT', onSigInt);
-
-  if (!options.json) {
-    const every = `${Math.round(period / 60_000)} min`;
-    const action = options.dryRun ? 'reporting' : 'switching';
-    console.log(
-      `\n  Watching the account in use, ${action} when it runs out. Checking every ${every}.`
-    );
-    console.log(`  ${colors.dim('Ctrl-C to stop.')}\n`);
-  }
-
-  try {
-    for (;;) {
-      const report = await watchTick(registry, options);
-      const nowMs = Date.now();
-
-      if (options.json) {
-        console.log(
-          JSON.stringify({
-            schemaVersion: 1,
-            command: 'auto',
-            ok: report.event !== 'exhausted' && report.event !== 'switch-failed',
-            data: { at: new Date(nowMs).toISOString(), ...report },
-          })
-        );
-      } else {
-        const line = `  ${colors.dim(clockOf(nowMs))}  ${report.detail}`;
-        console.log(report.event === 'holding' ? colors.dim(line) : line);
-      }
-
-      await delay(period, undefined, { signal: controller.signal });
-    }
-  } catch (error) {
-    if (controller.signal.aborted) {
-      throw new CancellationError('Stopped watching.');
-    }
-    throw error;
-  } finally {
-    process.removeListener('SIGINT', onSigInt);
-  }
+  return refresh.warning;
 }
 
 export async function autoCommand(options: AutoOptions = {}): Promise<void> {
@@ -477,18 +254,9 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
     throw new CliError(NO_ACCOUNTS, 'no_accounts');
   }
 
-  if (options.watch) {
-    if (options.offline) {
-      throw new UsageError(
-        '`--watch` needs live readings and cannot be combined with `--offline`.'
-      );
-    }
-    return watchCommand(registry, options);
-  }
-
   let warning: string | undefined;
   if (!options.offline) {
-    warning = (await refreshAndApply(registry, selectStale(accounts), options)).warning;
+    warning = await refreshAndApply(registry, selectStale(accounts), options);
   }
 
   // Re-read: the choice must be made on the readings just written, not the ones

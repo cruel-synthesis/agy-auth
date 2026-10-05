@@ -404,19 +404,6 @@ describe('CLI unit tests and option dispatch', () => {
     }
   });
 
-  it('ends a JSON watch with one line, as every check before it', async () => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    try {
-      const code = await runCli(['node', 'agy-auth', 'auto', '-w', '--json']);
-      expect(code).toBe(1);
-      const printed = String(logSpy.mock.calls.at(-1)?.[0]);
-      expect(printed).not.toContain('\n');
-      expect(JSON.parse(printed).ok).toBe(false);
-    } finally {
-      logSpy.mockRestore();
-    }
-  });
-
   it('returns exit code 2 for the removed login method option', async () => {
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {

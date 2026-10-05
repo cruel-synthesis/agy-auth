@@ -97,8 +97,6 @@ export function createCli(): Command {
     .alias('best')
     .description('Switch to the account whose quota is most at risk of going to waste')
     .option('-n, --dry-run', 'Show the ranking and the choice without switching')
-    .option('-w, --watch', 'Keep running and switch whenever the account in use runs out')
-    .option('--interval <minutes>', 'Minutes between checks while watching (default: 5)')
     .option('--offline', 'Decide from cached quota only; make no network request')
     .option('-j, --json', 'Output as JSON')
     .action(async (options) => {
@@ -303,7 +301,6 @@ export function createCli(): Command {
     .command('doctor')
     .description('Check for problems')
     .option('--offline', 'Skip external network reachability probe')
-    .option('--quota', 'Ask the quota service directly and report its answers')
     .option('-j, --json', 'Output as JSON')
     .action(async (options) => {
       await doctorCommand(options);
@@ -328,7 +325,6 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
   // a command runs, the error path answers in the shape it ran in. A parse error
   // can stop before the flag is reached, so there the raw words decide.
   let jsonFlag = false;
-  let streaming = false;
   let parsed = false;
   const jsonWord = argv.includes('--json') || argv.includes('-j');
   const isJson = (): boolean => jsonFlag || (!parsed && jsonWord);
@@ -336,9 +332,6 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
   const listenForJson = (command: Command): void => {
     command.on('option:json', () => {
       jsonFlag = true;
-    });
-    command.on('option:watch', () => {
-      streaming = true;
     });
     for (const sub of command.commands) listenForJson(sub);
   };
@@ -380,14 +373,9 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
     commandName = 'switch';
   }
 
-  // A watch writes one JSON object per line, so its last word must be one too.
   const printJsonError = (error: { code: string; message: string; details?: unknown }): void => {
     console.log(
-      JSON.stringify(
-        { schemaVersion: 1, command: commandName, ok: false, error },
-        null,
-        streaming ? undefined : 2
-      )
+      JSON.stringify({ schemaVersion: 1, command: commandName, ok: false, error }, null, 2)
     );
   };
 

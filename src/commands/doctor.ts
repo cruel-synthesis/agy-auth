@@ -6,33 +6,13 @@ import { CliError, describeSchemaFailure, errorMessage } from '../core/errors.js
 import { KeychainManager } from '../core/keychain.js';
 import { migrateRegistry } from '../core/migration.js';
 import { Paths } from '../core/paths.js';
-import { type QuotaProbe, probeQuotaEndpoints } from '../core/quota.js';
-import { RegistryManager, validateRegistry } from '../core/registry.js';
+import { validateRegistry } from '../core/registry.js';
 import { CURRENT_SCHEMA_VERSION, RegistrySchema, isRecord } from '../core/types.js';
 import { colors, marks } from '../ui/theme.js';
 
 interface DoctorOptions {
   offline?: boolean;
   json?: boolean;
-  quota?: boolean;
-}
-
-/**
- * Ask the quota service directly and report what it said. The endpoints are
- * undocumented, so when a reading stops parsing this is the only way to tell a
- * changed contract from an account that simply has no quota.
- */
-async function probeQuota(): Promise<QuotaProbe> {
-  const registry = new RegistryManager();
-  const active = registry.getActiveAccount();
-  const account =
-    active?.authType === 'oauth'
-      ? active
-      : registry.getAccounts().find((a) => a.authType === 'oauth');
-  if (!account) {
-    throw new Error('No Google sign-in account to probe; run `agy-auth add` to save one.');
-  }
-  return probeQuotaEndpoints(account);
 }
 
 interface CheckResult {
@@ -397,16 +377,6 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
     }
   }
 
-  let quotaProbe: QuotaProbe | undefined;
-  if (options.quota) {
-    // A probe that cannot start is one failed check, not the end of the report.
-    try {
-      quotaProbe = await probeQuota();
-    } catch (err) {
-      checks.push({ name: 'Quota Endpoint Probe', status: 'fail', message: errorMessage(err) });
-    }
-  }
-
   const hasFail = checks.some((c) => c.status === 'fail');
 
   if (options.json) {
@@ -414,7 +384,6 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
       throw new CliError('One or more diagnostics checks failed.', 'doctor_failed', 1, {
         checks,
         passed: false,
-        ...(quotaProbe ? { quotaProbe } : {}),
       });
     }
     console.log(
@@ -426,7 +395,6 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
           data: {
             checks,
             passed: true,
-            ...(quotaProbe ? { quotaProbe } : {}),
           },
         },
         null,
@@ -447,22 +415,6 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
     console.log(`  ${icon} ${c.name}`);
     console.log(`    ${colors.dim(c.message)}`);
   }
-  if (quotaProbe) {
-    const renewal = quotaProbe.renewed ? 'token renewed' : 'token not renewed';
-    console.log(
-      `  ${colors.cyanBold('Quota endpoint probe')} (${quotaProbe.email}, credentials from ${quotaProbe.credentialSource}, ${renewal})`
-    );
-    for (const step of quotaProbe.steps) {
-      const call = step.endpoint.split('/v1internal:')[1];
-      console.log(`    ${step.client}  ${call}  ${step.request}  ${step.status}`);
-      console.log(`      ${colors.dim(step.shape)}`);
-    }
-    const parsed = quotaProbe.parsed
-      ? JSON.stringify(quotaProbe.parsed)
-      : 'nothing the quota table can show';
-    console.log(`    ${colors.dim(`parsed: ${parsed}`)}`);
-  }
-
   console.log('');
 
   if (hasFail) {
