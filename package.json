@@ -62,7 +62,7 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^7.3.2",
-    "commander": "^13.1.0",
+    "commander": "^15.0.0",
     "picocolors": "^1.1.1",
     "string-width": "^7.2.0",
     "zod": "^3.24.2"
