@@ -50,7 +50,12 @@ export class UsageError extends CliError {
 
 export class AccountNotFoundError extends CliError {
   constructor(query: string) {
-    super(`No account matches the selector '${query}'.`, 'account_not_found', 1, { query });
+    super(
+      `No account matches '${query}'. Run \`agy-auth list\` to see your accounts.`,
+      'account_not_found',
+      1,
+      { query }
+    );
     this.name = 'AccountNotFoundError';
   }
 }
