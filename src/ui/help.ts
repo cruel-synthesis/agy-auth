@@ -39,16 +39,29 @@ const OTHER_COMMANDS: CommandRow[] = [
   ['--help, -h', 'Show this help'],
 ];
 
+const EXAMPLES: CommandRow[] = [
+  ['agy-auth login --alias work', 'Sign in to another account and call it "work"'],
+  ['agy-auth switch work', 'Put Antigravity on it'],
+  ['agy-auth -', 'Switch back to the previous account'],
+];
+
 export function printTopLevelHelp(all = false, version = VERSION): void {
-  console.log(`${colors.cyan('agy-auth')} ${colors.cyan(version)}\n`);
+  console.log(`${colors.cyanBold('agy-auth')} ${colors.dim(version)}`);
+  console.log(
+    'Keep several Google accounts signed in for Antigravity and switch in one command.\n'
+  );
+  console.log(`${colors.cyan('Usage:')} agy-auth <command> [options]\n`);
 
   if (!all) {
     console.log(colors.cyan('Commands:'));
     writeCommandRows(ACCOUNT_COMMANDS);
     console.log('');
-    console.log(colors.cyan('Notes:'));
-    console.log('  Run `agy-auth help --all` for every command.');
-    console.log('  Run `agy-auth <command> --help` for its options.\n');
+    console.log(colors.cyan('Examples:'));
+    writeCommandRows(EXAMPLES);
+    console.log('');
+    console.log(
+      `${colors.dim('Run `agy-auth help --all` for every command, `agy-auth <command> --help` for its options.')}\n`
+    );
     return;
   }
 
