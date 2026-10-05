@@ -15,7 +15,7 @@ import { Switcher } from '../core/switcher.js';
 import { Account, needsSignIn } from '../core/types.js';
 import { NO_ACCOUNTS, formatAccountShort } from '../ui/format.js';
 import { terminalWidth, truncatePadded, truncateToWidth } from '../ui/table.js';
-import { colors } from '../ui/theme.js';
+import { colors, quotaColor } from '../ui/theme.js';
 import { describeQuotaFailure, refreshQuota, selectStale } from './refresh.js';
 
 interface AutoOptions {
@@ -74,6 +74,8 @@ function renderRanking(
     // An unread weekly window is scored as an untouched one; printing that
     // assumption as 100% would pass it off as a reading.
     weekly: entry.perishing?.measured ? percent(entry.perishing.remaining) : '-',
+    headroomTint: entry.perishing ? quotaColor(entry.headroom * 100) : undefined,
+    weeklyTint: entry.perishing?.measured ? quotaColor(entry.perishing.remaining * 100) : undefined,
     expires: formatUntil(entry.perishing?.resetsAt, nowMs),
     // The score is only shown where it decided the order. On 5-hour headroom it
     // still holds an assumed week, and printing it beside a ranking it did not
@@ -90,12 +92,21 @@ function renderRanking(
   // whole line loses whole columns from the right rather than digits from a
   // number. The verdict printed below still names the winner either way.
   const columns = [
-    { header: '5H', pick: (row: (typeof rows)[number]) => row.headroom },
-    { header: 'WEEK', pick: (row: (typeof rows)[number]) => row.weekly },
-    { header: 'EXPIRES', pick: (row: (typeof rows)[number]) => row.expires },
+    {
+      header: '5H',
+      pick: (row: (typeof rows)[number]) => row.headroom,
+      tint: (row: (typeof rows)[number]) => row.headroomTint,
+    },
+    {
+      header: 'WEEK',
+      pick: (row: (typeof rows)[number]) => row.weekly,
+      tint: (row: (typeof rows)[number]) => row.weeklyTint,
+    },
+    { header: 'EXPIRES', pick: (row: (typeof rows)[number]) => row.expires, tint: () => undefined },
     {
       header: basis === 'weekly' ? 'SCORE' : 'NOTE',
       pick: (row: (typeof rows)[number]) => row.note,
+      tint: () => undefined,
     },
   ]
     .filter((column) => rows.some((row) => column.pick(row) !== ''))
@@ -122,7 +133,7 @@ function renderRanking(
 
   // Clipped before it is dimmed: clipping counts characters, and would count
   // the escape codes as text and cut off the one that ends the style.
-  const header = colors.dim(
+  const header = colors.cyanBold(
     truncateToWidth(
       `    ${cells('ACCOUNT', (column) => column.header.padEnd(column.width))}`,
       termWidth,
@@ -130,11 +141,26 @@ function renderRanking(
     )
   );
 
+  // Accounts that cannot be chosen recede; the one in use keeps a green marker.
   return [
     header,
-    ...rows.map((row) => {
+    ...ranked.map((entry, index) => {
+      const row = rows[index];
       const line = cells(row.name, (column) => column.pick(row).padEnd(column.width));
-      return truncateToWidth(`  ${row.marker} ${line}`, termWidth, '');
+      const plain = `  ${row.marker} ${line}`;
+      const clipped = truncateToWidth(plain, termWidth, '');
+      if (entry.blocked) return colors.dim(clipped);
+      // Percentages take their quota colour only on a line that fits whole:
+      // a clipped line is cut by character count and stays plain.
+      const body =
+        clipped === plain
+          ? cells(row.name, (column) => {
+              const text = column.pick(row);
+              const tint = column.tint(row);
+              return (tint ? tint(text) : text) + ' '.repeat(column.width - text.length);
+            })
+          : clipped.slice(4);
+      return row.marker === '*' ? `  ${colors.bold(colors.green('*'))} ${body}` : `    ${body}`;
     }),
   ];
 }

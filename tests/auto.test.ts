@@ -670,8 +670,8 @@ describe('Automatic switching', () => {
     expect(output).not.toMatch(/most likely to go to waste/);
   });
 
-  it('ends the dimmed ranking header even when it has to be clipped', async () => {
-    vi.spyOn(colors, 'dim').mockImplementation((text: string) => `\x1b[2m${text}\x1b[22m`);
+  it('ends the styled ranking header even when it has to be clipped', async () => {
+    vi.spyOn(colors, 'cyanBold').mockImplementation((text: string) => `\x1b[1m${text}\x1b[22m`);
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const originalColumns = process.env.COLUMNS;
     process.env.COLUMNS = '8';
