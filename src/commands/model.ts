@@ -1,7 +1,7 @@
 import { AccountNotFoundError, AmbiguousSelectorError, UsageError } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
 import { checkInputLength, sanitizeAccount } from '../core/types.js';
-import { colors } from '../ui/theme.js';
+import { colors, marks } from '../ui/theme.js';
 
 interface ModelOptions {
   json?: boolean;
@@ -57,7 +57,7 @@ export async function modelSetCommand(
   }
 
   console.log(
-    `\n  ${colors.green('[ok]')} Set default model '${colors.cyan(trimmedModel)}' for ${updated.email}`
+    `\n  ${marks.ok} Set default model '${colors.cyan(trimmedModel)}' for ${updated.email}`
   );
   console.log(
     `  ${colors.dim('Note: Run `agy-auth switch` to apply these settings to your active Antigravity session.')}\n`
@@ -106,5 +106,5 @@ export async function modelClearCommand(
     return;
   }
 
-  console.log(`\n  ${colors.green('[ok]')} Cleared default model for ${updated.email}\n`);
+  console.log(`\n  ${marks.ok} Cleared default model for ${updated.email}\n`);
 }

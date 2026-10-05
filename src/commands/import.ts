@@ -3,7 +3,7 @@ import { validateAccountCredentials } from '../core/credential-validation.js';
 import { UsageError } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
 import { Account, sanitizeAccount } from '../core/types.js';
-import { colors } from '../ui/theme.js';
+import { colors, marks } from '../ui/theme.js';
 
 interface ImportOptions {
   overwrite?: boolean;
@@ -177,7 +177,7 @@ export async function importCommand(filePath: string, options: ImportOptions = {
     return;
   }
 
-  console.log(`\n  ${colors.green('[ok]')} Import completed from: ${colors.cyan(filePath)}`);
+  console.log(`\n  ${marks.ok} Import completed from: ${colors.cyan(filePath)}`);
   console.log(`    - Added:   ${colors.green(String(addedCount))}`);
   console.log(`    - Updated: ${colors.cyan(String(updatedCount))}`);
   console.log(`    - Skipped: ${colors.dim(String(skippedCount))}\n`);

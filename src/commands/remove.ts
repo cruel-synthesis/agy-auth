@@ -11,7 +11,7 @@ import { Paths } from '../core/paths.js';
 import { RegistryManager } from '../core/registry.js';
 import { Account, sanitizeAccount } from '../core/types.js';
 import { NO_ACCOUNTS, formatAccountShort } from '../ui/format.js';
-import { colors } from '../ui/theme.js';
+import { colors, marks } from '../ui/theme.js';
 import { promptSelectAccount } from '../ui/tui.js';
 
 interface RemoveOptions {
@@ -140,9 +140,7 @@ export async function removeCommand(
       return;
     }
 
-    console.log(
-      `\n  ${colors.green('[ok]')} Removed all ${removedAccounts.length} account(s) from agy-auth.`
-    );
+    console.log(`\n  ${marks.ok} Removed all ${removedAccounts.length} account(s) from agy-auth.`);
     console.log(
       `  ${colors.dim('Note: This removed local account metadata. External tokens and Antigravity credentials remain unchanged.')}\n`
     );
@@ -276,7 +274,7 @@ export async function removeCommand(
     return;
   }
 
-  console.log(`\n  ${colors.green('[ok]')} Removed ${targetsToRemove.length} account(s):`);
+  console.log(`\n  ${marks.ok} Removed ${targetsToRemove.length} account(s):`);
   for (const t of targetsToRemove) {
     console.log(`    - ${formatAccountShort(t)}`);
   }

@@ -15,7 +15,7 @@ import {
   sanitizeAccount,
 } from '../core/types.js';
 import { formatAccountShort } from '../ui/format.js';
-import { colors } from '../ui/theme.js';
+import { colors, marks } from '../ui/theme.js';
 
 interface AddOptions {
   apiKey?: string | boolean;
@@ -195,9 +195,7 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
     return;
   }
 
-  console.log(
-    `\n  ${colors.green('[ok]')} Account added: ${colors.green(formatAccountShort(account))}`
-  );
+  console.log(`\n  ${marks.ok} Account added: ${colors.green(formatAccountShort(account))}`);
   console.log(
     `  Run ${colors.cyan(`agy-auth switch "${account.alias || account.email}"`)} to activate this account.\n`
   );
@@ -288,6 +286,6 @@ async function addAntigravityAccount(options: AddOptions, services?: AddServices
     return;
   }
 
-  console.log(`\n  ${colors.green('[ok]')} Added ${colors.green(formatAccountShort(account))}`);
+  console.log(`\n  ${marks.ok} Added ${colors.green(formatAccountShort(account))}`);
   console.log('  It is the account in use. Run `agy-auth login` to add another.\n');
 }

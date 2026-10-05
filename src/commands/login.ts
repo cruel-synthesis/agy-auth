@@ -8,7 +8,7 @@ import { type AuthenticateOptions, OAuthFlow, type OAuthResult } from '../core/o
 import { RegistryManager } from '../core/registry.js';
 import { type Account, checkAlias, checkInputLength } from '../core/types.js';
 import { formatAccountShort } from '../ui/format.js';
-import { colors } from '../ui/theme.js';
+import { colors, marks } from '../ui/theme.js';
 
 export interface LoginOptions {
   alias?: string;
@@ -24,9 +24,7 @@ export interface LoginServices {
 
 function printSavedAccount(account: Account, isNew: boolean, isActive: boolean): void {
   const action = isNew ? 'Account added successfully' : 'Account updated successfully';
-  console.log(
-    `\n  ${colors.green('[ok]')} ${action}: ${colors.green(formatAccountShort(account))}`
-  );
+  console.log(`\n  ${marks.ok} ${action}: ${colors.green(formatAccountShort(account))}`);
   if (isActive) {
     console.log('  It is the account in use.\n');
     return;

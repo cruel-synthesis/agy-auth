@@ -1,7 +1,7 @@
 import { AccountNotFoundError, AmbiguousSelectorError, UsageError } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
 import { checkAlias, sanitizeAccount } from '../core/types.js';
-import { colors } from '../ui/theme.js';
+import { colors, marks } from '../ui/theme.js';
 
 interface AliasOptions {
   json?: boolean;
@@ -56,9 +56,7 @@ export async function aliasSetCommand(
     return;
   }
 
-  console.log(
-    `\n  ${colors.green('[ok]')} Set alias '${colors.cyan(trimmedAlias)}' for ${updated.email}\n`
-  );
+  console.log(`\n  ${marks.ok} Set alias '${colors.cyan(trimmedAlias)}' for ${updated.email}\n`);
 }
 
 export async function aliasClearCommand(
@@ -102,5 +100,5 @@ export async function aliasClearCommand(
     return;
   }
 
-  console.log(`\n  ${colors.green('[ok]')} Cleared alias for ${updated.email}\n`);
+  console.log(`\n  ${marks.ok} Cleared alias for ${updated.email}\n`);
 }

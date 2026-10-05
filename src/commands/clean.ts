@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { CliError } from '../core/errors.js';
 import { Paths } from '../core/paths.js';
 import { BackupRetention, MAX_BACKUP_RETENTION, planBackupRetention } from '../core/storage.js';
-import { colors } from '../ui/theme.js';
+import { colors, marks } from '../ui/theme.js';
 
 interface CleanOptions {
   dryRun?: boolean;
@@ -121,7 +121,7 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
   const summary = options.dryRun
     ? `[Dry Run] Would remove ${removedNames.length} backup file(s) and keep ${kept.length}${rule}.`
     : `Removed ${removedNames.length} backup file(s); kept ${kept.length}${rule}.`;
-  console.log(`\n  ${colors.green('[ok]')} ${summary}`);
+  console.log(`\n  ${marks.ok} ${summary}`);
   if (removedNames.length > 0) {
     for (const name of removedNames) {
       console.log(`    - ${colors.dim(name)}`);

@@ -1,7 +1,7 @@
 import { AccountNotFoundError, AmbiguousSelectorError, UsageError } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
 import { checkInputLength, sanitizeAccount } from '../core/types.js';
-import { colors } from '../ui/theme.js';
+import { colors, marks } from '../ui/theme.js';
 
 interface ProjectOptions {
   json?: boolean;
@@ -60,7 +60,7 @@ export async function projectSetCommand(
   }
 
   console.log(
-    `\n  ${colors.green('[ok]')} Set GCP project '${colors.cyan(trimmedProject)}' for ${updated.email}`
+    `\n  ${marks.ok} Set GCP project '${colors.cyan(trimmedProject)}' for ${updated.email}`
   );
   console.log(
     `  ${colors.dim('Note: Run `agy-auth switch` to apply these settings to your active Antigravity session.')}\n`
@@ -109,5 +109,5 @@ export async function projectClearCommand(
     return;
   }
 
-  console.log(`\n  ${colors.green('[ok]')} Cleared GCP project for ${updated.email}\n`);
+  console.log(`\n  ${marks.ok} Cleared GCP project for ${updated.email}\n`);
 }

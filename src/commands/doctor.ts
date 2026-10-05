@@ -9,7 +9,7 @@ import { Paths } from '../core/paths.js';
 import { type QuotaProbe, probeQuotaEndpoints } from '../core/quota.js';
 import { RegistryManager, validateRegistry } from '../core/registry.js';
 import { CURRENT_SCHEMA_VERSION, RegistrySchema, isRecord } from '../core/types.js';
-import { colors } from '../ui/theme.js';
+import { colors, marks } from '../ui/theme.js';
 
 interface DoctorOptions {
   offline?: boolean;
@@ -438,11 +438,11 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
 
   console.log(`\n${colors.cyanBold('agy-auth Environment Diagnostics')}\n`);
   for (const c of checks) {
-    let icon = colors.green('[ok]');
+    let icon = marks.ok;
     if (c.status === 'warn') {
-      icon = colors.yellow('[warn]');
+      icon = marks.warn;
     } else if (c.status === 'fail') {
-      icon = colors.red('[fail]');
+      icon = marks.fail;
     }
     console.log(`  ${icon} ${c.name}`);
     console.log(`    ${colors.dim(c.message)}`);

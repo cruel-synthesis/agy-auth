@@ -5,7 +5,7 @@ import { UsageError } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
 import { Storage } from '../core/storage.js';
 import { ExportDocumentV3, sanitizeAccounts } from '../core/types.js';
-import { colors } from '../ui/theme.js';
+import { colors, marks } from '../ui/theme.js';
 
 interface ExportOptions {
   output?: string;
@@ -86,12 +86,14 @@ export async function exportCommand(options: ExportOptions = {}): Promise<void> 
     return;
   }
 
-  console.log(`\n  ${colors.green('[ok]')} Exported ${exportedAccounts.length} account(s) to:`);
+  console.log(`\n  ${marks.ok} Exported ${exportedAccounts.length} account(s) to:`);
   console.log(`    ${colors.cyan(targetPath)}`);
   if (options.includeSecrets) {
     const protection =
       process.platform === 'win32' ? 'verify the destination ACLs' : 'file mode 0600';
-    console.log(`    ${colors.yellow(`[warn] Contains plaintext credentials (${protection}).`)}`);
+    console.log(
+      `    ${marks.warn} ${colors.yellow(`Contains plaintext credentials (${protection}).`)}`
+    );
   }
   console.log('');
 }
