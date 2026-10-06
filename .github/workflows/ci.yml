@@ -100,7 +100,7 @@ jobs:
       - name: List accounts from cmd
         if: runner.os == 'Windows'
         shell: cmd
-        run: call agy-auth list --offline
+        run: call agy-auth list
 
       # Only on GitHub's macOS machines, which are discarded after the job: the
       # step makes a new keychain the user's default, which on anyone's own Mac
