@@ -1,7 +1,7 @@
 {
   "name": "@cruel-synthesis/agy-auth",
   "version": "0.1.0",
-  "description": "Local account manager and switcher for Antigravity and Google AI development",
+  "description": "Switch Google accounts for Antigravity (agy) in one command, with each account's plan, quota, model and GCP project side by side.",
   "type": "module",
   "bin": {
     "agy-auth": "bin/agy-auth.js"
@@ -37,15 +37,25 @@
   },
   "keywords": [
     "antigravity",
+    "antigravity-cli",
     "agy",
+    "agy-cli",
+    "google-antigravity",
     "gemini",
+    "gemini-cli",
     "google-cloud",
     "gcloud",
     "vertex-ai",
-    "auth",
     "account-switcher",
+    "account-manager",
+    "multi-account",
+    "credential-manager",
+    "profile-manager",
+    "oauth",
     "cli",
-    "multi-account"
+    "developer-tools",
+    "ai-coding",
+    "quota"
   ],
   "author": "cruel-synthesis (https://github.com/cruel-synthesis)",
   "license": "MIT",
