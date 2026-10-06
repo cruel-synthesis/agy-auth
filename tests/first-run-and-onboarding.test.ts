@@ -226,8 +226,8 @@ describe('First-run and OAuth onboarding behavior', () => {
       expect(textAll).toContain('export');
       expect(textAll).toContain('import');
       expect(textAll).toContain('clean');
-      expect(textAll).toContain('env');
-      expect(textAll).toContain('Add an API key, service account, or ADC credential');
+      expect(textAll).not.toContain('add --api-key');
+      expect(textAll).not.toContain('Print shell export commands');
     } finally {
       spyAll.mockRestore();
     }
@@ -259,7 +259,7 @@ describe('First-run and OAuth onboarding behavior', () => {
     expect(allRes.stdout).toContain('export');
     expect(allRes.stdout).toContain('import');
     expect(allRes.stdout).toContain('clean');
-    expect(allRes.stdout).toContain('env');
+    expect(allRes.stdout).not.toContain('Print shell export commands');
 
     const bareRes = runSubprocess(['--help']);
     expect(bareRes.status).toBe(0);

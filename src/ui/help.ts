@@ -10,7 +10,6 @@ type CommandRow = [command: string, description: string, common?: true];
 const ALL_ACCOUNT_COMMANDS: CommandRow[] = [
   ['add', 'Add the account signed in to Antigravity', true],
   ['login', 'Sign in to another Google account in a browser', true],
-  ['add --api-key', 'Add an API key, service account, or ADC credential'],
   ['list', 'Show saved accounts, plan and quota', true],
   ['switch [account]', 'Switch to a saved account', true],
   ['switch -', 'Switch back to the previous account', true],
@@ -27,7 +26,6 @@ const MAINTENANCE_COMMANDS: CommandRow[] = [
   ['alias <set|clear>', 'Set or clear an account alias'],
   ['project <set|clear>', 'Set or clear the GCP project'],
   ['model <set|clear>', 'Set or clear the preferred model'],
-  ['env', 'Print shell export commands for the active account'],
   ['export [file]', 'Write a backup of saved accounts'],
   ['import <file>', 'Read a backup of saved accounts'],
   ['clean', 'Delete old managed backup files'],

@@ -8,7 +8,7 @@ First release.
 
 ### Added
 
-- Accounts for OAuth, API keys, service-account JSON, and Application Default Credentials.
+- Accounts for Google sign-in (OAuth). API-key, service-account and ADC accounts can be stored but are hidden from help until verified with agy.
 - Direct Antigravity session import from Apple Keychain or the token file, with identity verification and no required client ID.
 - Browser OAuth 2.0 PKCE onboarding via `agy-auth login`, and in-place renewal of stored tokens.
 - Journaled account switching with rollback for Antigravity settings, session stores, service-account files, and ADC.

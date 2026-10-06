@@ -104,7 +104,7 @@ Read Google's [Antigravity terms](https://antigravity.google/terms) before you u
 
 | Command | Network |
 |---|---|
-| `switch`, `-`, `list`, `current`, `details`, `remove`, `alias`, `project`, `model`, `env`, `export`, `import`, `clean` | None. They read and write local files only. |
+| `switch`, `-`, `list`, `current`, `details`, `remove`, `alias`, `project`, `model`, `export`, `import`, `clean` | None. They read and write local files only. |
 | `add` | One call to Google's `userinfo` endpoint to confirm which account the session belongs to. |
 | `login` | A browser sign-in using Antigravity's OAuth client. |
 | `list --refresh`, `current --refresh`, `details --refresh`, `list --check`, `auto` | Antigravity's undocumented quota endpoints, sent as the Antigravity app would send them, plus token renewal through Antigravity's client. Use `auto --offline` to rank on saved readings instead. |
@@ -117,7 +117,7 @@ Live quota is **off unless you ask for it**, and it is experimental. The endpoin
 ## Privacy and security
 
 - **Local only.** Accounts live in `~/.agy-auth/` with `0700` directories and `0600` files. There is no telemetry, no background process and no server.
-- **Secrets stay redacted.** Account listings and `--json` output leave tokens out. `export --include-secrets` writes them only after asking, and `env` prints an API key only because exporting it is its job.
+- **Secrets stay redacted.** Account listings and `--json` output leave tokens out. `export --include-secrets` writes them only after asking.
 - **Safe under concurrency.** File locks guard every write, and symlinked credential paths are refused.
 
 Details are in [PRIVACY.md](./PRIVACY.md) and [SECURITY.md](./SECURITY.md).
@@ -148,7 +148,7 @@ On Linux and Windows, Antigravity may keep its sign-in in the system keyring, wh
 | `agy-auth export [file]` / `import <file>` | Back up and restore saved accounts |
 | `agy-auth doctor` | Check storage, registry and Antigravity session for problems |
 
-Every command takes `--help`. The full reference, including API-key, service-account and ADC credentials, is in [docs/commands](./docs/commands/README.md). Scripts can rely on `--json` envelopes and exit codes `0`, `1`, `2` and `130`; see the [JSON contract](./docs/json-contract.md).
+Every command takes `--help`. The full reference is in [docs/commands](./docs/commands/README.md). Scripts can rely on `--json` envelopes and exit codes `0`, `1`, `2` and `130`; see the [JSON contract](./docs/json-contract.md).
 
 ## Contributing
 

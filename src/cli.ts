@@ -1,4 +1,4 @@
-import { Command, CommanderError } from 'commander';
+import { Command, CommanderError, Option } from 'commander';
 import { ZodError } from 'zod';
 import { addCommand } from './commands/add.js';
 import { aliasClearCommand, aliasSetCommand } from './commands/alias.js';
@@ -141,12 +141,22 @@ export function createCli(): Command {
   // add
   program
     .command('add')
-    .description('Add the account signed in to Antigravity, or another credential')
+    .description('Add the account signed in to Antigravity')
     .option('--alias <alias>', 'Account alias')
     .option('--email <email>', 'Account email address')
-    .option('--api-key [key]', 'Gemini API key (omit value for masked entry)')
-    .option('--service-account <path>', 'Path to Service Account JSON key file')
-    .option('--adc [path]', 'Use Application Default Credentials (optional custom path)')
+    // Not yet verified against agy, so kept out of help until they are.
+    .addOption(
+      new Option('--api-key [key]', 'Gemini API key (omit value for masked entry)').hideHelp()
+    )
+    .addOption(
+      new Option('--service-account <path>', 'Path to Service Account JSON key file').hideHelp()
+    )
+    .addOption(
+      new Option(
+        '--adc [path]',
+        'Use Application Default Credentials (optional custom path)'
+      ).hideHelp()
+    )
     .option('--project <id>', 'GCP project ID')
     .option('--location <location>', 'Compute region/location')
     .option('--model <model>', 'Preferred model name')
@@ -247,7 +257,7 @@ export function createCli(): Command {
 
   // env
   program
-    .command('env')
+    .command('env', { hidden: true })
     .description('Print shell export commands for the active account')
     .option(
       '--shell <posix|powershell>',

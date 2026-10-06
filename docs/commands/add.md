@@ -33,6 +33,9 @@ Options:
 
 ## Other credential types
 
+> Not yet verified with agy, so hidden from `--help`. According to agy's documentation it reads an API key only when
+> `settings.json` sets `modelProvider` to `"gemini"`, and ADC only with `AGY_ADC_AUTH=true`. agy-auth sets neither yet.
+
 These cover credentials Antigravity does not hold. Pass at most one.
 
 - `--api-key [key]`: Gemini API key; omit the value in a TTY for masked entry
