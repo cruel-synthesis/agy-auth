@@ -256,6 +256,31 @@ describe('Switcher Transactional State Machine & Rollback', () => {
     expect(writeSpy).toHaveBeenCalled();
   });
 
+  it('does not ask for a shell update between OAuth accounts with different projects', () => {
+    vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(true);
+    vi.spyOn(KeychainManager, 'readAgyTokenState').mockReturnValue({ status: 'missing' });
+    vi.spyOn(KeychainManager, 'writeAgyToken').mockReturnValue(true);
+
+    const registry = new RegistryManager();
+    const oauth = (email: string, gcpProject: string) =>
+      registry.addOrUpdateAccount({
+        email,
+        authType: 'oauth',
+        gcpProject,
+        credentials: {
+          keychainPayload: {
+            auth_method: 'consumer',
+            token: { access_token: `access-${gcpProject}`, refresh_token: 'refresh' },
+          },
+        },
+      });
+    const work = oauth('work@example.com', 'work-proj');
+    const personal = oauth('personal@example.com', 'personal-proj');
+
+    Switcher.switchAccount(work);
+    expect(Switcher.switchAccount(personal).requiresShellUpdate).toBe(false);
+  });
+
   it('warns that an OAuth switch may not reach Antigravity where only its token file can be written', () => {
     vi.spyOn(KeychainManager, 'isSupported').mockReturnValue(false);
     const registry = new RegistryManager();

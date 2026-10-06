@@ -40,14 +40,19 @@ export function environmentFor(account: Account | null): Record<string, string |
   return env;
 }
 
+function setsCredentialVars(account: Account | null): boolean {
+  return account?.authType === 'api-key' || account?.authType === 'service-account';
+}
+
 /**
  * Whether the shell has anything to apply when moving between these accounts.
  *
- * A plain Antigravity OAuth account sets no variable, so switching between two
- * of them changes nothing a shell can see and there is nothing to tell the user
- * to run.
+ * Antigravity takes a Google account's project from its settings, which the
+ * switch already writes, so moving between two OAuth accounts never asks the
+ * user to touch their shell, even when the projects differ.
  */
 export function shellEnvChanges(from: Account | null, to: Account | null): boolean {
+  if (!setsCredentialVars(from) && !setsCredentialVars(to)) return false;
   const before = environmentFor(from);
   const after = environmentFor(to);
   return MANAGED_ENV_VARS.some((name) => before[name] !== after[name]);
