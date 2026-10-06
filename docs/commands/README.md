@@ -8,11 +8,11 @@ Overview of commands available in `agy-auth`.
 
 - [`add`](./add.md): Add the account signed in to Antigravity, or another credential (`--api-key`, `--service-account`, `--adc`, `-y`, `-j`)
 - [`login`](./login.md): Sign in to another Google account in a browser
-- [`list`](./list.md) (`ls`): Show saved accounts, plan and quota (`-a`, `-c`, `--offline`, `-j`)
+- [`list`](./list.md) (`ls`): Show saved accounts, plan and quota (`-a`, `-r`, `-c`, `-j`)
 - [`switch`](./switch.md) (`sw`): Switch to a saved account (`-j`)
-- [`current`](./current.md) (`whoami`): Show the account in use (`--offline`, `-j`)
+- [`current`](./current.md) (`whoami`): Show the account in use (`-r`, `-j`)
 - [`auto`](./auto.md) (`best`): Switch to the account whose quota is most at risk of going to waste (`-n`, `--offline`, `-j`)
-- [`details`](./details.md) (`info`): Show everything stored for one account (`--offline`, `-j`)
+- [`details`](./details.md) (`info`): Show everything stored for one account (`-r`, `-j`)
 - [`remove`](./remove.md) (`rm`): Remove saved accounts (`--all`, `-y`, `-j`)
 
 ---
