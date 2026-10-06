@@ -3,7 +3,7 @@ import { CancellationError, UsageError } from '../core/errors.js';
 import { Account } from '../core/types.js';
 import { renderSelectMenu } from './table.js';
 
-export interface PromptSelectOptions {
+interface PromptSelectOptions {
   input?: NodeJS.ReadableStream & { setRawMode?: (mode: boolean) => void; isTTY?: boolean };
   output?: NodeJS.WritableStream;
   maxWidthOverride?: number;

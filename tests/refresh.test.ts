@@ -123,17 +123,6 @@ describe('Quota refresh outcomes', () => {
     testEnv.cleanup();
   });
 
-  it('contacts nothing in offline mode', async () => {
-    const refreshSpy = vi.spyOn(QuotaClient, 'refreshAccountQuotas');
-
-    const outcome = await refreshQuota([oauthAccount()], true);
-
-    expect(refreshSpy).not.toHaveBeenCalled();
-    expect(outcome.refreshes).toEqual([]);
-    expect(outcome.warning).toBeUndefined();
-    expect(outcome.summary).toEqual({ attempted: false, offline: true, accounts: [] });
-  });
-
   it('reports a failed refresh instead of presenting it as a reading', async () => {
     const account = oauthAccount({ alias: 'work' });
     vi.spyOn(QuotaClient, 'refreshAccountQuotas').mockResolvedValue(
@@ -152,7 +141,7 @@ describe('Quota refresh outcomes', () => {
       ])
     );
 
-    const outcome = await refreshQuota([account], false);
+    const outcome = await refreshQuota([account]);
 
     expect(outcome.summary.attempted).toBe(true);
     expect(outcome.summary.accounts).toEqual([

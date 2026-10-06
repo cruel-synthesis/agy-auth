@@ -1,7 +1,7 @@
 import { createPrivateKey } from 'node:crypto';
 import { AccountSchema, isRecord } from './types.js';
 
-export type CredentialValidation = { ok: true } | { ok: false; reason: string };
+type CredentialValidation = { ok: true } | { ok: false; reason: string };
 
 /** An address the registry will accept, so a value that passes here can be saved. */
 export function isEmail(value: unknown): boolean {

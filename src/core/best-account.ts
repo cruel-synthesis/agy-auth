@@ -38,10 +38,10 @@ export type BlockedReason = (typeof BLOCKED)[keyof typeof BLOCKED];
 
 /** The model families a reading can cover. */
 export const MODEL_FAMILIES = ['gemini', 'claude'] as const;
-export type ModelFamily = (typeof MODEL_FAMILIES)[number];
+type ModelFamily = (typeof MODEL_FAMILIES)[number];
 
 /** The weekly allowance nearest to expiring, and what it is worth. */
-export interface PerishingWeekly {
+interface PerishingWeekly {
   family: ModelFamily;
   /** Share of the weekly allowance still unspent, 0 to 1. */
   remaining: number;
@@ -59,7 +59,7 @@ export interface PerishingWeekly {
  * Whether every contributing family reported a weekly window, none did, or the
  * score mixes the two.
  */
-export type WeeklyBasis = 'measured' | 'mixed' | 'assumed';
+type WeeklyBasis = 'measured' | 'mixed' | 'assumed';
 
 export interface AccountScore {
   account: Account;
@@ -105,7 +105,7 @@ export interface AccountScore {
  */
 export type ChoiceBasis = 'weekly' | 'headroom';
 
-export interface BestAccountChoice {
+interface BestAccountChoice {
   /** Every account considered, best first on `basis`. */
   ranked: AccountScore[];
   /** The account to work on, or null when none can serve work. */

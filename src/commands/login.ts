@@ -10,14 +10,14 @@ import { type Account, checkAlias, checkInputLength } from '../core/types.js';
 import { formatAccountShort } from '../ui/format.js';
 import { colors, marks } from '../ui/theme.js';
 
-export interface LoginOptions {
+interface LoginOptions {
   alias?: string;
   project?: string;
   location?: string;
   model?: string;
 }
 
-export interface LoginServices {
+interface LoginServices {
   authenticateOAuth?: (options?: AuthenticateOptions) => Promise<OAuthResult>;
   fetchFn?: typeof fetch;
 }

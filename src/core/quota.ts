@@ -80,7 +80,7 @@ export type QuotaFailureReason =
  * Outcome of one account's quota refresh. Deliberately secret-free: safe to log,
  * serialize into the JSON envelope, or attach to a diagnostic.
  */
-export interface QuotaResult {
+interface QuotaResult {
   accountId: string;
   /** `updatedAt` observed before any network activity, for optimistic concurrency. */
   observedUpdatedAt: number;
@@ -96,7 +96,7 @@ export interface QuotaResult {
   status?: AccountStatus;
 }
 
-export type RefreshedToken = KeychainPayload['token'];
+type RefreshedToken = KeychainPayload['token'];
 
 /**
  * Carrier for a rotated OAuth token, kept out of {@link QuotaResult} so no code

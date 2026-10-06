@@ -56,7 +56,7 @@ export async function currentCommand(options: CurrentOptions = {}): Promise<void
   let warning: string | undefined;
 
   if (!offline) {
-    const refresh = await refreshQuota([active], false, options.quotaOptions);
+    const refresh = await refreshQuota([active], options.quotaOptions);
     quotaSummary = refresh.summary;
     warning = refresh.warning;
     await applyQuotaResults(registry, refresh.refreshes);

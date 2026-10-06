@@ -80,7 +80,7 @@ function renderHtml(title: string, heading: string, bodyText: string, isError = 
 </html>`;
 }
 
-export type BrowserLauncher = (command: string, args: string[]) => void;
+type BrowserLauncher = (command: string, args: string[]) => void;
 
 /**
  * The native boundary for opening a browser.

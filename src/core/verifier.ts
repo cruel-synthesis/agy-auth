@@ -4,7 +4,7 @@ import { validateServiceAccountKey } from './credential-validation.js';
 import { Paths } from './paths.js';
 import { Account, AccountStatus, VerificationRecord } from './types.js';
 
-export interface VerifyOptions {
+interface VerifyOptions {
   fetchFn?: typeof fetch;
   timeoutMs?: number;
 }

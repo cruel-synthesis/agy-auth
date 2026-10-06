@@ -6,9 +6,9 @@ import { migrateExportDocument } from './migration.js';
 import { ExportDocumentV3, ServiceAccountKey, ServiceAccountKeySchema } from './types.js';
 
 export const MAX_CREDENTIAL_FILE_SIZE = 1024 * 1024; // 1 MiB
-export const MAX_IMPORT_FILE_SIZE = 5 * 1024 * 1024; // 5 MiB
+const MAX_IMPORT_FILE_SIZE = 5 * 1024 * 1024; // 5 MiB
 
-export const AdcDocumentSchema = z
+const AdcDocumentSchema = z
   .object({
     type: z.string().min(1),
     client_id: z.string().optional(),

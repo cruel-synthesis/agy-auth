@@ -59,7 +59,7 @@ export function truncatePadded(str: string, width: number): string {
   return pad(truncated, width);
 }
 
-export interface TableRowComponent {
+interface TableRowComponent {
   account: Account;
   index: number;
   isActive: boolean;
@@ -68,7 +68,7 @@ export interface TableRowComponent {
   coloredText: string;
 }
 
-export interface TableComponents {
+interface TableComponents {
   headerLine: string;
   dividerLine: string;
   rows: TableRowComponent[];

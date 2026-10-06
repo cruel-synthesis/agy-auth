@@ -241,7 +241,7 @@ async function refreshAndApply(
   accounts: Account[],
   options: AutoOptions
 ): Promise<string | undefined> {
-  const refresh = await refreshQuota(accounts, false, options.quotaOptions);
+  const refresh = await refreshQuota(accounts, options.quotaOptions);
   await applyQuotaResults(registry, refresh.refreshes);
   return refresh.warning;
 }

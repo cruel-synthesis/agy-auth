@@ -23,7 +23,7 @@ interface DetailsOptions {
   quotaOptions?: QuotaOptions;
 }
 
-export function renderAccountDetails(account: Account, isActive: boolean): void {
+function renderAccountDetails(account: Account, isActive: boolean): void {
   const activeBadge = isActive ? colors.green(' (Active Account)') : '';
   const lines = [
     detailLine('Account', `${colors.cyanBold(formatAccountShort(account))}${activeBadge}`),
@@ -127,7 +127,7 @@ export async function detailsCommand(query?: string, options: DetailsOptions = {
   let warning: string | undefined;
 
   if (!offline) {
-    const refresh = await refreshQuota([target], false, options.quotaOptions);
+    const refresh = await refreshQuota([target], options.quotaOptions);
     quotaSummary = refresh.summary;
     warning = refresh.warning;
     await applyQuotaResults(registry, refresh.refreshes);

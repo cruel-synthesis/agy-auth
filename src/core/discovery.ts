@@ -13,7 +13,7 @@ export interface AntigravitySettings {
   [key: string]: unknown;
 }
 
-export interface DiscoveredAccount {
+interface DiscoveredAccount {
   email?: string;
   authType: AuthType;
   gcpProject?: string;

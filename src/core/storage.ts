@@ -6,7 +6,7 @@ import { Paths } from './paths.js';
 
 export const MAX_BACKUP_RETENTION = 10;
 
-export const MANAGED_BACKUP_PREFIXES = [
+const MANAGED_BACKUP_PREFIXES = [
   'schema_migration',
   // Written by releases that migrated from registry schema 1; still recognized
   // so pre-existing backups stay listed and cleanable.
@@ -50,7 +50,7 @@ function managedBackupPrefix(fileName: string): ManagedBackupPrefix | null {
   return match;
 }
 
-export interface ManagedBackup {
+interface ManagedBackup {
   name: string;
   fullPath: string;
 }

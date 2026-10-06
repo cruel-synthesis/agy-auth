@@ -26,7 +26,7 @@ describe('Paths and Discovery Subsystems', () => {
     const resolved = allResolvedPaths();
 
     // Guards against a path accessor added later without a redirect override.
-    expect(resolved.length).toBeGreaterThanOrEqual(11);
+    expect(resolved.length).toBeGreaterThanOrEqual(10);
     for (const target of resolved) {
       expect(() => testEnv.assertPathInsideTestDir(target)).not.toThrow();
     }
@@ -43,7 +43,6 @@ describe('Paths and Discovery Subsystems', () => {
     expect(Paths.gcloudAdcFile).toBe(
       path.join(testEnv.dir, '.config', 'gcloud', 'application_default_credentials.json')
     );
-    expect(Paths.gcloudConfigDir).toBe(path.join(testEnv.dir, '.config', 'gcloud'));
     expect(Paths.antigravityCliDir).toBe(path.join(testEnv.dir, '.gemini', 'antigravity-cli'));
 
     // Test env overrides
@@ -54,7 +53,6 @@ describe('Paths and Discovery Subsystems', () => {
     try {
       expect(Paths.antigravitySettingsFile).toBe(path.resolve(customSettings));
       expect(Paths.gcloudAdcFile).toBe(path.resolve(customAdc));
-      expect(Paths.gcloudConfigDir).toBe(path.dirname(path.resolve(customAdc)));
     } finally {
       delete process.env.AGY_SETTINGS_FILE;
       delete process.env.AGY_GCLOUD_ADC_FILE;

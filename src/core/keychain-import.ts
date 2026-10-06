@@ -6,7 +6,7 @@ import { ANTIGRAVITY_OAUTH_CLIENT, reusableRefreshToken } from './oauth-config.j
 import { RegistryManager } from './registry.js';
 import type { Account, KeychainPayload } from './types.js';
 
-export interface ImportKeychainOAuthOptions {
+interface ImportKeychainOAuthOptions {
   email?: string;
   alias?: string;
   project?: string;
@@ -28,9 +28,6 @@ export type ImportKeychainOAuthResult =
       status: 'needs_email';
       /** Why the identity is unknown: no answer at all, or a definite "not verified". */
       reason: 'unavailable' | 'unverified_identity';
-      payload: KeychainPayload;
-      defaultProject?: string;
-      defaultLocation?: string;
     };
 
 /**
@@ -39,7 +36,7 @@ export type ImportKeychainOAuthResult =
  * Collapsing them loses the difference between "this token is dead" and "we
  * could not ask right now", which decides whether it is safe to write anything.
  */
-export type GoogleIdentityOutcome =
+type GoogleIdentityOutcome =
   | { kind: 'verified'; email: string }
   | { kind: 'unverified'; email: string }
   | { kind: 'rejected'; status: number }
@@ -49,7 +46,7 @@ export type GoogleIdentityOutcome =
  * Asks Google's userinfo endpoint who a given access token belongs to.
  * Does not require an OAuth client ID or client secret.
  */
-export async function fetchGoogleIdentity(
+async function fetchGoogleIdentity(
   accessToken: string,
   fetchFn: typeof fetch = fetch
 ): Promise<GoogleIdentityOutcome> {
@@ -177,9 +174,6 @@ export async function importKeychainOAuth(
     return {
       status: 'needs_email',
       reason: identity.kind === 'unverified' ? 'unverified_identity' : 'unavailable',
-      payload,
-      defaultProject,
-      defaultLocation,
     };
   }
 

@@ -32,14 +32,14 @@ export async function listCommand(options: ListOptions): Promise<void> {
       console.log('Verifying accounts...');
     }
     const verifications = await Verifier.verifyAccounts(accounts);
-    const refresh = await refreshQuota(accounts, false, options.quotaOptions);
+    const refresh = await refreshQuota(accounts, options.quotaOptions);
     quotaSummary = refresh.summary;
     warning = refresh.warning;
 
     const quotas = new Map(refresh.refreshes.map((r) => [r.result.accountId, r]));
     await applyCheckResults(registry, verifications, quotas);
   } else if (options.refresh && accounts.length > 0) {
-    const refresh = await refreshQuota(selectStale(accounts), false, options.quotaOptions);
+    const refresh = await refreshQuota(selectStale(accounts), options.quotaOptions);
     quotaSummary = refresh.summary;
     warning = refresh.warning;
     await applyQuotaResults(registry, refresh.refreshes);

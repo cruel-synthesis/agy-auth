@@ -6,9 +6,9 @@ import { Paths } from './paths.js';
 import { Storage } from './storage.js';
 import type { KeychainPayload } from './types.js';
 
-export type TokenStoreSource = 'keyring' | 'file';
+type TokenStoreSource = 'keyring' | 'file';
 
-export interface AntigravityTokenReadResult {
+interface AntigravityTokenReadResult {
   status: 'found' | 'missing' | 'unsupported' | 'error';
   payload?: KeychainPayload;
   source?: TokenStoreSource;
@@ -23,7 +23,7 @@ export interface AntigravityTokenReadResult {
   fileMessage?: string;
 }
 
-export interface AntigravityTokenWriteResult {
+interface AntigravityTokenWriteResult {
   ok: boolean;
   fileWritten: boolean;
   keyringWritten: boolean;

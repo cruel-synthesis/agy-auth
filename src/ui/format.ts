@@ -108,7 +108,7 @@ export function formatDay(date: Date, nowMs: number = Date.now()): string {
 const METER_CELLS = 10;
 
 /** A ten-cell bar for a remaining percentage, coloured by how much is left. */
-export function quotaMeter(remaining: number): string {
+function quotaMeter(remaining: number): string {
   const filled = Math.round((remaining / 100) * METER_CELLS);
   return quotaColor(remaining)('━'.repeat(filled)) + colors.dim('─'.repeat(METER_CELLS - filled));
 }

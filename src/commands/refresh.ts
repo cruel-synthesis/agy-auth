@@ -21,11 +21,11 @@ const REASON_TEXT: Record<QuotaFailureReason, string> = {
   'network-error': 'network or service error',
 };
 
-export function describeQuotaFailure(reason: QuotaFailureReason | undefined): string {
+function describeQuotaFailure(reason: QuotaFailureReason | undefined): string {
   return reason ? REASON_TEXT[reason] : 'unknown error';
 }
 
-export interface QuotaRefreshOutcome {
+interface QuotaRefreshOutcome {
   refreshes: QuotaRefresh[];
   summary: QuotaRefreshSummary;
   /** One concise warning, without a `Warning:` prefix, present only when a refresh failed. */
@@ -81,12 +81,11 @@ export function selectStale(accounts: Account[]): Account[] {
  */
 export async function refreshQuota(
   accounts: Account[],
-  offline: boolean,
   options: QuotaOptions = {}
 ): Promise<QuotaRefreshOutcome> {
-  const targets = offline ? [] : selectRefreshable(accounts);
+  const targets = selectRefreshable(accounts);
   if (targets.length === 0) {
-    return { refreshes: [], summary: summarizeQuotaRefresh(offline, []) };
+    return { refreshes: [], summary: summarizeQuotaRefresh(false, []) };
   }
 
   const results = await QuotaClient.refreshAccountQuotas(targets, options);
@@ -113,7 +112,7 @@ export async function refreshQuota(
 
   return {
     refreshes,
-    summary: summarizeQuotaRefresh(offline, refreshes),
+    summary: summarizeQuotaRefresh(false, refreshes),
     ...(warning ? { warning } : {}),
   };
 }

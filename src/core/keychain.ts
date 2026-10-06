@@ -17,7 +17,7 @@ export function parseAgyKeychainPayload(value: unknown): AgyKeychainPayload | nu
   return result.success ? result.data : null;
 }
 
-export type KeychainReadResult =
+type KeychainReadResult =
   | { status: 'found'; payload: AgyKeychainPayload }
   | { status: 'missing' }
   | { status: 'unsupported' }

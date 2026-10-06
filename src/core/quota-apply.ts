@@ -4,7 +4,7 @@ import { Account, Registry } from './types.js';
 import { VerificationResult } from './verifier.js';
 
 /** Quota-derived state worth persisting for this account, if any. */
-export function hasApplicableQuotaState(refresh: QuotaRefresh): boolean {
+function hasApplicableQuotaState(refresh: QuotaRefresh): boolean {
   const { result, tokenUpdate } = refresh;
   return Boolean(
     result.rateLimit !== undefined ||

@@ -94,20 +94,6 @@ export class Paths {
   }
 
   /**
-   * Google Cloud config directory (~/.config/gcloud or dirname(AGY_GCLOUD_ADC_FILE))
-   */
-  static get gcloudConfigDir(): string {
-    if (process.env.AGY_GCLOUD_ADC_FILE && process.env.AGY_GCLOUD_ADC_FILE.trim() !== '') {
-      return path.dirname(path.resolve(process.env.AGY_GCLOUD_ADC_FILE));
-    }
-    if (process.platform === 'win32') {
-      const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
-      return path.join(appData, 'gcloud');
-    }
-    return path.join(os.homedir(), '.config', 'gcloud');
-  }
-
-  /**
    * Ensure that essential directories exist with proper 0700 permissions
    */
   static ensureDirectories(): void {

@@ -30,7 +30,7 @@ interface AddOptions {
   json?: boolean;
 }
 
-export interface AddServices {
+interface AddServices {
   fetchFn?: typeof fetch;
 }
 
