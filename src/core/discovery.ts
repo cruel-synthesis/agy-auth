@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import { CredentialFiles } from './credential-files.js';
 import { isEmail } from './credential-validation.js';
 import { Paths } from './paths.js';
+import { readSameFile } from './storage.js';
 import { AccountCredentials, AuthType } from './types.js';
 
 export interface AntigravitySettings {
@@ -61,25 +62,14 @@ export class Discovery {
     const settingsPath = Paths.antigravitySettingsFile;
     if (!fs.existsSync(settingsPath)) return null;
 
-    let fd: number | null = null;
     try {
       const stat = fs.lstatSync(settingsPath);
       if (stat.isSymbolicLink() || !stat.isFile()) return null;
-      const flags =
-        fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
-      fd = fs.openSync(settingsPath, flags);
-      const openedStat = fs.fstatSync(fd);
-      if (!openedStat.isFile() || openedStat.dev !== stat.dev || openedStat.ino !== stat.ino) {
-        return null;
-      }
-      const raw = fs.readFileSync(fd, 'utf-8');
-      return JSON.parse(raw) as AntigravitySettings;
+      const content = readSameFile(settingsPath, stat);
+      if (content === null) return null;
+      return JSON.parse(content.toString('utf-8')) as AntigravitySettings;
     } catch {
       return null;
-    } finally {
-      if (fd !== null) {
-        fs.closeSync(fd);
-      }
     }
   }
 }

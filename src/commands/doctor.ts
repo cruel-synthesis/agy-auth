@@ -7,6 +7,7 @@ import { KeychainManager } from '../core/keychain.js';
 import { migrateRegistry } from '../core/migration.js';
 import { Paths } from '../core/paths.js';
 import { validateRegistry } from '../core/registry.js';
+import { readSameFile } from '../core/storage.js';
 import { CURRENT_SCHEMA_VERSION, RegistrySchema, isRecord } from '../core/types.js';
 import { colors, marks } from '../ui/theme.js';
 import { printJsonResult } from '../ui/format.js';
@@ -166,7 +167,6 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
   }
 
   // 2. Check registry file and schema (strictly read-only)
-  let registryFd: number | null = null;
   try {
     const legacyPath = path.join(Paths.authHome, 'accounts.json');
     if (!fs.existsSync(Paths.registryFile)) {
@@ -204,15 +204,12 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
           });
         }
 
-        const flags =
-          fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
-        registryFd = fs.openSync(Paths.registryFile, flags);
-        const openedStat = fs.fstatSync(registryFd);
-        if (!openedStat.isFile() || openedStat.dev !== stat.dev || openedStat.ino !== stat.ino) {
+        const content = readSameFile(Paths.registryFile, stat);
+        if (content === null) {
           throw new Error('registry.json changed while it was being opened.');
         }
 
-        const raw = fs.readFileSync(registryFd, 'utf-8');
+        const raw = content.toString('utf-8');
         let parsed: unknown;
         try {
           parsed = JSON.parse(raw);
@@ -275,10 +272,6 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
       status: 'fail',
       message: errorMessage(err),
     });
-  } finally {
-    if (registryFd !== null) {
-      fs.closeSync(registryFd);
-    }
   }
 
   // 3. Check Antigravity session token storage (composite store)
@@ -293,22 +286,17 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
   }
 
   // 4. Check Antigravity Settings file
-  let settingsFd: number | null = null;
   try {
     if (fs.existsSync(Paths.antigravitySettingsFile)) {
       const stat = fs.lstatSync(Paths.antigravitySettingsFile);
       if (stat.isSymbolicLink() || !stat.isFile()) {
         throw new Error('settings.json must be a regular file and not a symbolic link.');
       }
-      const flags =
-        fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
-      settingsFd = fs.openSync(Paths.antigravitySettingsFile, flags);
-      const openedStat = fs.fstatSync(settingsFd);
-      if (!openedStat.isFile() || openedStat.dev !== stat.dev || openedStat.ino !== stat.ino) {
+      const content = readSameFile(Paths.antigravitySettingsFile, stat);
+      if (content === null) {
         throw new Error('settings.json changed while it was being opened.');
       }
-      const raw = fs.readFileSync(settingsFd, 'utf-8');
-      JSON.parse(raw);
+      JSON.parse(content.toString('utf-8'));
       checks.push({
         name: 'Antigravity Settings File',
         status: 'ok',
@@ -327,10 +315,6 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
       status: 'fail',
       message: `Invalid settings.json: ${errorMessage(err)}`,
     });
-  } finally {
-    if (settingsFd !== null) {
-      fs.closeSync(settingsFd);
-    }
   }
 
   // 5. Check ADC file if present

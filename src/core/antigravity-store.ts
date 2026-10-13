@@ -4,7 +4,7 @@ import { MAX_CREDENTIAL_FILE_SIZE } from './credential-files.js';
 import { errorMessage } from './errors.js';
 import { KeychainManager, parseAgyKeychainPayload } from './keychain.js';
 import { Paths } from './paths.js';
-import { Storage } from './storage.js';
+import { READ_NO_FOLLOW, Storage } from './storage.js';
 import type { KeychainPayload } from './types.js';
 
 type TokenStoreSource = 'keyring' | 'file';
@@ -65,9 +65,7 @@ function readFileToken(): {
       };
     }
 
-    const flags =
-      fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
-    fd = fs.openSync(tokenFile, flags);
+    fd = fs.openSync(tokenFile, READ_NO_FOLLOW);
     const openedStat = fs.fstatSync(fd);
     if (!openedStat.isFile() || openedStat.dev !== stat.dev || openedStat.ino !== stat.ino) {
       return {

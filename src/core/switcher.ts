@@ -9,66 +9,52 @@ import { CliError, errorMessage } from './errors.js';
 import { KeychainManager } from './keychain.js';
 import { Paths } from './paths.js';
 import { RegistryManager } from './registry.js';
-import { Storage } from './storage.js';
+import { READ_NO_FOLLOW, Storage, readSameFile } from './storage.js';
 import { type Account, type SwitchResult, sanitizeAccount } from './types.js';
 
-interface FileSnapshot {
-  readonly filePath: string;
-  readonly existed: boolean;
-  readonly backupPath: string | null;
-  readonly mode: number | null;
-  readonly device: number | null;
-  readonly inode: number | null;
-  readonly backupDevice: number | null;
-  readonly backupInode: number | null;
-}
+type FileSnapshot =
+  | { readonly filePath: string; readonly existed: false }
+  | {
+      readonly filePath: string;
+      readonly existed: true;
+      readonly backupPath: string;
+      readonly mode: number;
+      readonly device: number;
+      readonly inode: number;
+      readonly backupDevice: number;
+      readonly backupInode: number;
+    };
 
-function pathExists(filePath: string): boolean {
+/** Only a missing entry counts as absent; other lstat errors (EACCES, ENOTDIR) still throw. */
+function lstatIfExists(filePath: string): fs.Stats | undefined {
   try {
-    fs.lstatSync(filePath);
-    return true;
+    return fs.lstatSync(filePath);
   } catch (error: unknown) {
     if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
-      return false;
+      return undefined;
     }
     throw error;
   }
 }
 
-function rejectSymlinkOrNonFile(filePath: string, label: string): void {
-  if (!pathExists(filePath)) return;
-  const stat = fs.lstatSync(filePath);
-  if (stat.isSymbolicLink()) {
+function captureFile(filePath: string, prefix: string, label: string): FileSnapshot {
+  const original = lstatIfExists(filePath);
+  if (!original) {
+    return { filePath, existed: false };
+  }
+  if (original.isSymbolicLink()) {
     throw new Error(`${label} must not be a symbolic link: '${filePath}'.`);
   }
-  if (!stat.isFile()) {
+  if (!original.isFile()) {
     throw new Error(`${label} must be a regular file: '${filePath}'.`);
   }
-}
 
-function captureFile(filePath: string, prefix: string, label: string): FileSnapshot {
-  rejectSymlinkOrNonFile(filePath, label);
-
-  if (!pathExists(filePath)) {
-    return {
-      filePath,
-      existed: false,
-      backupPath: null,
-      mode: null,
-      device: null,
-      inode: null,
-      backupDevice: null,
-      backupInode: null,
-    };
-  }
-
-  const original = fs.lstatSync(filePath);
   const backupPath = Storage.createBackup(filePath, prefix);
-  if (!backupPath || !pathExists(backupPath)) {
+  const backup = backupPath ? lstatIfExists(backupPath) : undefined;
+  if (!backupPath || !backup) {
     throw new Error(`Could not create a durable backup of ${label} '${filePath}'. Switch aborted.`);
   }
 
-  const backup = fs.lstatSync(backupPath);
   if (!backup.isFile()) {
     throw new Error(`Backup for ${label} '${filePath}' is not a regular file. Switch aborted.`);
   }
@@ -76,9 +62,7 @@ function captureFile(filePath: string, prefix: string, label: string): FileSnaps
   // Reopen and compare identity: the backup must be the same file that was just
   // stat'd, not one swapped in since. `createBackup` already wrote it durably,
   // so this handle only reads.
-  const backupFlags =
-    fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
-  const backupFd = fs.openSync(backupPath, backupFlags);
+  const backupFd = fs.openSync(backupPath, READ_NO_FOLLOW);
   try {
     const openedBackup = fs.fstatSync(backupFd);
     if (
@@ -106,8 +90,8 @@ function captureFile(filePath: string, prefix: string, label: string): FileSnaps
 
 function restoreFile(snapshot: FileSnapshot): void {
   if (!snapshot.existed) {
-    if (!pathExists(snapshot.filePath)) return;
-    const current = fs.lstatSync(snapshot.filePath);
+    const current = lstatIfExists(snapshot.filePath);
+    if (!current) return;
     if (current.isDirectory()) {
       throw new Error(`Cannot remove directory created at '${snapshot.filePath}'.`);
     }
@@ -115,17 +99,10 @@ function restoreFile(snapshot: FileSnapshot): void {
     return;
   }
 
-  if (
-    !snapshot.backupPath ||
-    snapshot.backupDevice === null ||
-    snapshot.backupInode === null ||
-    !pathExists(snapshot.backupPath)
-  ) {
+  const observedBackup = lstatIfExists(snapshot.backupPath);
+  if (!observedBackup) {
     throw new Error(`Rollback backup is missing for '${snapshot.filePath}'.`);
   }
-
-  const mode = snapshot.mode !== null ? snapshot.mode : 0o600;
-  const observedBackup = fs.lstatSync(snapshot.backupPath);
   if (
     observedBackup.isSymbolicLink() ||
     !observedBackup.isFile() ||
@@ -135,67 +112,43 @@ function restoreFile(snapshot: FileSnapshot): void {
     throw new Error(`Rollback backup changed for '${snapshot.filePath}'.`);
   }
 
-  let backupFd: number | null = null;
-  let content: Buffer;
-  try {
-    const flags =
-      fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
-    backupFd = fs.openSync(snapshot.backupPath, flags);
-    const openedBackup = fs.fstatSync(backupFd);
-    if (
-      !openedBackup.isFile() ||
-      openedBackup.dev !== snapshot.backupDevice ||
-      openedBackup.ino !== snapshot.backupInode
-    ) {
-      throw new Error(`Rollback backup changed for '${snapshot.filePath}'.`);
-    }
-    content = fs.readFileSync(backupFd);
-  } finally {
-    if (backupFd !== null) {
-      fs.closeSync(backupFd);
-    }
+  const content = readSameFile(snapshot.backupPath, {
+    dev: snapshot.backupDevice,
+    ino: snapshot.backupInode,
+  });
+  if (content === null) {
+    throw new Error(`Rollback backup changed for '${snapshot.filePath}'.`);
   }
-  Storage.writeFileAtomic(snapshot.filePath, content, mode);
+  Storage.writeFileAtomic(snapshot.filePath, content, snapshot.mode);
 }
 
 function readAntigravitySettings(snapshot: FileSnapshot): AntigravitySettings {
   if (!snapshot.existed) {
-    if (pathExists(snapshot.filePath)) {
+    if (lstatIfExists(snapshot.filePath)) {
       throw new Error('Antigravity settings changed after its rollback snapshot was created.');
     }
     return {};
   }
 
-  let fd: number | null = null;
-  try {
-    const observed = fs.lstatSync(snapshot.filePath);
-    if (
-      observed.isSymbolicLink() ||
-      !observed.isFile() ||
-      observed.dev !== snapshot.device ||
-      observed.ino !== snapshot.inode
-    ) {
-      throw new Error('Antigravity settings changed after its rollback snapshot was created.');
-    }
-
-    const flags =
-      fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
-    fd = fs.openSync(snapshot.filePath, flags);
-    const opened = fs.fstatSync(fd);
-    if (!opened.isFile() || opened.dev !== snapshot.device || opened.ino !== snapshot.inode) {
-      throw new Error('Antigravity settings changed after its rollback snapshot was created.');
-    }
-
-    const raw = fs.readFileSync(fd, 'utf-8');
-    if (!raw.trim()) {
-      return {};
-    }
-    return JSON.parse(raw) as AntigravitySettings;
-  } finally {
-    if (fd !== null) {
-      fs.closeSync(fd);
-    }
+  const observed = fs.lstatSync(snapshot.filePath);
+  if (
+    observed.isSymbolicLink() ||
+    !observed.isFile() ||
+    observed.dev !== snapshot.device ||
+    observed.ino !== snapshot.inode
+  ) {
+    throw new Error('Antigravity settings changed after its rollback snapshot was created.');
   }
+
+  const content = readSameFile(snapshot.filePath, { dev: snapshot.device, ino: snapshot.inode });
+  if (content === null) {
+    throw new Error('Antigravity settings changed after its rollback snapshot was created.');
+  }
+  const raw = content.toString('utf-8');
+  if (!raw.trim()) {
+    return {};
+  }
+  return JSON.parse(raw) as AntigravitySettings;
 }
 
 export class Switcher {

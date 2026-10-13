@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { validateAdcDocument, validateServiceAccountKey } from './credential-validation.js';
 import { errorMessage } from './errors.js';
 import { migrateExportDocument } from './migration.js';
+import { READ_NO_FOLLOW } from './storage.js';
 import { ExportDocumentV3, ServiceAccountKey, ServiceAccountKeySchema } from './types.js';
 
 export const MAX_CREDENTIAL_FILE_SIZE = 1024 * 1024; // 1 MiB
@@ -58,13 +59,11 @@ export class CredentialFiles {
   public static loadJsonFile<T>(filePath: string, maxSizeBytes = MAX_CREDENTIAL_FILE_SIZE): T {
     this.validateRegularFile(filePath, maxSizeBytes);
     const resolved = path.resolve(filePath);
-    const flags =
-      fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
     let fd: number | null = null;
     let raw: string;
 
     try {
-      fd = fs.openSync(resolved, flags);
+      fd = fs.openSync(resolved, READ_NO_FOLLOW);
       const stat = fs.fstatSync(fd);
       if (!stat.isFile()) {
         throw new Error(`Path is not a regular file: ${filePath}`);

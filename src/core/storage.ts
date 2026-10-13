@@ -140,6 +140,30 @@ export class CorruptedRegistryError extends Error {
   }
 }
 
+// O_NOFOLLOW does not exist on Windows; elsewhere it makes open fail on a symlink.
+export const READ_NO_FOLLOW =
+  fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
+
+/**
+ * Reads `filePath` without following symlinks. Returns null when the opened file is not the
+ * regular file `expected` describes, meaning it was swapped since it was stat'd.
+ */
+export function readSameFile(
+  filePath: string,
+  expected: { dev: number; ino: number }
+): Buffer | null {
+  const fd = fs.openSync(filePath, READ_NO_FOLLOW);
+  try {
+    const opened = fs.fstatSync(fd);
+    if (!opened.isFile() || opened.dev !== expected.dev || opened.ino !== expected.ino) {
+      return null;
+    }
+    return fs.readFileSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
 export class Storage {
   private static readonly lockRecoveryGraceMs = 100;
   private static readonly malformedLockRecoveryGraceMs = 30_000;
@@ -454,30 +478,14 @@ export class Storage {
     const backupName = `${prefix}_${baseName}_${timestamp}_${suffix}`;
     const backupPath = path.join(Paths.backupsDir, backupName);
 
-    let sourceFd: number | null = null;
     try {
-      const flags =
-        fs.constants.O_RDONLY | (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW);
-      sourceFd = fs.openSync(sourcePath, flags);
-      const openedStat = fs.fstatSync(sourceFd);
-      if (
-        !openedStat.isFile() ||
-        openedStat.dev !== observedStat.dev ||
-        openedStat.ino !== observedStat.ino
-      ) {
-        return null;
-      }
-
-      const content = fs.readFileSync(sourceFd);
+      const content = readSameFile(sourcePath, observedStat);
+      if (content === null) return null;
       this.writeFileAtomic(backupPath, content);
       this.rotateBackups(Paths.backupsDir, MAX_BACKUP_RETENTION, backupPath);
       return backupPath;
     } catch {
       return null;
-    } finally {
-      if (sourceFd !== null) {
-        fs.closeSync(sourceFd);
-      }
     }
   }
 
