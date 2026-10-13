@@ -40,14 +40,12 @@ export async function promptSelectAccount(
         message,
         options.maxWidthOverride
       );
-      const lines = rendered.split('\n');
-
       if (previousLineCount > 0) {
         output.write(`\x1b[${previousLineCount}A\x1b[0J`);
       }
 
-      output.write(`${lines.join('\n')}\n`);
-      previousLineCount = lines.length;
+      output.write(`${rendered}\n`);
+      previousLineCount = rendered.split('\n').length;
     } catch {
       // Ignore render errors during rapid teardown
     }
@@ -57,9 +55,7 @@ export async function promptSelectAccount(
     try {
       if (typedBufferTimeout) clearTimeout(typedBufferTimeout);
       output.write('\x1b[?25h'); // restore cursor
-      if (typeof input.setRawMode === 'function') {
-        input.setRawMode(false);
-      }
+      input.setRawMode(false);
       input.pause();
     } catch {
       // ignore teardown errors
@@ -69,9 +65,7 @@ export async function promptSelectAccount(
   return new Promise<Account | null>((resolve, reject) => {
     try {
       readline.emitKeypressEvents(input);
-      if (typeof input.setRawMode === 'function') {
-        input.setRawMode(true);
-      }
+      input.setRawMode(true);
       input.resume();
       output.write('\x1b[?25l'); // hide cursor
       render();
@@ -81,10 +75,16 @@ export async function promptSelectAccount(
       return;
     }
 
-    const onSigInt = (): void => {
+    // Every exit runs cleanup() and then drops both listeners, so the listeners
+    // stay out of cleanup(), which the startup failure path also calls.
+    const finish = (): void => {
       cleanup();
       input.removeListener('keypress', onKeypress);
       process.removeListener('SIGINT', onSigInt);
+    };
+
+    const onSigInt = (): void => {
+      finish();
       reject(new CancellationError('Operation cancelled by user (SIGINT).'));
     };
 
@@ -95,27 +95,21 @@ export async function promptSelectAccount(
 
       // Handle Ctrl+C
       if (key.ctrl && key.name === 'c') {
-        cleanup();
-        input.removeListener('keypress', onKeypress);
-        process.removeListener('SIGINT', onSigInt);
+        finish();
         reject(new CancellationError('Operation cancelled.'));
         return;
       }
 
       // Handle Escape or 'q'
       if (key.name === 'escape' || (_str === 'q' && !typedBuffer)) {
-        cleanup();
-        input.removeListener('keypress', onKeypress);
-        process.removeListener('SIGINT', onSigInt);
+        finish();
         resolve(null);
         return;
       }
 
       // Handle Enter / Return
       if (key.name === 'return' || key.name === 'enter') {
-        cleanup();
-        input.removeListener('keypress', onKeypress);
-        process.removeListener('SIGINT', onSigInt);
+        finish();
         resolve(accounts[selectedIndex]);
         return;
       }
@@ -148,10 +142,9 @@ export async function promptSelectAccount(
           selectedIndex = num - 1;
         } else {
           // Substring search on alias or email
+          const needle = typedBuffer.toLowerCase();
           const matchIdx = accounts.findIndex(
-            (a) =>
-              a.alias?.toLowerCase().includes(typedBuffer.toLowerCase()) ||
-              a.email.toLowerCase().includes(typedBuffer.toLowerCase())
+            (a) => a.alias?.toLowerCase().includes(needle) || a.email.toLowerCase().includes(needle)
           );
           if (matchIdx >= 0) {
             selectedIndex = matchIdx;

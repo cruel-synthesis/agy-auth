@@ -6,7 +6,6 @@ import {
   pad,
   renderAccountsTable,
   renderSelectMenu,
-  truncateAccount,
   truncateToWidth,
 } from '../src/ui/table.js';
 
@@ -45,7 +44,7 @@ describe('Table & TUI presentation', () => {
   it('pads and truncates strings accurately across wide and CJK characters', () => {
     expect(pad('test', 8)).toBe('test    ');
     expect(truncateToWidth('hello world', 8)).toBe('hello w.');
-    expect(truncateAccount('user@example.com', 10)).toBe('user@exam.');
+    expect(truncateToWidth('user@example.com', 10)).toBe('user@exam.');
 
     // CJK 2-column character truncation
     const cjk = '日本語テストアカウント';

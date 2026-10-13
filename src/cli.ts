@@ -39,7 +39,7 @@ export function createCli(): Command {
 
   // Custom help output for top-level
   program.helpInformation = () => {
-    printTopLevelHelp(false, VERSION);
+    printTopLevelHelp();
     return '';
   };
 
@@ -50,11 +50,11 @@ export function createCli(): Command {
     .option('--all', 'Show all commands including advanced and maintenance utilities')
     .action((words: string[], options) => {
       if (options?.all || words[0] === '--all') {
-        printTopLevelHelp(true, VERSION);
+        printTopLevelHelp(true);
         return;
       }
       if (words.length === 0) {
-        printTopLevelHelp(false, VERSION);
+        printTopLevelHelp();
         return;
       }
       // `help alias set` names a subcommand after its group.
@@ -362,19 +362,10 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
   });
 
   // Derive command name from raw args
-  let commandName = 'agy-auth';
   const nonFlagArgs = argv.slice(2).filter((a) => !a.startsWith('-'));
-  if (nonFlagArgs.length > 0) {
-    if (nonFlagArgs[0] === 'alias' && nonFlagArgs[1]) {
-      commandName = `alias ${nonFlagArgs[1]}`;
-    } else if (nonFlagArgs[0] === 'project' && nonFlagArgs[1]) {
-      commandName = `project ${nonFlagArgs[1]}`;
-    } else if (nonFlagArgs[0] === 'model' && nonFlagArgs[1]) {
-      commandName = `model ${nonFlagArgs[1]}`;
-    } else {
-      commandName = nonFlagArgs[0];
-    }
-  }
+  const [first, second] = nonFlagArgs;
+  let commandName = first ?? 'agy-auth';
+  if (second && ['alias', 'project', 'model'].includes(first)) commandName = `${first} ${second}`;
 
   // Handle shortcut `agy-auth -` by rewriting to `agy-auth switch -`
   let rawArgs = [...argv];
@@ -389,22 +380,23 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
     );
   };
 
-  // Configure commander error handling
+  // A custom CLI may not have set this; createCli() does.
   cli.exitOverride();
+
+  const reportError = (code: string, message: string, details?: unknown): void => {
+    if (isJson()) {
+      printJsonError({ code, message, details });
+    } else {
+      console.error(`${colors.red('Error:')} ${message}`);
+    }
+  };
 
   try {
     await cli.parseAsync(rawArgs);
     return 0;
   } catch (err: unknown) {
-    if (
-      err instanceof CommanderError ||
-      (err &&
-        typeof err === 'object' &&
-        'code' in err &&
-        typeof err.code === 'string' &&
-        err.code.startsWith('commander.'))
-    ) {
-      const { code: commanderCode, exitCode } = err as { code?: string; exitCode?: number };
+    if (err instanceof CommanderError) {
+      const { code: commanderCode, exitCode } = err;
       if (commanderCode === 'commander.helpDisplayed' || commanderCode === 'commander.version') {
         return 0;
       }
@@ -415,16 +407,11 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
         return 0;
       }
       // Commander prefixes its messages with 'error: '; ours adds its own.
-      const raw = err instanceof Error ? err.message : String(err);
       const message =
         commanderCode === 'commander.help'
           ? missingSubcommandMessage(nonFlagArgs)
-          : raw.replace(/^error:\s*/, '');
-      if (isJson()) {
-        printJsonError({ code: 'invalid_usage', message });
-      } else {
-        console.error(`${colors.red('Error:')} ${message}`);
-      }
+          : err.message.replace(/^error:\s*/, '');
+      reportError('invalid_usage', message);
       return 2;
     }
 
@@ -439,27 +426,17 @@ export async function runCli(argv = process.argv, customCli?: Command): Promise<
     }
 
     if (err instanceof CliError) {
-      if (isJson()) {
-        printJsonError({
-          code: err.code,
-          message: err.message,
-          details: Object.keys(err.details).length > 0 ? err.details : undefined,
-        });
-      } else {
-        if (err.exitCode !== 130) {
-          console.error(`${colors.red('Error:')} ${err.message}`);
-        }
-      }
+      reportError(
+        err.code,
+        err.message,
+        Object.keys(err.details).length > 0 ? err.details : undefined
+      );
       return err.exitCode;
     }
 
     const message =
       err instanceof ZodError ? `Invalid file: ${describeSchemaFailure(err)}` : errorMessage(err);
-    if (isJson()) {
-      printJsonError({ code: 'internal_error', message });
-    } else {
-      console.error(`${colors.red('Error:')} ${message}`);
-    }
+    reportError('internal_error', message);
     return 1;
   }
 }

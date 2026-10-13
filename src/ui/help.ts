@@ -42,8 +42,8 @@ const EXAMPLES: CommandRow[] = [
   ['agy-auth -', 'Switch back to the previous account'],
 ];
 
-export function printTopLevelHelp(all = false, version = VERSION): void {
-  console.log(`${colors.cyanBold('agy-auth')} ${colors.dim(version)}`);
+export function printTopLevelHelp(all = false): void {
+  console.log(`${colors.cyanBold('agy-auth')} ${colors.dim(VERSION)}`);
   console.log(
     'Keep several Google accounts signed in for Antigravity and switch in one command.\n'
   );

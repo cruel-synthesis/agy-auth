@@ -4,6 +4,7 @@ import {
   NO_ACCOUNTS,
   QuotaCell,
   blockingStatusLabel,
+  formatAccountShort,
   formatPlan,
   formatQuotaCell,
   formatTimeAgo,
@@ -49,21 +50,14 @@ export function truncateToWidth(str: string, targetWidth: number, ellipsis = '.'
   return takeWidth(str, maxContentWidth) + safeEllipsis;
 }
 
-export function truncateAccount(str: string, maxWidth: number): string {
-  return truncateToWidth(str, maxWidth, '.');
-}
-
 export function truncatePadded(str: string, width: number): string {
   if (width <= 0) return '';
-  const truncated = truncateToWidth(str, width, '.');
+  const truncated = truncateToWidth(str, width);
   return pad(truncated, width);
 }
 
 interface TableRowComponent {
-  account: Account;
-  index: number;
   isActive: boolean;
-  marker: string;
   choiceText: string;
   coloredText: string;
 }
@@ -146,19 +140,6 @@ export function terminalWidth(override?: number): number {
   return process.stdout.isTTY ? process.stdout.columns || fallbackWidth : fallbackWidth;
 }
 
-function quotaWindow(account: Account, key: QuotaColumnKey) {
-  switch (key) {
-    case 'gemini5h':
-      return account.rateLimit?.gemini?.rate5h;
-    case 'geminiWk':
-      return account.rateLimit?.gemini?.rateWeekly;
-    case 'claude5h':
-      return account.rateLimit?.claude?.rate5h;
-    case 'claudeWk':
-      return account.rateLimit?.claude?.rateWeekly;
-  }
-}
-
 export function getTableComponents(
   accounts: Account[],
   activeAccountId: string | null,
@@ -184,14 +165,7 @@ export function getTableComponents(
       const label = acc.alias || acc.email;
       const uncolored = truncateToWidth(`${marker}${num} ${label}`, termWidth, '');
       const colored = isActive ? colors.green(uncolored) : uncolored;
-      return {
-        account: acc,
-        index: idx,
-        isActive,
-        marker,
-        choiceText: uncolored,
-        coloredText: colored,
-      };
+      return { isActive, choiceText: uncolored, coloredText: colored };
     });
     return { headerLine, dividerLine, rows };
   }
@@ -199,7 +173,7 @@ export function getTableComponents(
   const rawRows = accounts.map((acc, idx) => {
     const isActive = acc.id === activeAccountId;
     const num = String(idx + 1).padStart(idxWidth, '0');
-    const accountCell = acc.alias ? `${acc.alias} (${acc.email})` : acc.email;
+    const accountCell = formatAccountShort(acc);
 
     // A status that blocks the reading belongs in one cell, not in all four
     // quota columns. It takes the plan slot because a token agy-auth cannot use
@@ -208,14 +182,14 @@ export function getTableComponents(
 
     const cells: Record<ColumnKey, Cell> = {
       plan: blocked ? { text: blocked, isError: true } : { text: formatPlan(acc), isError: false },
-      gemini5h: formatQuotaCell(quotaWindow(acc, 'gemini5h'), nowMs),
-      geminiWk: formatQuotaCell(quotaWindow(acc, 'geminiWk'), nowMs),
-      claude5h: formatQuotaCell(quotaWindow(acc, 'claude5h'), nowMs),
-      claudeWk: formatQuotaCell(quotaWindow(acc, 'claudeWk'), nowMs),
+      gemini5h: formatQuotaCell(acc.rateLimit?.gemini?.rate5h, nowMs),
+      geminiWk: formatQuotaCell(acc.rateLimit?.gemini?.rateWeekly, nowMs),
+      claude5h: formatQuotaCell(acc.rateLimit?.claude?.rate5h, nowMs),
+      claudeWk: formatQuotaCell(acc.rateLimit?.claude?.rateWeekly, nowMs),
       last: { text: formatTimeAgo(acc.lastUsedAt), isError: false },
     };
 
-    return { acc, idx, isActive, num, accountCell, cells };
+    return { acc, isActive, num, accountCell, cells };
   });
 
   const naturalWidth = (key: ColumnKey): number =>
@@ -246,7 +220,7 @@ export function getTableComponents(
   let minAccountW = Math.min(maxNaturalAccount, MIN_ACCOUNT_WIDTH);
   while (
     minAccountW < maxNaturalAccount &&
-    new Set(labels.map((label) => truncateAccount(label, minAccountW))).size < distinctLabels
+    new Set(labels.map((label) => truncateToWidth(label, minAccountW))).size < distinctLabels
   ) {
     minAccountW++;
   }
@@ -265,17 +239,10 @@ export function getTableComponents(
   }
 
   // Allocate account column width using available slack up to natural width
-  const availableForAccount = Math.max(
-    minAccountW,
-    termWidth - prefixWidth - getOtherColumnsWidth()
+  const accountW = Math.max(
+    0,
+    Math.min(maxNaturalAccount, termWidth - prefixWidth - getOtherColumnsWidth())
   );
-  let accountW = Math.min(maxNaturalAccount, availableForAccount);
-
-  if (prefixWidth + accountW + getOtherColumnsWidth() > termWidth) {
-    // Only drop/shrink when terminal is extremely constrained
-    const remaining = termWidth - prefixWidth - getOtherColumnsWidth();
-    accountW = Math.max(0, remaining);
-  }
 
   const headerParts = [truncatePadded('ACCOUNT', accountW)];
   for (const key of visible) {
@@ -292,7 +259,7 @@ export function getTableComponents(
     // An alias alone beats an address cut off mid-word when both cannot fit.
     const label =
       r.acc.alias && stringWidth(r.accountCell) > accountW ? r.acc.alias : r.accountCell;
-    const account = pad(truncateAccount(label, accountW), accountW);
+    const account = pad(truncateToWidth(label, accountW), accountW);
 
     const cellsUncolored: string[] = [account];
     const cellsColored: string[] = [colorAccount(r.acc, account, r.isActive)];
@@ -311,14 +278,7 @@ export function getTableComponents(
       ''
     );
 
-    return {
-      account: r.acc,
-      index: r.idx,
-      isActive: r.isActive,
-      marker,
-      choiceText,
-      coloredText,
-    };
+    return { isActive: r.isActive, choiceText, coloredText };
   });
 
   return { headerLine, dividerLine, rows };
@@ -379,28 +339,12 @@ export function renderSelectMenu(
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
-    const isSelected = i === selectedIndex;
-    const isAct = r.isActive;
-
-    let marker = '  ';
-    if (isSelected && isAct) {
-      marker = '* ';
-    } else if (isSelected) {
-      marker = '> ';
-    } else if (isAct) {
-      marker = '* ';
-    }
-
-    const rowBody = r.choiceText.slice(2);
-    const fullRow = `${marker}${rowBody}`;
-
-    if (isSelected && isAct) {
-      lines.push(colors.bold(colors.green(fullRow)));
-    } else if (isSelected) {
-      lines.push(colors.bold(colors.cyan(fullRow)));
-    } else {
+    if (i !== selectedIndex) {
       lines.push(r.coloredText);
+      continue;
     }
+    const fullRow = `${r.isActive ? '* ' : '> '}${r.choiceText.slice(2)}`;
+    lines.push(colors.bold(r.isActive ? colors.green(fullRow) : colors.cyan(fullRow)));
   }
 
   lines.push('');
