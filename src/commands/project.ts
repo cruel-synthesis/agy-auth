@@ -1,6 +1,7 @@
-import { AccountNotFoundError, AmbiguousSelectorError, UsageError } from '../core/errors.js';
+import { UsageError } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
 import { checkInputLength, sanitizeAccount } from '../core/types.js';
+import { printJsonResult } from '../ui/format.js';
 import { colors, marks } from '../ui/theme.js';
 
 interface ProjectOptions {
@@ -14,18 +15,7 @@ export async function projectSetCommand(
   options: ProjectOptions = {}
 ): Promise<void> {
   const registry = new RegistryManager();
-  const matches = registry.findAccounts(accountQuery);
-  if (matches.length === 0) {
-    throw new AccountNotFoundError(accountQuery);
-  }
-  if (matches.length > 1) {
-    throw new AmbiguousSelectorError(
-      accountQuery,
-      matches.map((m) => m.alias || m.email)
-    );
-  }
-
-  const account = matches[0];
+  const account = registry.resolveAccount(accountQuery);
   const trimmedProject = projectId.trim();
   if (!trimmedProject) {
     throw new UsageError('Project ID cannot be empty.');
@@ -40,22 +30,11 @@ export async function projectSetCommand(
   }
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'project set',
-          ok: true,
-          data: {
-            account: sanitizeAccount(updated),
-            project: trimmedProject,
-            location: updated.gcpLocation || null,
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('project set', {
+      account: sanitizeAccount(updated),
+      project: trimmedProject,
+      location: updated.gcpLocation || null,
+    });
     return;
   }
 
@@ -72,18 +51,7 @@ export async function projectClearCommand(
   options: ProjectOptions = {}
 ): Promise<void> {
   const registry = new RegistryManager();
-  const matches = registry.findAccounts(accountQuery);
-  if (matches.length === 0) {
-    throw new AccountNotFoundError(accountQuery);
-  }
-  if (matches.length > 1) {
-    throw new AmbiguousSelectorError(
-      accountQuery,
-      matches.map((m) => m.alias || m.email)
-    );
-  }
-
-  const account = matches[0];
+  const account = registry.resolveAccount(accountQuery);
   // Clear both project and location
   registry.setProject(account.id, null, null);
   const updated = registry.findAccount(account.id);
@@ -92,20 +60,9 @@ export async function projectClearCommand(
   }
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'project clear',
-          ok: true,
-          data: {
-            account: sanitizeAccount(updated),
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('project clear', {
+      account: sanitizeAccount(updated),
+    });
     return;
   }
 

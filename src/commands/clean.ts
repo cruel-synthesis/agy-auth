@@ -3,6 +3,7 @@ import { CliError } from '../core/errors.js';
 import { Paths } from '../core/paths.js';
 import { BackupRetention, MAX_BACKUP_RETENTION, planBackupRetention } from '../core/storage.js';
 import { colors, marks } from '../ui/theme.js';
+import { printJsonResult } from '../ui/format.js';
 
 interface CleanOptions {
   dryRun?: boolean;
@@ -14,22 +15,11 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
   const backupsDir = Paths.backupsDir;
   if (!fs.existsSync(backupsDir)) {
     if (options.json) {
-      console.log(
-        JSON.stringify(
-          {
-            schemaVersion: 1,
-            command: 'clean',
-            ok: true,
-            data: {
-              dryRun: Boolean(options.dryRun),
-              removedFiles: [],
-              keptFiles: [],
-            },
-          },
-          null,
-          2
-        )
-      );
+      printJsonResult('clean', {
+        dryRun: Boolean(options.dryRun),
+        removedFiles: [],
+        keptFiles: [],
+      });
       return;
     }
     console.log('No backup directory found. Nothing to clean.');
@@ -98,22 +88,11 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
   }
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'clean',
-          ok: true,
-          data: {
-            dryRun: Boolean(options.dryRun),
-            removedFiles: removedNames,
-            keptFiles: kept.map((k) => k.name),
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('clean', {
+      dryRun: Boolean(options.dryRun),
+      removedFiles: removedNames,
+      keptFiles: kept.map((k) => k.name),
+    });
     return;
   }
 

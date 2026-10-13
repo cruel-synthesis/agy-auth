@@ -1,6 +1,7 @@
-import { AccountNotFoundError, AmbiguousSelectorError, UsageError } from '../core/errors.js';
+import { UsageError } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
 import { checkInputLength, sanitizeAccount } from '../core/types.js';
+import { printJsonResult } from '../ui/format.js';
 import { colors, marks } from '../ui/theme.js';
 
 interface ModelOptions {
@@ -13,18 +14,7 @@ export async function modelSetCommand(
   options: ModelOptions = {}
 ): Promise<void> {
   const registry = new RegistryManager();
-  const matches = registry.findAccounts(accountQuery);
-  if (matches.length === 0) {
-    throw new AccountNotFoundError(accountQuery);
-  }
-  if (matches.length > 1) {
-    throw new AmbiguousSelectorError(
-      accountQuery,
-      matches.map((m) => m.alias || m.email)
-    );
-  }
-
-  const account = matches[0];
+  const account = registry.resolveAccount(accountQuery);
   const trimmedModel = modelName.trim();
   if (!trimmedModel) {
     throw new UsageError('Model name cannot be empty.');
@@ -38,21 +28,10 @@ export async function modelSetCommand(
   }
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'model set',
-          ok: true,
-          data: {
-            account: sanitizeAccount(updated),
-            model: trimmedModel,
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('model set', {
+      account: sanitizeAccount(updated),
+      model: trimmedModel,
+    });
     return;
   }
 
@@ -69,18 +48,7 @@ export async function modelClearCommand(
   options: ModelOptions = {}
 ): Promise<void> {
   const registry = new RegistryManager();
-  const matches = registry.findAccounts(accountQuery);
-  if (matches.length === 0) {
-    throw new AccountNotFoundError(accountQuery);
-  }
-  if (matches.length > 1) {
-    throw new AmbiguousSelectorError(
-      accountQuery,
-      matches.map((m) => m.alias || m.email)
-    );
-  }
-
-  const account = matches[0];
+  const account = registry.resolveAccount(accountQuery);
   // Clear both model and legacy reasoning effort
   registry.setModel(account.id, null, null);
   const updated = registry.findAccount(account.id);
@@ -89,20 +57,9 @@ export async function modelClearCommand(
   }
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'model clear',
-          ok: true,
-          data: {
-            account: sanitizeAccount(updated),
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('model clear', {
+      account: sanitizeAccount(updated),
+    });
     return;
   }
 

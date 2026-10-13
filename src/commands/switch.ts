@@ -8,7 +8,7 @@ import {
 import { RegistryManager } from '../core/registry.js';
 import { Switcher } from '../core/switcher.js';
 import { Account, SwitchResult, needsSignIn } from '../core/types.js';
-import { NO_ACCOUNTS, formatAccountShort } from '../ui/format.js';
+import { formatAccountShort, NO_ACCOUNTS, printJsonResult } from '../ui/format.js';
 import { colors } from '../ui/theme.js';
 import { promptSelectAccount } from '../ui/tui.js';
 
@@ -77,26 +77,15 @@ export async function switchCommand(query?: string, options: SwitchOptions = {})
   }
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'switch',
-          ok: true,
-          data: {
-            previousAccount: result.previousAccount,
-            currentAccount: result.currentAccount,
-            antigravityUpdated: result.antigravityUpdated,
-            adcUpdated: result.adcUpdated,
-            requiresShellUpdate: result.requiresShellUpdate,
-            managedEnvVars: result.managedEnvVars,
-            warnings: warnings.length > 0 ? warnings : undefined,
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('switch', {
+      previousAccount: result.previousAccount,
+      currentAccount: result.currentAccount,
+      antigravityUpdated: result.antigravityUpdated,
+      adcUpdated: result.adcUpdated,
+      requiresShellUpdate: result.requiresShellUpdate,
+      managedEnvVars: result.managedEnvVars,
+      warnings: warnings.length > 0 ? warnings : undefined,
+    });
     return;
   }
 

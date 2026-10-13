@@ -14,7 +14,7 @@ import {
   checkInputLength,
   sanitizeAccount,
 } from '../core/types.js';
-import { formatAccountShort } from '../ui/format.js';
+import { formatAccountShort, printJsonResult } from '../ui/format.js';
 import { colors, marks } from '../ui/theme.js';
 
 interface AddOptions {
@@ -178,20 +178,9 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
   });
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'add',
-          ok: true,
-          data: {
-            account: sanitizeAccount(account),
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('add', {
+      account: sanitizeAccount(account),
+    });
     return;
   }
 
@@ -276,13 +265,7 @@ async function addAntigravityAccount(options: AddOptions, services?: AddServices
   const account = registry.setActiveAccount(result.account.id) ?? result.account;
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        { schemaVersion: 1, command: 'add', ok: true, data: { account: sanitizeAccount(account) } },
-        null,
-        2
-      )
-    );
+    printJsonResult('add', { account: sanitizeAccount(account) });
     return;
   }
 

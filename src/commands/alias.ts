@@ -1,6 +1,7 @@
-import { AccountNotFoundError, AmbiguousSelectorError, UsageError } from '../core/errors.js';
+import { UsageError } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
 import { checkAlias, sanitizeAccount } from '../core/types.js';
+import { printJsonResult } from '../ui/format.js';
 import { colors, marks } from '../ui/theme.js';
 
 interface AliasOptions {
@@ -13,18 +14,7 @@ export async function aliasSetCommand(
   options: AliasOptions = {}
 ): Promise<void> {
   const registry = new RegistryManager();
-  const matches = registry.findAccounts(accountQuery);
-  if (matches.length === 0) {
-    throw new AccountNotFoundError(accountQuery);
-  }
-  if (matches.length > 1) {
-    throw new AmbiguousSelectorError(
-      accountQuery,
-      matches.map((m) => m.alias || m.email)
-    );
-  }
-
-  const account = matches[0];
+  const account = registry.resolveAccount(accountQuery);
   const trimmedAlias = alias.trim();
   if (!trimmedAlias) {
     throw new UsageError('Alias cannot be empty.');
@@ -38,21 +28,10 @@ export async function aliasSetCommand(
   }
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'alias set',
-          ok: true,
-          data: {
-            account: sanitizeAccount(updated),
-            alias: trimmedAlias,
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('alias set', {
+      account: sanitizeAccount(updated),
+      alias: trimmedAlias,
+    });
     return;
   }
 
@@ -64,18 +43,7 @@ export async function aliasClearCommand(
   options: AliasOptions = {}
 ): Promise<void> {
   const registry = new RegistryManager();
-  const matches = registry.findAccounts(accountQuery);
-  if (matches.length === 0) {
-    throw new AccountNotFoundError(accountQuery);
-  }
-  if (matches.length > 1) {
-    throw new AmbiguousSelectorError(
-      accountQuery,
-      matches.map((m) => m.alias || m.email)
-    );
-  }
-
-  const account = matches[0];
+  const account = registry.resolveAccount(accountQuery);
   registry.setAlias(account.id, null);
   const updated = registry.findAccount(account.id);
   if (!updated) {
@@ -83,20 +51,9 @@ export async function aliasClearCommand(
   }
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'alias clear',
-          ok: true,
-          data: {
-            account: sanitizeAccount(updated),
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('alias clear', {
+      account: sanitizeAccount(updated),
+    });
     return;
   }
 

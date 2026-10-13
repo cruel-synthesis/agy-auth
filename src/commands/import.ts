@@ -4,6 +4,7 @@ import { UsageError } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
 import { Account, sanitizeAccount } from '../core/types.js';
 import { colors, marks } from '../ui/theme.js';
+import { printJsonResult } from '../ui/format.js';
 
 interface ImportOptions {
   overwrite?: boolean;
@@ -157,23 +158,12 @@ export async function importCommand(filePath: string, options: ImportOptions = {
   );
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'import',
-          ok: true,
-          data: {
-            added: addedCount,
-            updated: updatedCount,
-            skipped: skippedCount,
-            accounts: importedAccounts.map(sanitizeAccount),
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('import', {
+      added: addedCount,
+      updated: updatedCount,
+      skipped: skippedCount,
+      accounts: importedAccounts.map(sanitizeAccount),
+    });
     return;
   }
 

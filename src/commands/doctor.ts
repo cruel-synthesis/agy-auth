@@ -9,6 +9,7 @@ import { Paths } from '../core/paths.js';
 import { validateRegistry } from '../core/registry.js';
 import { CURRENT_SCHEMA_VERSION, RegistrySchema, isRecord } from '../core/types.js';
 import { colors, marks } from '../ui/theme.js';
+import { printJsonResult } from '../ui/format.js';
 
 interface DoctorOptions {
   offline?: boolean;
@@ -386,21 +387,10 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
         passed: false,
       });
     }
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'doctor',
-          ok: true,
-          data: {
-            checks,
-            passed: true,
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('doctor', {
+      checks,
+      passed: true,
+    });
     return;
   }
 

@@ -1,6 +1,7 @@
 import { environmentFor } from '../core/env-vars.js';
 import { UsageError } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
+import { printJsonResult } from '../ui/format.js';
 
 interface EnvOptions {
   shell?: string;
@@ -73,22 +74,11 @@ export async function envCommand(options: EnvOptions = {}): Promise<void> {
   const envVars = environmentFor(options.clear ? null : active);
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'env',
-          ok: true,
-          data: {
-            shell: shellType,
-            containsSecrets: true,
-            variables: envVars,
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('env', {
+      shell: shellType,
+      containsSecrets: true,
+      variables: envVars,
+    });
     return;
   }
 

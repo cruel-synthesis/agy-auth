@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { validateAccountCredentials } from './credential-validation.js';
-import { UsageError } from './errors.js';
+import { AccountNotFoundError, AmbiguousSelectorError, UsageError } from './errors.js';
 import { migrateRegistry, validateUniqueness } from './migration.js';
 import { Paths } from './paths.js';
 import { CorruptedRegistryError, ManagedBackupPrefix, Storage } from './storage.js';
@@ -435,6 +435,23 @@ export class RegistryManager {
   public findAccount(query: string): Account | null {
     const results = this.findAccounts(query);
     return results.length === 1 ? results[0] : null;
+  }
+
+  /**
+   * Resolve a selector to exactly one account, or throw the not-found or ambiguous error.
+   */
+  public resolveAccount(query: string): Account {
+    const matches = this.findAccounts(query);
+    if (matches.length === 0) {
+      throw new AccountNotFoundError(query);
+    }
+    if (matches.length > 1) {
+      throw new AmbiguousSelectorError(
+        query,
+        matches.map((m) => m.alias || m.email)
+      );
+    }
+    return matches[0];
   }
 
   /**

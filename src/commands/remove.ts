@@ -1,16 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { confirm } from '@inquirer/prompts';
-import {
-  AccountNotFoundError,
-  AmbiguousSelectorError,
-  CliError,
-  UsageError,
-} from '../core/errors.js';
+import { CliError, UsageError } from '../core/errors.js';
 import { Paths } from '../core/paths.js';
 import { RegistryManager } from '../core/registry.js';
 import { Account, sanitizeAccount } from '../core/types.js';
-import { NO_ACCOUNTS, formatAccountShort } from '../ui/format.js';
+import { formatAccountShort, NO_ACCOUNTS, printJsonResult } from '../ui/format.js';
 import { colors, marks } from '../ui/theme.js';
 import { promptSelectAccount } from '../ui/tui.js';
 
@@ -34,23 +29,12 @@ export async function removeCommand(
 
   if (accounts.length === 0) {
     if (options.json) {
-      console.log(
-        JSON.stringify(
-          {
-            schemaVersion: 1,
-            command: 'remove',
-            ok: true,
-            data: {
-              removed: [],
-              remainingCount: 0,
-              activeAccountId: null,
-              managedBackupCreated: false,
-            },
-          },
-          null,
-          2
-        )
-      );
+      printJsonResult('remove', {
+        removed: [],
+        remainingCount: 0,
+        activeAccountId: null,
+        managedBackupCreated: false,
+      });
       return;
     }
     console.log(NO_ACCOUNTS);
@@ -120,23 +104,12 @@ export async function removeCommand(
     }
 
     if (options.json) {
-      console.log(
-        JSON.stringify(
-          {
-            schemaVersion: 1,
-            command: 'remove',
-            ok: true,
-            data: {
-              removed: removedAccounts.map(sanitizeAccount),
-              remainingCount: 0,
-              activeAccountId: null,
-              managedBackupCreated: true,
-            },
-          },
-          null,
-          2
-        )
-      );
+      printJsonResult('remove', {
+        removed: removedAccounts.map(sanitizeAccount),
+        remainingCount: 0,
+        activeAccountId: null,
+        managedBackupCreated: true,
+      });
       return;
     }
 
@@ -170,17 +143,7 @@ export async function removeCommand(
   const targetIds = new Set<string>();
 
   for (const selector of selectors) {
-    const matches = registry.findAccounts(selector);
-    if (matches.length === 0) {
-      throw new AccountNotFoundError(selector);
-    }
-    if (matches.length > 1) {
-      throw new AmbiguousSelectorError(
-        selector,
-        matches.map((m) => m.alias || m.email)
-      );
-    }
-    const target = matches[0];
+    const target = registry.resolveAccount(selector);
     if (!targetIds.has(target.id)) {
       targetIds.add(target.id);
       targetsToRemove.push(target);
@@ -254,23 +217,12 @@ export async function removeCommand(
   const freshRegistry = registry.getRegistry();
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'remove',
-          ok: true,
-          data: {
-            removed: targetsToRemove.map(sanitizeAccount),
-            remainingCount: freshRegistry.accounts.length,
-            activeAccountId: freshRegistry.activeAccountId,
-            managedBackupCreated: true,
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('remove', {
+      removed: targetsToRemove.map(sanitizeAccount),
+      remainingCount: freshRegistry.accounts.length,
+      activeAccountId: freshRegistry.activeAccountId,
+      managedBackupCreated: true,
+    });
     return;
   }
 

@@ -6,6 +6,7 @@ import { RegistryManager } from '../core/registry.js';
 import { Storage } from '../core/storage.js';
 import { ExportDocumentV3, sanitizeAccounts } from '../core/types.js';
 import { colors, marks } from '../ui/theme.js';
+import { printJsonResult } from '../ui/format.js';
 
 interface ExportOptions {
   output?: string;
@@ -67,22 +68,11 @@ export async function exportCommand(options: ExportOptions = {}): Promise<void> 
   }
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'export',
-          ok: true,
-          data: {
-            destination: targetPath,
-            accountCount: exportedAccounts.length,
-            includesSecrets: Boolean(options.includeSecrets),
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('export', {
+      destination: targetPath,
+      accountCount: exportedAccounts.length,
+      includesSecrets: Boolean(options.includeSecrets),
+    });
     return;
   }
 

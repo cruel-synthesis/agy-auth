@@ -3,12 +3,13 @@ import { QuotaOptions, QuotaRefreshSummary, summarizeQuotaRefresh } from '../cor
 import { RegistryManager } from '../core/registry.js';
 import { sanitizeAccount } from '../core/types.js';
 import {
-  NO_ACCOUNTS,
   detailLine,
   formatAccountShort,
   formatAuthType,
   formatStatus,
   formatTimeAgo,
+  NO_ACCOUNTS,
+  printJsonResult,
   quotaSummaryLines,
 } from '../ui/format.js';
 import { colors } from '../ui/theme.js';
@@ -26,21 +27,10 @@ export async function currentCommand(options: CurrentOptions = {}): Promise<void
 
   if (!active) {
     if (options.json) {
-      console.log(
-        JSON.stringify(
-          {
-            schemaVersion: 1,
-            command: 'current',
-            ok: true,
-            data: {
-              account: null,
-              quotaRefresh: summarizeQuotaRefresh(!options.refresh, []),
-            },
-          },
-          null,
-          2
-        )
-      );
+      printJsonResult('current', {
+        account: null,
+        quotaRefresh: summarizeQuotaRefresh(!options.refresh, []),
+      });
       return;
     }
     console.log(
@@ -64,21 +54,10 @@ export async function currentCommand(options: CurrentOptions = {}): Promise<void
   }
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'current',
-          ok: true,
-          data: {
-            account: sanitizeAccount(active),
-            quotaRefresh: quotaSummary,
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('current', {
+      account: sanitizeAccount(active),
+      quotaRefresh: quotaSummary,
+    });
     return;
   }
 

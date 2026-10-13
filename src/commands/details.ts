@@ -4,13 +4,14 @@ import { QuotaOptions, QuotaRefreshSummary, summarizeQuotaRefresh } from '../cor
 import { RegistryManager } from '../core/registry.js';
 import { Account, sanitizeAccount } from '../core/types.js';
 import {
-  NO_ACCOUNTS,
-  formatAccountShort,
   detailLine,
+  formatAccountShort,
   formatAuthType,
   formatDay,
   formatStatus,
   formatTimeAgo,
+  NO_ACCOUNTS,
+  printJsonResult,
   quotaSummaryLines,
 } from '../ui/format.js';
 import { colors } from '../ui/theme.js';
@@ -59,21 +60,10 @@ export async function detailsCommand(query?: string, options: DetailsOptions = {
 
   if (accounts.length === 0) {
     if (options.json) {
-      console.log(
-        JSON.stringify(
-          {
-            schemaVersion: 1,
-            command: 'details',
-            ok: true,
-            data: {
-              account: null,
-              quotaRefresh: summarizeQuotaRefresh(!options.refresh, []),
-            },
-          },
-          null,
-          2
-        )
-      );
+      printJsonResult('details', {
+        account: null,
+        quotaRefresh: summarizeQuotaRefresh(!options.refresh, []),
+      });
       return;
     }
     console.log(NO_ACCOUNTS);
@@ -137,22 +127,11 @@ export async function detailsCommand(query?: string, options: DetailsOptions = {
   const isActive = target.id === active?.id;
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'details',
-          ok: true,
-          data: {
-            account: sanitizeAccount(target),
-            isActive,
-            quotaRefresh: quotaSummary,
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('details', {
+      account: sanitizeAccount(target),
+      isActive,
+      quotaRefresh: quotaSummary,
+    });
     return;
   }
 

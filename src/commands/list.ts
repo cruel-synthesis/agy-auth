@@ -6,6 +6,7 @@ import { Verifier } from '../core/verifier.js';
 import { renderAccountsTable } from '../ui/table.js';
 import { colors } from '../ui/theme.js';
 import { refreshQuota, selectStale } from './refresh.js';
+import { printJsonResult } from '../ui/format.js';
 
 interface ListOptions {
   active?: boolean;
@@ -54,23 +55,12 @@ export async function listCommand(options: ListOptions): Promise<void> {
     : freshAccounts;
 
   if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          command: 'list',
-          ok: true,
-          data: {
-            activeAccountId: freshActiveAccountId,
-            total: displayAccounts.length,
-            accounts: sanitizeAccounts(displayAccounts),
-            quotaRefresh: quotaSummary,
-          },
-        },
-        null,
-        2
-      )
-    );
+    printJsonResult('list', {
+      activeAccountId: freshActiveAccountId,
+      total: displayAccounts.length,
+      accounts: sanitizeAccounts(displayAccounts),
+      quotaRefresh: quotaSummary,
+    });
     return;
   }
 

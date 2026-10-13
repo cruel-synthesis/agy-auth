@@ -5,6 +5,11 @@ import { colors, quotaColor } from './theme.js';
 export const NO_ACCOUNTS =
   'No accounts yet. Run `agy-auth add` to save the account Antigravity is signed in to, or `agy-auth login` to sign in to another.';
 
+/** Success envelope for --json output; cli.ts prints the ok: false counterpart. */
+export function printJsonResult(command: string, data: unknown): void {
+  console.log(JSON.stringify({ schemaVersion: 1, command, ok: true, data }, null, 2));
+}
+
 export function formatAccountShort(account: Account): string {
   if (account.alias) {
     return `${account.alias} (${account.email})`;
