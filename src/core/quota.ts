@@ -66,6 +66,30 @@ const DEFAULT_QUOTA_REQUEST_TIMEOUT_MS = 8_000;
 export const QUOTA_REFRESH_CONCURRENCY = 4;
 const TOKEN_REFRESH_BUFFER_SECONDS = 300;
 
+/**
+ * Run `run` over accounts in chunks of QUOTA_REFRESH_CONCURRENCY. One account's
+ * rejection becomes `onReject(account)`, so one failure never aborts the batch.
+ */
+export async function settleEach<T>(
+  accounts: Account[],
+  run: (account: Account) => Promise<T>,
+  onReject: (account: Account) => T
+): Promise<Map<string, T>> {
+  const results = new Map<string, T>();
+
+  for (let i = 0; i < accounts.length; i += QUOTA_REFRESH_CONCURRENCY) {
+    const chunk = accounts.slice(i, i + QUOTA_REFRESH_CONCURRENCY);
+    const settled = await Promise.allSettled(chunk.map((account) => run(account)));
+
+    for (let j = 0; j < chunk.length; j++) {
+      const outcome = settled[j];
+      results.set(chunk[j].id, outcome.status === 'fulfilled' ? outcome.value : onReject(chunk[j]));
+    }
+  }
+
+  return results;
+}
+
 export type QuotaFailureReason =
   | 'not-applicable'
   | 'token-expired'
@@ -278,13 +302,15 @@ function moreConstrained(a: WindowCandidate, b: WindowCandidate): WindowCandidat
   return b.resetsAt < a.resetsAt ? b : a;
 }
 
-function buildSnapshot(candidates: WindowCandidate[]): RateLimitSnapshot {
+/** Undefined when no window survives, so an empty reading never counts as a snapshot. */
+function buildSnapshot(candidates: WindowCandidate[]): RateLimitSnapshot | undefined {
   const selected = new Map<string, WindowCandidate>();
   for (const candidate of candidates) {
     const key = `${candidate.family}:${candidate.window}`;
     const previous = selected.get(key);
     selected.set(key, previous ? moreConstrained(previous, candidate) : candidate);
   }
+  if (selected.size === 0) return undefined;
 
   const snapshot: RateLimitSnapshot = {};
   for (const candidate of selected.values()) {
@@ -293,30 +319,14 @@ function buildSnapshot(candidates: WindowCandidate[]): RateLimitSnapshot {
       windowMinutes: candidate.window === '5h' ? WINDOW_MINUTES_5H : WINDOW_MINUTES_WEEKLY,
       ...(candidate.resetsAt !== undefined ? { resetsAt: candidate.resetsAt } : {}),
     };
-    if (!snapshot[candidate.family]) {
-      snapshot[candidate.family] = {};
-    }
-    const family = snapshot[candidate.family] as ModelRateLimits;
-    if (candidate.window === '5h') {
-      family.rate5h = window;
-    } else {
-      family.rateWeekly = window;
-    }
+    const family: ModelRateLimits = snapshot[candidate.family] ?? {};
+    family[candidate.window === '5h' ? 'rate5h' : 'rateWeekly'] = window;
+    snapshot[candidate.family] = family;
   }
 
   // A snapshot that cannot round-trip the strict schema is treated as unusable.
   const parsed = RateLimitSnapshotSchema.safeParse(snapshot);
-  return parsed.success ? parsed.data : {};
-}
-
-function hasUsableWindows(snapshot: RateLimitSnapshot | undefined): boolean {
-  if (!snapshot) return false;
-  return Boolean(
-    snapshot.gemini?.rate5h ||
-      snapshot.gemini?.rateWeekly ||
-      snapshot.claude?.rate5h ||
-      snapshot.claude?.rateWeekly
-  );
+  return parsed.success ? parsed.data : undefined;
 }
 
 /** Contract A: `retrieveUserQuotaSummary` returns `groups[].buckets[]`. */
@@ -363,11 +373,7 @@ export function collectFromBuckets(payload: unknown): WindowCandidate[] {
 
   for (const bucket of buckets) {
     if (!isRecord(bucket)) continue;
-    const fraction = validFraction(bucket.remainingFraction)
-      ? bucket.remainingFraction
-      : validFraction(bucket.remaining_fraction)
-        ? bucket.remaining_fraction
-        : undefined;
+    const fraction = [bucket.remainingFraction, bucket.remaining_fraction].find(validFraction);
     if (fraction === undefined) continue;
 
     const window = classifyWindow(
@@ -706,71 +712,43 @@ export class QuotaClient {
       accessToken,
       ctx
     );
-    if (summary.kind === 'ok') {
-      const snapshot = buildSnapshot(collectFromSummary(summary.data));
-      if (hasUsableWindows(snapshot)) {
-        return {
-          result: {
-            ...base,
-            ok: true,
-            status: 'valid',
-            rateLimit: snapshot,
-            quotaCheckedAt: now(),
-            ...carried,
-          },
-          tokenUpdate,
-        };
-      }
-    }
+    let rateLimit =
+      summary.kind === 'ok' ? buildSnapshot(collectFromSummary(summary.data)) : undefined;
 
     // Contract B: per-model buckets, for accounts the summary does not answer for.
-    const quota: PostOutcome = projectId
-      ? await this.postFirst(
-          RETRIEVE_USER_QUOTA_ENDPOINTS,
-          { project: projectId },
-          accessToken,
-          ctx
-        )
-      : { kind: 'transport' };
-
-    if (quota.kind === 'ok') {
-      const snapshot = buildSnapshot(collectFromBuckets(quota.data));
-      if (hasUsableWindows(snapshot)) {
-        return {
-          result: {
-            ...base,
-            ok: true,
-            status: 'valid',
-            rateLimit: snapshot,
-            quotaCheckedAt: now(),
-            ...carried,
-          },
-          tokenUpdate,
-        };
-      }
+    let quota: PostOutcome = { kind: 'transport' };
+    if (!rateLimit && projectId) {
+      quota = await this.postFirst(
+        RETRIEVE_USER_QUOTA_ENDPOINTS,
+        { project: projectId },
+        accessToken,
+        ctx
+      );
+      if (quota.kind === 'ok') rateLimit = buildSnapshot(collectFromBuckets(quota.data));
     }
 
-    const outcomes = [summary.kind, info.outcome, quota.kind];
-
-    if (outcomes.includes('scope')) {
+    if (rateLimit) {
       return {
         result: {
           ...base,
-          ok: false,
-          reason: 'scope-insufficient',
-          status: 'needs-reauth',
+          ok: true,
+          status: 'valid',
+          rateLimit,
+          quotaCheckedAt: now(),
           ...carried,
         },
         tokenUpdate,
       };
     }
 
-    if (outcomes.includes('auth')) {
-      return {
-        result: { ...base, ok: false, reason: 'auth-failed', status: 'expired', ...carried },
-        tokenUpdate,
-      };
-    }
+    const fail = (reason: QuotaFailureReason, status?: AccountStatus): QuotaRefresh => ({
+      result: { ...base, ok: false, reason, ...(status ? { status } : {}), ...carried },
+      tokenUpdate,
+    });
+    const outcomes = [summary.kind, info.outcome, quota.kind];
+
+    if (outcomes.includes('scope')) return fail('scope-insufficient', 'needs-reauth');
+    if (outcomes.includes('auth')) return fail('auth-failed', 'expired');
 
     // A syntactically valid response with no recognized window is not a success,
     // but it says nothing about the credential: keep status and cached quota.
@@ -779,16 +757,7 @@ export class QuotaClient {
     // the honest reason is that quota is unavailable rather than that the network
     // failed. Observed in the wild: `loadCodeAssist` answers 200 while both quota
     // contracts answer 429.
-    const hadPayload = summary.kind === 'ok' || quota.kind === 'ok' || info.outcome === 'ok';
-    return {
-      result: {
-        ...base,
-        ok: false,
-        reason: hadPayload ? 'quota-unavailable' : 'network-error',
-        ...carried,
-      },
-      tokenUpdate,
-    };
+    return fail(outcomes.includes('ok') ? 'quota-unavailable' : 'network-error');
   }
 
   /**
@@ -799,33 +768,17 @@ export class QuotaClient {
     accounts: Account[],
     options: QuotaOptions = {}
   ): Promise<Map<string, QuotaRefresh>> {
-    const results = new Map<string, QuotaRefresh>();
-
-    for (let i = 0; i < accounts.length; i += QUOTA_REFRESH_CONCURRENCY) {
-      const chunk = accounts.slice(i, i + QUOTA_REFRESH_CONCURRENCY);
-      const settled = await Promise.allSettled(
-        chunk.map((account) => this.refreshAccountQuota(account, options))
-      );
-
-      for (let j = 0; j < chunk.length; j++) {
-        const account = chunk[j];
-        const outcome = settled[j];
-        results.set(
-          account.id,
-          outcome.status === 'fulfilled'
-            ? outcome.value
-            : {
-                result: {
-                  accountId: account.id,
-                  observedUpdatedAt: account.updatedAt,
-                  ok: false,
-                  reason: 'network-error',
-                },
-              }
-        );
-      }
-    }
-
-    return results;
+    return settleEach(
+      accounts,
+      (account) => this.refreshAccountQuota(account, options),
+      (account): QuotaRefresh => ({
+        result: {
+          accountId: account.id,
+          observedUpdatedAt: account.updatedAt,
+          ok: false,
+          reason: 'network-error',
+        },
+      })
+    );
   }
 }
