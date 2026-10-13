@@ -2,16 +2,18 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+/** Non-blank environment variable resolved to an absolute path, or undefined. */
+function envPath(name: string): string | undefined {
+  const value = process.env[name];
+  return value && value.trim() !== '' ? path.resolve(value) : undefined;
+}
+
 export class Paths {
   /**
    * Root directory for agy-auth data (~/.agy-auth or AGY_AUTH_HOME)
    */
   static get authHome(): string {
-    const envPath = process.env.AGY_AUTH_HOME;
-    if (envPath && envPath.trim() !== '') {
-      return path.resolve(envPath);
-    }
-    return path.join(os.homedir(), '.agy-auth');
+    return envPath('AGY_AUTH_HOME') ?? path.join(os.homedir(), '.agy-auth');
   }
 
   /**
@@ -60,39 +62,31 @@ export class Paths {
    * Antigravity CLI base directory (~/.gemini/antigravity-cli or AGY_CLI_DIR)
    */
   static get antigravityCliDir(): string {
-    if (process.env.AGY_CLI_DIR && process.env.AGY_CLI_DIR.trim() !== '') {
-      return path.resolve(process.env.AGY_CLI_DIR);
-    }
-    return path.join(os.homedir(), '.gemini', 'antigravity-cli');
+    return envPath('AGY_CLI_DIR') ?? path.join(os.homedir(), '.gemini', 'antigravity-cli');
   }
 
   /**
    * Antigravity settings JSON (~/.gemini/antigravity-cli/settings.json or AGY_SETTINGS_FILE)
    */
   static get antigravitySettingsFile(): string {
-    if (process.env.AGY_SETTINGS_FILE && process.env.AGY_SETTINGS_FILE.trim() !== '') {
-      return path.resolve(process.env.AGY_SETTINGS_FILE);
-    }
-    return path.join(this.antigravityCliDir, 'settings.json');
+    return envPath('AGY_SETTINGS_FILE') ?? path.join(this.antigravityCliDir, 'settings.json');
   }
 
   /**
    * Antigravity token file (~/.gemini/antigravity-cli/antigravity-oauth-token or AGY_TOKEN_FILE)
    */
   static get antigravityTokenFile(): string {
-    if (process.env.AGY_TOKEN_FILE && process.env.AGY_TOKEN_FILE.trim() !== '') {
-      return path.resolve(process.env.AGY_TOKEN_FILE);
-    }
-    return path.join(this.antigravityCliDir, 'antigravity-oauth-token');
+    return (
+      envPath('AGY_TOKEN_FILE') ?? path.join(this.antigravityCliDir, 'antigravity-oauth-token')
+    );
   }
 
   /**
    * Standard platform Google Cloud ADC location or AGY_GCLOUD_ADC_FILE override.
    */
   static get gcloudAdcFile(): string {
-    if (process.env.AGY_GCLOUD_ADC_FILE && process.env.AGY_GCLOUD_ADC_FILE.trim() !== '') {
-      return path.resolve(process.env.AGY_GCLOUD_ADC_FILE);
-    }
+    const override = envPath('AGY_GCLOUD_ADC_FILE');
+    if (override) return override;
     if (process.platform === 'win32') {
       const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
       return path.join(appData, 'gcloud', 'application_default_credentials.json');

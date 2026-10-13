@@ -1,4 +1,3 @@
-import type { AgyKeychainPayload } from '../core/keychain.js';
 import {
   ANTIGRAVITY_OAUTH_CLIENT,
   getSignInClient,
@@ -6,7 +5,7 @@ import {
 } from '../core/oauth-config.js';
 import { type AuthenticateOptions, OAuthFlow, type OAuthResult } from '../core/oauth.js';
 import { RegistryManager } from '../core/registry.js';
-import { type Account, checkAlias, checkInputLength } from '../core/types.js';
+import { type Account, type KeychainPayload, checkAlias, checkInputLength } from '../core/types.js';
 import { formatAccountShort } from '../ui/format.js';
 import { colors, marks } from '../ui/theme.js';
 
@@ -66,7 +65,7 @@ export async function loginCommand(
 
   const refreshToken =
     result.payload.token.refresh_token || reusableRefreshToken(existing, client.clientId);
-  const payload: AgyKeychainPayload = {
+  const payload: KeychainPayload = {
     auth_method: 'consumer',
     token: {
       access_token: result.payload.token.access_token,

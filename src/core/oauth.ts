@@ -3,13 +3,13 @@ import crypto from 'node:crypto';
 import http from 'node:http';
 import { isEmail } from './credential-validation.js';
 import { CliError, errorMessage } from './errors.js';
-import type { AgyKeychainPayload } from './keychain.js';
 import { NativeOperationBlockedError, assertNativeAllowed } from './native-guard.js';
 import { OAUTH_TOKEN_ENDPOINT, getSignInClient } from './oauth-config.js';
+import type { KeychainPayload } from './types.js';
 
 export interface OAuthResult {
   email: string;
-  payload: AgyKeychainPayload;
+  payload: KeychainPayload;
 }
 
 export interface AuthenticateOptions {
@@ -152,6 +152,12 @@ export class OAuthFlow {
       }, timeoutMs);
 
       const server = http.createServer(async (req, res) => {
+        function fail(status: number, heading: string, detail: string, error: CliError): void {
+          res.writeHead(status, SECURITY_HEADERS);
+          res.end(renderHtml('Authentication Failed', heading, detail, true));
+          finish(() => reject(error));
+        }
+
         try {
           const reqUrl = new URL(req.url || '/', 'http://127.0.0.1');
 
@@ -179,36 +185,24 @@ export class OAuthFlow {
 
           const returnedState = reqUrl.searchParams.get('state');
           if (!returnedState || returnedState !== state) {
-            res.writeHead(400, SECURITY_HEADERS);
-            res.end(
-              renderHtml(
-                'Authentication Failed',
-                'Invalid OAuth Callback',
-                'State parameter mismatch. Return to your terminal.',
-                true
-              )
+            fail(
+              400,
+              'Invalid OAuth Callback',
+              'State parameter mismatch. Return to your terminal.',
+              new CliError('OAuth state mismatch.')
             );
-            finish(() => reject(new CliError('OAuth state mismatch.')));
             return;
           }
 
           const error = reqUrl.searchParams.get('error');
           if (error) {
-            res.writeHead(400, SECURITY_HEADERS);
-            res.end(
-              renderHtml(
-                'Authentication Failed',
-                'Authentication Cancelled or Denied',
-                'Return to your terminal for details.',
-                true
-              )
-            );
-            finish(() =>
-              reject(
-                new CliError(
-                  'Authentication was cancelled or denied by the provider.',
-                  'auth_cancelled'
-                )
+            fail(
+              400,
+              'Authentication Cancelled or Denied',
+              'Return to your terminal for details.',
+              new CliError(
+                'Authentication was cancelled or denied by the provider.',
+                'auth_cancelled'
               )
             );
             return;
@@ -216,16 +210,12 @@ export class OAuthFlow {
 
           const code = reqUrl.searchParams.get('code');
           if (!code) {
-            res.writeHead(400, SECURITY_HEADERS);
-            res.end(
-              renderHtml(
-                'Authentication Failed',
-                'Missing Authorization Code',
-                'Return to your terminal for details.',
-                true
-              )
+            fail(
+              400,
+              'Missing Authorization Code',
+              'Return to your terminal for details.',
+              new CliError('Missing OAuth authorization code.')
             );
-            finish(() => reject(new CliError('Missing OAuth authorization code.')));
             return;
           }
 
@@ -256,17 +246,11 @@ export class OAuthFlow {
             tokenData = (await tokenRes.json()) as GoogleTokenResponse;
 
             if (!tokenRes.ok || !tokenData.access_token) {
-              res.writeHead(400, SECURITY_HEADERS);
-              res.end(
-                renderHtml(
-                  'Authentication Failed',
-                  'Token Exchange Failed',
-                  'Return to your terminal for details.',
-                  true
-                )
-              );
-              finish(() =>
-                reject(new CliError('Google OAuth token exchange failed.', 'token_exchange_failed'))
+              fail(
+                400,
+                'Token Exchange Failed',
+                'Return to your terminal for details.',
+                new CliError('Google OAuth token exchange failed.', 'token_exchange_failed')
               );
               return;
             }
@@ -274,19 +258,11 @@ export class OAuthFlow {
             if (err instanceof CliError) {
               throw err;
             }
-            res.writeHead(500, SECURITY_HEADERS);
-            res.end(
-              renderHtml(
-                'Authentication Failed',
-                'Token Exchange Error',
-                'Return to your terminal for details.',
-                true
-              )
-            );
-            finish(() =>
-              reject(
-                new CliError('Google OAuth token exchange request failed.', 'token_exchange_failed')
-              )
+            fail(
+              500,
+              'Token Exchange Error',
+              'Return to your terminal for details.',
+              new CliError('Google OAuth token exchange request failed.', 'token_exchange_failed')
             );
             return;
           }
@@ -310,21 +286,11 @@ export class OAuthFlow {
           }
 
           if (!email) {
-            res.writeHead(400, SECURITY_HEADERS);
-            res.end(
-              renderHtml(
-                'Authentication Failed',
-                'Profile Lookup Failed',
-                'Could not retrieve a verified email address from your Google profile.',
-                true
-              )
-            );
-            finish(() =>
-              reject(
-                new CliError(
-                  'Failed to retrieve a verified email address from Google OAuth profile.'
-                )
-              )
+            fail(
+              400,
+              'Profile Lookup Failed',
+              'Could not retrieve a verified email address from your Google profile.',
+              new CliError('Failed to retrieve a verified email address from Google OAuth profile.')
             );
             return;
           }
@@ -342,7 +308,7 @@ export class OAuthFlow {
             Date.now() + (tokenData.expires_in || 3600) * 1000
           ).toISOString();
 
-          const payload: AgyKeychainPayload = {
+          const payload: KeychainPayload = {
             auth_method: 'consumer',
             token: {
               access_token: tokenData.access_token,

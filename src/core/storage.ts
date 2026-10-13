@@ -173,9 +173,8 @@ export class Storage {
   /**
    * Safely and atomically write JSON data to disk with 0600 permissions
    */
-  static writeJson(filePath: string, data: unknown, pretty = true): void {
-    const payload = pretty ? `${JSON.stringify(data, null, 2)}\n` : JSON.stringify(data);
-    this.writeFileAtomic(filePath, payload);
+  static writeJson(filePath: string, data: unknown): void {
+    this.writeFileAtomic(filePath, `${JSON.stringify(data, null, 2)}\n`);
   }
 
   static writeFileAtomic(filePath: string, data: string | Buffer, mode = 0o600): void {
@@ -376,21 +375,13 @@ export class Storage {
       }
 
       const raw = fs.readFileSync(lockFilePath, 'utf-8');
-      if (!raw.trim()) {
-        if (Date.now() - stat.mtimeMs > this.malformedLockRecoveryGraceMs) {
-          this.unlinkIfUnchanged(lockFilePath, raw, stat, null);
-        }
-        return;
-      }
-
-      let parsed: { pid?: unknown; time?: unknown; token?: unknown };
+      // Empty (a lock caught between open and write) or unparseable content
+      // falls through to the malformed branch below with no token.
+      let parsed: { pid?: unknown; time?: unknown; token?: unknown } = {};
       try {
         parsed = JSON.parse(raw) as { pid?: unknown; time?: unknown; token?: unknown };
       } catch {
-        if (Date.now() - stat.mtimeMs > this.malformedLockRecoveryGraceMs) {
-          this.unlinkIfUnchanged(lockFilePath, raw, stat, null);
-        }
-        return;
+        // handled below as malformed
       }
 
       const pid = typeof parsed.pid === 'number' ? parsed.pid : undefined;

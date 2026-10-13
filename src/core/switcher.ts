@@ -344,11 +344,6 @@ export class Switcher {
       }
 
       // 5. Apply settings.json updates
-      const settingsDir = path.dirname(settingsPath);
-      if (!fs.existsSync(settingsDir)) {
-        fs.mkdirSync(settingsDir, { recursive: true, mode: 0o700 });
-      }
-
       const currentSettings = readAntigravitySettings(settingsSnapshot);
       const newSettings: AntigravitySettings = { ...currentSettings };
 

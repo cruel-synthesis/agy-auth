@@ -185,6 +185,16 @@ export class RegistryManager {
   }
 
   /**
+   * Back up the registry before a mutation, aborting if the backup cannot be written
+   */
+  private backupBeforeMutation(prefix?: ManagedBackupPrefix): void {
+    if (!prefix || !fs.existsSync(Paths.registryFile)) return;
+    if (!Storage.createBackup(Paths.registryFile, prefix)) {
+      throw new Error('Could not create a registry backup; mutation aborted.');
+    }
+  }
+
+  /**
    * Execute an atomic, locked transaction on the registry across processes.
    */
   public async mutate<T>(
@@ -193,12 +203,7 @@ export class RegistryManager {
   ): Promise<T> {
     return Storage.withLock(Paths.registryLockFile, async () => {
       const draft = this.load(true);
-      if (options.backupPrefix && fs.existsSync(Paths.registryFile)) {
-        const backupPath = Storage.createBackup(Paths.registryFile, options.backupPrefix);
-        if (!backupPath) {
-          throw new Error('Could not create a registry backup; mutation aborted.');
-        }
-      }
+      this.backupBeforeMutation(options.backupPrefix);
       const result = await fn(draft);
       this.save(draft);
       this.data = draft;
@@ -212,12 +217,7 @@ export class RegistryManager {
   public syncMutate<T>(fn: (draft: Registry) => T, options: MutationOptions = {}): T {
     return Storage.withLockSync(Paths.registryLockFile, () => {
       const draft = this.load(true);
-      if (options.backupPrefix && fs.existsSync(Paths.registryFile)) {
-        const backupPath = Storage.createBackup(Paths.registryFile, options.backupPrefix);
-        if (!backupPath) {
-          throw new Error('Could not create a registry backup; mutation aborted.');
-        }
-      }
+      this.backupBeforeMutation(options.backupPrefix);
       const result = fn(draft);
       this.save(draft);
       this.data = draft;

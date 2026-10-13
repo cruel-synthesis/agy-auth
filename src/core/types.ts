@@ -273,15 +273,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function sanitizeAccount(account: Account): Account {
   const cloned = JSON.parse(JSON.stringify(account)) as Account;
-  if (cloned.credentials) {
-    delete cloned.credentials.apiKey;
-    delete cloned.credentials.serviceAccountKey;
-    delete cloned.credentials.keychainPayload;
-    delete cloned.credentials.adcPath;
-    if (Object.keys(cloned.credentials).length === 0) {
-      delete cloned.credentials;
-    }
-  }
+  delete cloned.credentials;
   return cloned;
 }
 

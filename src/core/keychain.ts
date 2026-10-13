@@ -4,9 +4,7 @@ import { errorMessage } from './errors.js';
 import { assertNativeAllowed } from './native-guard.js';
 import { type KeychainPayload, KeychainPayloadSchema } from './types.js';
 
-export type AgyKeychainPayload = KeychainPayload;
-
-export function parseAgyKeychainPayload(value: unknown): AgyKeychainPayload | null {
+export function parseAgyKeychainPayload(value: unknown): KeychainPayload | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
 
   const raw = value as Record<string, unknown>;
@@ -19,7 +17,7 @@ export function parseAgyKeychainPayload(value: unknown): AgyKeychainPayload | nu
 }
 
 type KeychainReadResult =
-  | { status: 'found'; payload: AgyKeychainPayload }
+  | { status: 'found'; payload: KeychainPayload }
   | { status: 'missing' }
   | { status: 'unsupported' }
   | { status: 'error'; message: string };
@@ -105,7 +103,7 @@ export class KeychainManager {
   /**
    * Writes the Antigravity OAuth token payload to the macOS Keychain.
    */
-  public static writeAgyToken(payload: AgyKeychainPayload): boolean {
+  public static writeAgyToken(payload: KeychainPayload): boolean {
     const parsed = parseAgyKeychainPayload(payload);
     if (!parsed) return false;
     if (!this.isSupported()) return false;

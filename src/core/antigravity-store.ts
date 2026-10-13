@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import { MAX_CREDENTIAL_FILE_SIZE } from './credential-files.js';
 import { errorMessage } from './errors.js';
 import { KeychainManager, parseAgyKeychainPayload } from './keychain.js';
@@ -16,11 +15,9 @@ interface AntigravityTokenReadResult {
   warning?: string;
   keyringStatus: 'found' | 'missing' | 'unsupported' | 'error';
   keyringExpiry?: string;
-  keyringPayload?: KeychainPayload;
   keyringMessage?: string;
   fileStatus: 'found' | 'missing' | 'error';
   fileExpiry?: string;
-  filePayload?: KeychainPayload;
   fileMessage?: string;
 }
 
@@ -41,7 +38,6 @@ function parseIsoExpiry(expiry?: string): number | null {
 function readFileToken(): {
   status: 'found' | 'missing' | 'error';
   payload?: KeychainPayload;
-  expiry?: string;
   message?: string;
 } {
   const tokenFile = Paths.antigravityTokenFile;
@@ -94,11 +90,7 @@ function readFileToken(): {
       };
     }
 
-    return {
-      status: 'found',
-      payload,
-      expiry: payload.token.expiry,
-    };
+    return { status: 'found', payload };
   } catch (err: unknown) {
     if (err && typeof err === 'object' && 'code' in err && err.code === 'ELOOP') {
       return {
@@ -127,88 +119,28 @@ export function readAntigravityToken(): AntigravityTokenReadResult {
   const keyringState = KeychainManager.readAgyTokenState();
   const fileState = readFileToken();
 
-  let keyringStatus: 'found' | 'missing' | 'unsupported' | 'error' = 'missing';
-  let keyringPayload: KeychainPayload | undefined;
-  let keyringExpiry: string | undefined;
-  let keyringMessage: string | undefined;
+  const keyringStatus = keyringState.status;
+  const keyringPayload = keyringState.status === 'found' ? keyringState.payload : undefined;
+  const keyringMessage = keyringState.status === 'error' ? keyringState.message : undefined;
+  const keyringExpiry = keyringPayload?.token.expiry;
 
-  if (keyringState.status === 'found') {
-    keyringStatus = 'found';
-    keyringPayload = keyringState.payload;
-    keyringExpiry = keyringState.payload.token.expiry;
-  } else if (keyringState.status === 'unsupported') {
-    keyringStatus = 'unsupported';
-  } else if (keyringState.status === 'error') {
-    keyringStatus = 'error';
-    keyringMessage = keyringState.message;
-  } else {
-    keyringStatus = 'missing';
-  }
-
-  const {
-    status: fileStatus,
-    payload: filePayload,
-    expiry: fileExpiry,
-    message: fileMessage,
-  } = fileState;
+  const { status: fileStatus, payload: filePayload, message: fileMessage } = fileState;
+  const fileExpiry = filePayload?.token.expiry;
 
   // Case 1: Both halves found
   if (keyringStatus === 'found' && fileStatus === 'found' && keyringPayload && filePayload) {
     const keyTime = parseIsoExpiry(keyringExpiry);
     const fileTime = parseIsoExpiry(fileExpiry);
-
-    if (fileTime !== null && keyTime !== null) {
-      if (fileTime > keyTime) {
-        return {
-          status: 'found',
-          payload: filePayload,
-          source: 'file',
-          keyringStatus,
-          keyringExpiry,
-          keyringPayload,
-          fileStatus,
-          fileExpiry,
-          filePayload,
-        };
-      }
-      return {
-        status: 'found',
-        payload: keyringPayload,
-        source: 'keyring',
-        keyringStatus,
-        keyringExpiry,
-        keyringPayload,
-        fileStatus,
-        fileExpiry,
-        filePayload,
-      };
-    }
-
-    if (fileTime !== null && keyTime === null) {
-      return {
-        status: 'found',
-        payload: filePayload,
-        source: 'file',
-        keyringStatus,
-        keyringExpiry,
-        keyringPayload,
-        fileStatus,
-        fileExpiry,
-        filePayload,
-      };
-    }
-
-    // Default tie / no parseable expiry -> keyring wins
+    // File wins only with a strictly later parseable expiry; ties and unparseable go to keyring.
+    const fileWins = fileTime !== null && (keyTime === null || fileTime > keyTime);
     return {
       status: 'found',
-      payload: keyringPayload,
-      source: 'keyring',
+      payload: fileWins ? filePayload : keyringPayload,
+      source: fileWins ? 'file' : 'keyring',
       keyringStatus,
       keyringExpiry,
-      keyringPayload,
       fileStatus,
       fileExpiry,
-      filePayload,
     };
   }
 
@@ -222,10 +154,8 @@ export function readAntigravityToken(): AntigravityTokenReadResult {
       warning,
       keyringStatus,
       keyringExpiry,
-      keyringPayload,
       fileStatus,
       fileExpiry,
-      filePayload,
       fileMessage,
     };
   }
@@ -240,11 +170,9 @@ export function readAntigravityToken(): AntigravityTokenReadResult {
       warning,
       keyringStatus,
       keyringExpiry,
-      keyringPayload,
       keyringMessage,
       fileStatus,
       fileExpiry,
-      filePayload,
     };
   }
 
@@ -286,12 +214,8 @@ export function readAntigravityToken(): AntigravityTokenReadResult {
  */
 export function writeAntigravityToken(payload: KeychainPayload): AntigravityTokenWriteResult {
   const tokenFile = Paths.antigravityTokenFile;
-  const parentDir = path.dirname(tokenFile);
 
   try {
-    if (!fs.existsSync(parentDir)) {
-      fs.mkdirSync(parentDir, { recursive: true, mode: 0o700 });
-    }
     const jsonStr = JSON.stringify(payload, null, 2);
     Storage.writeFileAtomic(tokenFile, jsonStr, 0o600);
   } catch (err: unknown) {
