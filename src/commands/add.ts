@@ -38,6 +38,13 @@ export function validateEmailInput(value: string): boolean | string {
   return isEmail(value.trim()) ? true : 'Please enter a valid email address.';
 }
 
+function checkedEmail(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const email = value.trim();
+  if (!isEmail(email)) throw new UsageError(`Invalid email address '${value}'.`);
+  return email;
+}
+
 export async function addCommand(options: AddOptions, services?: AddServices): Promise<void> {
   const methodCount =
     (options.apiKey !== undefined ? 1 : 0) +
@@ -68,6 +75,7 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
   let email: string;
   let credentials: AccountCredentials | undefined;
   let defaultProject = options.project?.trim();
+  const aliasEmail = alias ? `${alias.toLowerCase()}@local.invalid` : undefined;
 
   if (options.apiKey !== undefined) {
     authType = 'api-key';
@@ -104,17 +112,10 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
     checkInputLength('apiKey', key, 'API key');
     credentials = { apiKey: key };
 
-    if (options.email) {
-      const em = options.email.trim();
-      if (!isEmail(em)) {
-        throw new UsageError(`Invalid email address '${options.email}'.`);
-      }
-      email = em;
-    } else if (alias) {
-      email = `${alias.toLowerCase()}@local.invalid`;
-    } else {
+    const given = checkedEmail(options.email) || aliasEmail;
+    if (!given)
       throw new UsageError('Adding an API key requires --email <email> or --alias <alias>.');
-    }
+    email = given;
   } else if (options.serviceAccount) {
     authType = 'service-account';
     const saPath = options.serviceAccount.trim();
@@ -122,16 +123,11 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
     const saKey = CredentialFiles.loadServiceAccountKeyFile(saPath);
     credentials = { serviceAccountKey: saKey };
 
-    if (options.email) {
-      const em = options.email.trim();
-      if (!isEmail(em)) {
-        throw new UsageError(`Invalid email address '${options.email}'.`);
-      }
-      if (em.toLowerCase() !== saKey.client_email.toLowerCase()) {
-        throw new UsageError(
-          `Provided --email '${options.email}' does not match service account client_email '${saKey.client_email}'.`
-        );
-      }
+    const given = checkedEmail(options.email);
+    if (given && given.toLowerCase() !== saKey.client_email.toLowerCase()) {
+      throw new UsageError(
+        `Provided --email '${options.email}' does not match service account client_email '${saKey.client_email}'.`
+      );
     }
     email = saKey.client_email;
     if (!defaultProject) {
@@ -150,19 +146,10 @@ export async function addCommand(options: AddOptions, services?: AddServices): P
     }
 
     const discoveredEmail = Discovery.discoverFromAdc()?.email;
-    if (options.email) {
-      const em = options.email.trim();
-      if (!isEmail(em)) {
-        throw new UsageError(`Invalid email address '${options.email}'.`);
-      }
-      email = em;
-    } else if (discoveredEmail) {
-      email = discoveredEmail;
-    } else if (alias) {
-      email = `${alias.toLowerCase()}@local.invalid`;
-    } else {
+    const given = checkedEmail(options.email) || discoveredEmail || aliasEmail;
+    if (!given)
       throw new UsageError('Adding ADC credentials requires --email <email> or --alias <alias>.');
-    }
+    email = given;
   }
 
   const registry = new RegistryManager();

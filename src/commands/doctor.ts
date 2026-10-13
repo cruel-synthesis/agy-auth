@@ -380,13 +380,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
 
   console.log(`\n${colors.cyanBold('agy-auth Environment Diagnostics')}\n`);
   for (const c of checks) {
-    let icon = marks.ok;
-    if (c.status === 'warn') {
-      icon = marks.warn;
-    } else if (c.status === 'fail') {
-      icon = marks.fail;
-    }
-    console.log(`  ${icon} ${c.name}`);
+    console.log(`  ${marks[c.status]} ${c.name}`);
     console.log(`    ${colors.dim(c.message)}`);
   }
   console.log('');

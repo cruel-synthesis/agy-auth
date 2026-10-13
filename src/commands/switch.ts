@@ -7,7 +7,7 @@ import {
 } from '../core/errors.js';
 import { RegistryManager } from '../core/registry.js';
 import { Switcher } from '../core/switcher.js';
-import { Account, SwitchResult, needsSignIn } from '../core/types.js';
+import { Account, needsSignIn } from '../core/types.js';
 import { formatAccountShort, NO_ACCOUNTS, printJsonResult } from '../ui/format.js';
 import { colors } from '../ui/theme.js';
 import { promptSelectAccount } from '../ui/tui.js';
@@ -18,8 +18,7 @@ interface SwitchOptions {
 
 export async function switchCommand(query?: string, options: SwitchOptions = {}): Promise<void> {
   const registry = new RegistryManager();
-  const accounts = registry.getAccounts();
-  const active = registry.getActiveAccount();
+  const { accounts, activeAccountId } = registry.getRegistry();
 
   if (accounts.length === 0) {
     throw new CliError(NO_ACCOUNTS, 'no_accounts');
@@ -47,7 +46,7 @@ export async function switchCommand(query?: string, options: SwitchOptions = {})
       }
       target = await promptSelectAccount(
         matches,
-        active?.id || null,
+        activeAccountId,
         `Multiple accounts matched '${query}'. Select one:`
       );
       if (!target) return;
@@ -59,13 +58,11 @@ export async function switchCommand(query?: string, options: SwitchOptions = {})
       'Account selector required in non-interactive mode. Usage: agy-auth switch <account>'
     );
   } else {
-    target = await promptSelectAccount(accounts, active?.id || null, 'Select account to activate:');
+    target = await promptSelectAccount(accounts, activeAccountId, 'Select account to activate:');
     if (!target) return;
   }
 
-  if (!target) return;
-
-  const result: SwitchResult = Switcher.switchAccount(target);
+  const result = Switcher.switchAccount(target);
   // Switching is still allowed: the user may be about to sign in again.
   const warnings = [...(result.warnings ?? [])];
   if (needsSignIn(result.currentAccount)) {

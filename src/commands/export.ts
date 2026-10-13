@@ -44,16 +44,10 @@ export async function exportCommand(options: ExportOptions = {}): Promise<void> 
     accounts: exportedAccounts,
   };
 
-  let targetPath: string;
-  if (options.output) {
-    targetPath = path.resolve(options.output);
-    if (fs.existsSync(targetPath) && fs.statSync(targetPath).isDirectory()) {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      targetPath = path.join(targetPath, `agy-auth-export-${timestamp}.json`);
-    }
-  } else {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    targetPath = path.resolve(`agy-auth-export-${timestamp}.json`);
+  const defaultName = `agy-auth-export-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+  let targetPath = path.resolve(options.output || defaultName);
+  if (options.output && fs.existsSync(targetPath) && fs.statSync(targetPath).isDirectory()) {
+    targetPath = path.join(targetPath, defaultName);
   }
 
   if (fs.existsSync(targetPath)) {

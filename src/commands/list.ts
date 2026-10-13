@@ -1,7 +1,7 @@
 import { applyCheckResults, applyQuotaResults } from '../core/quota-apply.js';
 import { QuotaOptions, summarizeQuotaRefresh } from '../core/quota.js';
 import { RegistryManager } from '../core/registry.js';
-import { sanitizeAccounts } from '../core/types.js';
+import { type Registry, sanitizeAccounts } from '../core/types.js';
 import { Verifier } from '../core/verifier.js';
 import { renderAccountsTable } from '../ui/table.js';
 import { colors } from '../ui/theme.js';
@@ -18,12 +18,9 @@ interface ListOptions {
 
 export async function listCommand(options: ListOptions): Promise<void> {
   const registry = new RegistryManager();
-  let accounts = registry.getAccounts();
-  const activeAccountId = registry.getActiveAccount()?.id || null;
-
-  if (options.active) {
-    accounts = accounts.filter((a) => a.id === activeAccountId);
-  }
+  const visible = (reg: Registry) =>
+    options.active ? reg.accounts.filter((a) => a.id === reg.activeAccountId) : reg.accounts;
+  const accounts = visible(registry.getRegistry());
 
   let quotaSummary = summarizeQuotaRefresh(!options.refresh, []);
   let warning: string | undefined;
@@ -48,15 +45,11 @@ export async function listCommand(options: ListOptions): Promise<void> {
 
   // Reload fresh accounts for display
   const freshRegistry = registry.getRegistry();
-  const freshAccounts = freshRegistry.accounts;
-  const freshActiveAccountId = freshRegistry.activeAccountId;
-  const displayAccounts = options.active
-    ? freshAccounts.filter((a) => a.id === freshActiveAccountId)
-    : freshAccounts;
+  const displayAccounts = visible(freshRegistry);
 
   if (options.json) {
     printJsonResult('list', {
-      activeAccountId: freshActiveAccountId,
+      activeAccountId: freshRegistry.activeAccountId,
       total: displayAccounts.length,
       accounts: sanitizeAccounts(displayAccounts),
       quotaRefresh: quotaSummary,
@@ -66,7 +59,7 @@ export async function listCommand(options: ListOptions): Promise<void> {
 
   // An --active filter matching nothing is not an empty registry, and the table
   // renderer sees only the filtered list, so it reports one as the other.
-  if (options.active && displayAccounts.length === 0 && freshAccounts.length > 0) {
+  if (options.active && displayAccounts.length === 0 && freshRegistry.accounts.length > 0) {
     console.log(
       `\n  No active account. Run ${colors.cyan('agy-auth switch <account>')} to select one.\n`
     );
@@ -76,5 +69,5 @@ export async function listCommand(options: ListOptions): Promise<void> {
   if (warning) {
     console.error(colors.yellow(`  Warning: ${warning}`));
   }
-  console.log(renderAccountsTable(displayAccounts, freshActiveAccountId));
+  console.log(renderAccountsTable(displayAccounts, freshRegistry.activeAccountId));
 }

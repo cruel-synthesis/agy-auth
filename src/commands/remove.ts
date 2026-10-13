@@ -23,8 +23,7 @@ export async function removeCommand(
   }
 
   const registry = new RegistryManager();
-  const accounts = registry.getAccounts();
-  const active = registry.getActiveAccount();
+  const { accounts, activeAccountId } = registry.getRegistry();
 
   if (accounts.length === 0) {
     if (options.json) {
@@ -50,7 +49,7 @@ export async function removeCommand(
 
   // Case 1: --all
   if (options.all) {
-    if (!options.yes && process.stdin.isTTY) {
+    if (!options.yes) {
       const proceed = await confirm({
         message: `Are you sure you want to remove ALL ${accounts.length} account(s) from agy-auth?`,
         default: false,
@@ -71,36 +70,7 @@ export async function removeCommand(
       { backupPrefix: 'remove_all' }
     );
 
-    // Clean up managed service account files
-    const cleanupErrors: Array<{ accountId: string; file: string; error: string }> = [];
-    for (const acc of removedAccounts) {
-      if (acc.authType === 'service-account') {
-        const saFile = Paths.serviceAccountKeyFile(acc.id);
-        try {
-          if (fs.existsSync(saFile)) {
-            fs.unlinkSync(saFile);
-          }
-        } catch (err) {
-          cleanupErrors.push({
-            accountId: acc.id,
-            file: saFile,
-            error: errorMessage(err),
-          });
-        }
-      }
-    }
-
-    if (cleanupErrors.length > 0) {
-      throw new CliError(
-        'Account metadata was removed, but one or more credential key files could not be deleted from disk.',
-        'cleanup_failed',
-        1,
-        {
-          removed: removedAccounts.map(sanitizeAccount),
-          remainingFiles: cleanupErrors,
-        }
-      );
-    }
+    deleteKeyFiles(removedAccounts);
 
     if (options.json) {
       printJsonResult('remove', {
@@ -130,7 +100,7 @@ export async function removeCommand(
     }
     const selected = await promptSelectAccount(
       accounts,
-      active?.id || null,
+      activeAccountId,
       'Select account to remove:'
     );
     if (!selected) return;
@@ -149,7 +119,7 @@ export async function removeCommand(
     }
   }
 
-  if (!options.yes && process.stdin.isTTY && targetsToRemove.length > 0) {
+  if (!options.yes) {
     const proceed = await confirm({
       message:
         targetsToRemove.length === 1
@@ -166,52 +136,18 @@ export async function removeCommand(
   // Perform atomic removal
   await registry.mutate(
     (draft) => {
-      for (const target of targetsToRemove) {
-        const idx = draft.accounts.findIndex((a) => a.id === target.id);
-        if (idx !== -1) {
-          draft.accounts.splice(idx, 1);
-        }
-        if (draft.activeAccountId === target.id) {
-          draft.activeAccountId = null;
-          draft.previousAccountId = null;
-        } else if (draft.previousAccountId === target.id) {
-          draft.previousAccountId = null;
-        }
+      draft.accounts = draft.accounts.filter((a) => !targetIds.has(a.id));
+      if (draft.activeAccountId && targetIds.has(draft.activeAccountId)) {
+        draft.activeAccountId = null;
+        draft.previousAccountId = null;
+      } else if (draft.previousAccountId && targetIds.has(draft.previousAccountId)) {
+        draft.previousAccountId = null;
       }
     },
     { backupPrefix: 'remove' }
   );
 
-  // Clean up managed service account files
-  const cleanupErrors: Array<{ accountId: string; file: string; error: string }> = [];
-  for (const target of targetsToRemove) {
-    if (target.authType === 'service-account') {
-      const saFile = Paths.serviceAccountKeyFile(target.id);
-      try {
-        if (fs.existsSync(saFile)) {
-          fs.unlinkSync(saFile);
-        }
-      } catch (err) {
-        cleanupErrors.push({
-          accountId: target.id,
-          file: saFile,
-          error: errorMessage(err),
-        });
-      }
-    }
-  }
-
-  if (cleanupErrors.length > 0) {
-    throw new CliError(
-      'Account metadata was removed, but one or more credential key files could not be deleted from disk.',
-      'cleanup_failed',
-      1,
-      {
-        removed: targetsToRemove.map(sanitizeAccount),
-        remainingFiles: cleanupErrors,
-      }
-    );
-  }
+  deleteKeyFiles(targetsToRemove);
 
   const freshRegistry = registry.getRegistry();
 
@@ -238,4 +174,37 @@ export async function removeCommand(
   console.log(
     `  ${colors.dim('A managed recovery backup retains the pre-removal registry. Run `agy-auth clean --all` to delete managed backups.')}\n`
   );
+}
+
+// Clean up managed service account files
+function deleteKeyFiles(removed: Account[]): void {
+  const cleanupErrors: Array<{ accountId: string; file: string; error: string }> = [];
+  for (const acc of removed) {
+    if (acc.authType === 'service-account') {
+      const saFile = Paths.serviceAccountKeyFile(acc.id);
+      try {
+        if (fs.existsSync(saFile)) {
+          fs.unlinkSync(saFile);
+        }
+      } catch (err) {
+        cleanupErrors.push({
+          accountId: acc.id,
+          file: saFile,
+          error: errorMessage(err),
+        });
+      }
+    }
+  }
+
+  if (cleanupErrors.length > 0) {
+    throw new CliError(
+      'Account metadata was removed, but one or more credential key files could not be deleted from disk.',
+      'cleanup_failed',
+      1,
+      {
+        removed: removed.map(sanitizeAccount),
+        remainingFiles: cleanupErrors,
+      }
+    );
+  }
 }

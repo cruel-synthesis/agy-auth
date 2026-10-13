@@ -84,14 +84,7 @@ export async function refreshQuota(
   options: QuotaOptions = {}
 ): Promise<QuotaRefreshOutcome> {
   const targets = selectRefreshable(accounts);
-  if (targets.length === 0) {
-    return { refreshes: [], summary: summarizeQuotaRefresh(false, []) };
-  }
-
-  const results = await QuotaClient.refreshAccountQuotas(targets, options);
-  const refreshes = targets
-    .map((account) => results.get(account.id))
-    .filter(Boolean) as QuotaRefresh[];
+  const refreshes = [...(await QuotaClient.refreshAccountQuotas(targets, options)).values()];
 
   const failed = refreshes.filter((refresh) => !refresh.result.ok);
   let warning: string | undefined;

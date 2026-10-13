@@ -59,22 +59,19 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
     );
   }
 
-  const kept = plan.keep;
-  const toRemove = plan.remove;
-
   const removedNames: string[] = [];
   const failedNames: string[] = [];
 
-  for (const item of toRemove) {
-    if (!options.dryRun) {
-      try {
-        fs.unlinkSync(item.fullPath);
-        removedNames.push(item.name);
-      } catch {
-        failedNames.push(item.name);
-      }
-    } else {
+  for (const item of plan.remove) {
+    if (options.dryRun) {
       removedNames.push(item.name);
+      continue;
+    }
+    try {
+      fs.unlinkSync(item.fullPath);
+      removedNames.push(item.name);
+    } catch {
+      failedNames.push(item.name);
     }
   }
 
@@ -91,20 +88,18 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
     printJsonResult('clean', {
       dryRun: Boolean(options.dryRun),
       removedFiles: removedNames,
-      keptFiles: kept.map((k) => k.name),
+      keptFiles: plan.keep.map((k) => k.name),
     });
     return;
   }
 
   const rule = options.all ? '' : ` (the newest ${MAX_BACKUP_RETENTION} of each kind)`;
   const summary = options.dryRun
-    ? `[Dry Run] Would remove ${removedNames.length} backup file(s) and keep ${kept.length}${rule}.`
-    : `Removed ${removedNames.length} backup file(s); kept ${kept.length}${rule}.`;
+    ? `[Dry Run] Would remove ${removedNames.length} backup file(s) and keep ${plan.keep.length}${rule}.`
+    : `Removed ${removedNames.length} backup file(s); kept ${plan.keep.length}${rule}.`;
   console.log(`\n  ${marks.ok} ${summary}`);
-  if (removedNames.length > 0) {
-    for (const name of removedNames) {
-      console.log(`    - ${colors.dim(name)}`);
-    }
+  for (const name of removedNames) {
+    console.log(`    - ${colors.dim(name)}`);
   }
   console.log('');
 }

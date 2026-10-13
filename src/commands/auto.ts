@@ -11,7 +11,6 @@ import { applyQuotaResults } from '../core/quota-apply.js';
 import { QuotaOptions } from '../core/quota.js';
 import { RegistryManager } from '../core/registry.js';
 import { Switcher } from '../core/switcher.js';
-import { Account } from '../core/types.js';
 import { formatAccountShort, NO_ACCOUNTS, printJsonResult } from '../ui/format.js';
 import { terminalWidth, truncatePadded, truncateToWidth } from '../ui/table.js';
 import { colors, quotaColor } from '../ui/theme.js';
@@ -80,7 +79,9 @@ function renderRanking(
     note: entry.blocked ?? (basis === 'weekly' ? entry.score.toPrecision(2) : ''),
   }));
 
-  const width = (pick: (row: (typeof rows)[number]) => string, header: string) =>
+  type Row = (typeof rows)[number];
+
+  const width = (pick: (row: Row) => string, header: string) =>
     Math.max(header.length, ...rows.map((row) => pick(row).length));
 
   // Widest first is also most important first, so a terminal too narrow for the
@@ -89,18 +90,18 @@ function renderRanking(
   const columns = [
     {
       header: '5H',
-      pick: (row: (typeof rows)[number]) => row.headroom,
-      tint: (row: (typeof rows)[number]) => row.headroomTint,
+      pick: (row: Row) => row.headroom,
+      tint: (row: Row) => row.headroomTint,
     },
     {
       header: 'WEEK',
-      pick: (row: (typeof rows)[number]) => row.weekly,
-      tint: (row: (typeof rows)[number]) => row.weeklyTint,
+      pick: (row: Row) => row.weekly,
+      tint: (row: Row) => row.weeklyTint,
     },
-    { header: 'EXPIRES', pick: (row: (typeof rows)[number]) => row.expires, tint: () => undefined },
+    { header: 'EXPIRES', pick: (row: Row) => row.expires, tint: () => undefined },
     {
       header: basis === 'weekly' ? 'SCORE' : 'NOTE',
-      pick: (row: (typeof rows)[number]) => row.note,
+      pick: (row: Row) => row.note,
       tint: () => undefined,
     },
   ]
@@ -235,17 +236,6 @@ function explain(best: AccountScore, nowMs: number, basis: ChoiceBasis): string 
   return `${percent(weekly.remaining)} of its weekly limit is unspent${expires} - the quota most likely to go to waste.`;
 }
 
-/** Take a live reading for these accounts and write it to the registry. */
-async function refreshAndApply(
-  registry: RegistryManager,
-  accounts: Account[],
-  options: AutoOptions
-): Promise<string | undefined> {
-  const refresh = await refreshQuota(accounts, options.quotaOptions);
-  await applyQuotaResults(registry, refresh.refreshes);
-  return refresh.warning;
-}
-
 export async function autoCommand(options: AutoOptions = {}): Promise<void> {
   const registry = new RegistryManager();
   const accounts = registry.getAccounts();
@@ -256,7 +246,9 @@ export async function autoCommand(options: AutoOptions = {}): Promise<void> {
 
   let warning: string | undefined;
   if (!options.offline) {
-    warning = await refreshAndApply(registry, selectStale(accounts), options);
+    const refresh = await refreshQuota(selectStale(accounts), options.quotaOptions);
+    await applyQuotaResults(registry, refresh.refreshes);
+    warning = refresh.warning;
   }
 
   // Re-read: the choice must be made on the readings just written, not the ones

@@ -99,18 +99,13 @@ export async function detailsCommand(query?: string, options: DetailsOptions = {
     }
     target = active;
   } else {
-    const selected = await promptSelectAccount(
+    target = await promptSelectAccount(
       accounts,
       active?.id || null,
       'Select account to view details:'
     );
-    if (!selected) {
-      return;
-    }
-    target = selected;
+    if (!target) return;
   }
-
-  if (!target) return;
 
   const offline = !options.refresh;
   let quotaSummary: QuotaRefreshSummary = summarizeQuotaRefresh(offline, []);
