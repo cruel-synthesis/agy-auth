@@ -1,7 +1,6 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import { confirm } from '@inquirer/prompts';
-import { CliError, UsageError } from '../core/errors.js';
+import { CliError, errorMessage, UsageError } from '../core/errors.js';
 import { Paths } from '../core/paths.js';
 import { RegistryManager } from '../core/registry.js';
 import { Account, sanitizeAccount } from '../core/types.js';
@@ -76,7 +75,7 @@ export async function removeCommand(
     const cleanupErrors: Array<{ accountId: string; file: string; error: string }> = [];
     for (const acc of removedAccounts) {
       if (acc.authType === 'service-account') {
-        const saFile = path.join(Paths.accountsDir, `${path.basename(acc.id)}.json`);
+        const saFile = Paths.serviceAccountKeyFile(acc.id);
         try {
           if (fs.existsSync(saFile)) {
             fs.unlinkSync(saFile);
@@ -85,7 +84,7 @@ export async function removeCommand(
           cleanupErrors.push({
             accountId: acc.id,
             file: saFile,
-            error: err instanceof Error ? err.message : String(err),
+            error: errorMessage(err),
           });
         }
       }
@@ -187,7 +186,7 @@ export async function removeCommand(
   const cleanupErrors: Array<{ accountId: string; file: string; error: string }> = [];
   for (const target of targetsToRemove) {
     if (target.authType === 'service-account') {
-      const saFile = path.join(Paths.accountsDir, `${path.basename(target.id)}.json`);
+      const saFile = Paths.serviceAccountKeyFile(target.id);
       try {
         if (fs.existsSync(saFile)) {
           fs.unlinkSync(saFile);
@@ -196,7 +195,7 @@ export async function removeCommand(
         cleanupErrors.push({
           accountId: target.id,
           file: saFile,
-          error: err instanceof Error ? err.message : String(err),
+          error: errorMessage(err),
         });
       }
     }

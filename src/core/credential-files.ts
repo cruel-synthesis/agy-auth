@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { validateAdcDocument, validateServiceAccountKey } from './credential-validation.js';
+import { errorMessage } from './errors.js';
 import { migrateExportDocument } from './migration.js';
 import { ExportDocumentV3, ServiceAccountKey, ServiceAccountKeySchema } from './types.js';
 
@@ -87,9 +88,7 @@ export class CredentialFiles {
     try {
       return JSON.parse(raw) as T;
     } catch (err) {
-      throw new Error(
-        `Invalid JSON in ${filePath}: ${err instanceof Error ? err.message : String(err)}`
-      );
+      throw new Error(`Invalid JSON in ${filePath}: ${errorMessage(err)}`);
     }
   }
 

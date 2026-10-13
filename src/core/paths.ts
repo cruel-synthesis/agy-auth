@@ -43,6 +43,13 @@ export class Paths {
   }
 
   /**
+   * Managed copy of a service-account key (~/.agy-auth/accounts/<id>.json)
+   */
+  static serviceAccountKeyFile(accountId: string): string {
+    return path.join(this.accountsDir, `${path.basename(accountId)}.json`);
+  }
+
+  /**
    * Directory for automated backups before switches / mutations
    */
   static get backupsDir(): string {

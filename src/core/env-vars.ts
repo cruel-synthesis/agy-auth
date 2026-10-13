@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { Paths } from './paths.js';
 import { Account } from './types.js';
 
@@ -31,10 +30,7 @@ export function environmentFor(account: Account | null): Record<string, string |
   }
 
   if (account.authType === 'service-account' && account.credentials?.serviceAccountKey) {
-    env.GOOGLE_APPLICATION_CREDENTIALS = path.join(
-      Paths.accountsDir,
-      `${path.basename(account.id)}.json`
-    );
+    env.GOOGLE_APPLICATION_CREDENTIALS = Paths.serviceAccountKeyFile(account.id);
   }
 
   return env;

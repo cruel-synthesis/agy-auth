@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { MAX_CREDENTIAL_FILE_SIZE } from './credential-files.js';
+import { errorMessage } from './errors.js';
 import { KeychainManager, parseAgyKeychainPayload } from './keychain.js';
 import { Paths } from './paths.js';
 import { Storage } from './storage.js';
@@ -107,7 +108,7 @@ function readFileToken(): {
         message: 'Token path must be a regular file and not a symbolic link.',
       };
     }
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = errorMessage(err);
     return {
       status: 'error',
       message: `Failed to read token file: ${msg}`,
@@ -296,7 +297,7 @@ export function writeAntigravityToken(payload: KeychainPayload): AntigravityToke
     const jsonStr = JSON.stringify(payload, null, 2);
     Storage.writeFileAtomic(tokenFile, jsonStr, 0o600);
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = errorMessage(err);
     return {
       ok: false,
       fileWritten: false,

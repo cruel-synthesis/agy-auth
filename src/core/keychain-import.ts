@@ -1,7 +1,7 @@
 import { readAntigravityToken } from './antigravity-store.js';
 import { isEmail } from './credential-validation.js';
 import { Discovery } from './discovery.js';
-import { CliError, UsageError } from './errors.js';
+import { CliError, errorMessage, UsageError } from './errors.js';
 import { ANTIGRAVITY_OAUTH_CLIENT, reusableRefreshToken } from './oauth-config.js';
 import { RegistryManager } from './registry.js';
 import type { Account, KeychainPayload } from './types.js';
@@ -59,7 +59,7 @@ async function fetchGoogleIdentity(
   } catch (error: unknown) {
     return {
       kind: 'unavailable',
-      reason: error instanceof Error ? error.message : String(error),
+      reason: errorMessage(error),
     };
   }
 

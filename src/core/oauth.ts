@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import http from 'node:http';
 import { isEmail } from './credential-validation.js';
-import { CliError } from './errors.js';
+import { CliError, errorMessage } from './errors.js';
 import type { AgyKeychainPayload } from './keychain.js';
 import { NativeOperationBlockedError, assertNativeAllowed } from './native-guard.js';
 import { OAUTH_TOKEN_ENDPOINT, getSignInClient } from './oauth-config.js';
@@ -354,7 +354,7 @@ export class OAuthFlow {
 
           finish(() => resolve({ email, payload }));
         } catch (err: unknown) {
-          const errMsg = err instanceof Error ? err.message : String(err);
+          const errMsg = errorMessage(err);
           if (!res.headersSent) {
             res.writeHead(500, SECURITY_HEADERS);
           }

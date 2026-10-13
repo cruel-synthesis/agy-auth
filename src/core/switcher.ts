@@ -366,7 +366,7 @@ export class Switcher {
       let serviceAccountSnapshot: FileSnapshot | null = null;
       let serviceAccountPath: string | null = null;
       if (canonical.authType === 'service-account' && canonical.credentials?.serviceAccountKey) {
-        serviceAccountPath = path.join(Paths.accountsDir, `${path.basename(canonical.id)}.json`);
+        serviceAccountPath = Paths.serviceAccountKeyFile(canonical.id);
         serviceAccountSnapshot = captureFile(
           serviceAccountPath,
           'switch_sa',

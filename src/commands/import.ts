@@ -1,7 +1,7 @@
 import { CredentialFiles } from '../core/credential-files.js';
 import { validateAccountCredentials } from '../core/credential-validation.js';
 import { UsageError } from '../core/errors.js';
-import { RegistryManager } from '../core/registry.js';
+import { RegistryManager, nextTimestamp } from '../core/registry.js';
 import { Account, sanitizeAccount } from '../core/types.js';
 import { colors, marks } from '../ui/theme.js';
 import { printJsonResult } from '../ui/format.js';
@@ -9,6 +9,23 @@ import { printJsonResult } from '../ui/format.js';
 interface ImportOptions {
   overwrite?: boolean;
   json?: boolean;
+}
+
+function findExisting(
+  accounts: Account[],
+  incoming: Account
+): { byId?: Account; byIdentity?: Account } {
+  const identityKey = `${incoming.email.toLowerCase()}\u0000${incoming.authType}`;
+  return {
+    byId: accounts.find((a) => a.id === incoming.id),
+    byIdentity: accounts.find((a) => `${a.email.toLowerCase()}\u0000${a.authType}` === identityKey),
+  };
+}
+
+function mergedCredentials(incoming: Account, existing: Account): Account['credentials'] {
+  return incoming.credentials && Object.keys(incoming.credentials).length > 0
+    ? incoming.credentials
+    : existing.credentials;
 }
 
 export async function importCommand(filePath: string, options: ImportOptions = {}): Promise<void> {
@@ -23,10 +40,9 @@ export async function importCommand(filePath: string, options: ImportOptions = {
   // Pre-validate all accounts before performing any mutations
   const aliases = new Map(currentAccounts.map((a) => [a.id, a.alias]));
   for (const rawAcc of exportDoc.accounts) {
-    const identityKey = `${rawAcc.email.toLowerCase()}\u0000${rawAcc.authType}`;
-    const existingById = currentAccounts.find((a) => a.id === rawAcc.id);
-    const existingByIdentity = currentAccounts.find(
-      (a) => `${a.email.toLowerCase()}\u0000${a.authType}` === identityKey
+    const { byId: existingById, byIdentity: existingByIdentity } = findExisting(
+      currentAccounts,
+      rawAcc
     );
 
     if (existingById && existingByIdentity && existingById.id !== existingByIdentity.id) {
@@ -55,13 +71,9 @@ export async function importCommand(filePath: string, options: ImportOptions = {
         );
       }
     } else if (options.overwrite) {
-      const mergedCreds =
-        rawAcc.credentials && Object.keys(rawAcc.credentials).length > 0
-          ? rawAcc.credentials
-          : existing.credentials;
       const credVal = validateAccountCredentials({
         authType: existing.authType,
-        credentials: mergedCreds,
+        credentials: mergedCredentials(rawAcc, existing),
       });
       if (!credVal.ok) {
         throw new UsageError(
@@ -96,12 +108,10 @@ export async function importCommand(filePath: string, options: ImportOptions = {
           verification: undefined,
         };
 
-        const identityKey = `${acc.email.toLowerCase()}\u0000${acc.authType}`;
-        const existingById = draft.accounts.find((a) => a.id === acc.id);
-        const existingByIdentity = draft.accounts.find(
-          (a) => `${a.email.toLowerCase()}\u0000${a.authType}` === identityKey
+        const { byId: existingById, byIdentity: existingByIdentity } = findExisting(
+          draft.accounts,
+          acc
         );
-
         const existing = existingByIdentity || existingById;
 
         if (existing) {
@@ -110,12 +120,7 @@ export async function importCommand(filePath: string, options: ImportOptions = {
             continue;
           }
 
-          const existingIdx = draft.accounts.findIndex((a) => a.id === existing.id);
-
-          const mergedCredentials =
-            acc.credentials && Object.keys(acc.credentials).length > 0
-              ? acc.credentials
-              : existing.credentials;
+          const existingIdx = draft.accounts.indexOf(existing);
 
           // The quota cache is a timestamped measurement, so the fresher side
           // wins rather than whichever side happens to be the import.
@@ -132,7 +137,7 @@ export async function importCommand(filePath: string, options: ImportOptions = {
           const updated: Account = {
             ...existing,
             alias: acc.alias !== undefined ? acc.alias : existing.alias,
-            credentials: mergedCredentials,
+            credentials: mergedCredentials(acc, existing),
             gcpProject: acc.gcpProject !== undefined ? acc.gcpProject : existing.gcpProject,
             gcpLocation: acc.gcpLocation !== undefined ? acc.gcpLocation : existing.gcpLocation,
             model: acc.model !== undefined ? acc.model : existing.model,
@@ -141,7 +146,7 @@ export async function importCommand(filePath: string, options: ImportOptions = {
             ...quotaFields,
             status: 'unverified',
             verification: undefined,
-            updatedAt: Math.max(Date.now(), (existing.updatedAt || 0) + 1),
+            updatedAt: nextTimestamp(existing.updatedAt),
           };
 
           draft.accounts[existingIdx] = updated;

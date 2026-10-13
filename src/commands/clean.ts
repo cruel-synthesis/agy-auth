@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { CliError } from '../core/errors.js';
+import { CliError, errorMessage } from '../core/errors.js';
 import { Paths } from '../core/paths.js';
 import { BackupRetention, MAX_BACKUP_RETENTION, planBackupRetention } from '../core/storage.js';
 import { colors, marks } from '../ui/theme.js';
@@ -33,7 +33,7 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
     }
   } catch (err) {
     throw new CliError(
-      `Could not inspect the managed backup directory: ${err instanceof Error ? err.message : String(err)}`,
+      `Could not inspect the managed backup directory: ${errorMessage(err)}`,
       'clean_failed',
       1
     );
@@ -44,7 +44,7 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
     plan = planBackupRetention(backupsDir, options.all ? 0 : MAX_BACKUP_RETENTION);
   } catch (err) {
     throw new CliError(
-      `Could not read the managed backup directory: ${err instanceof Error ? err.message : String(err)}`,
+      `Could not read the managed backup directory: ${errorMessage(err)}`,
       'clean_failed',
       1
     );

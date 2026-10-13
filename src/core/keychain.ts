@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
+import { errorMessage } from './errors.js';
 import { assertNativeAllowed } from './native-guard.js';
 import { type KeychainPayload, KeychainPayloadSchema } from './types.js';
 
@@ -71,7 +72,7 @@ export class KeychainManager {
 
     if (res.error) {
       if (res.status === 44) return { status: 'missing' };
-      const message = res.error instanceof Error ? res.error.message : String(res.error);
+      const message = errorMessage(res.error);
       return { status: 'error', message };
     }
 

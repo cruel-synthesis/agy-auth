@@ -286,16 +286,8 @@ export class Storage {
         );
       }
     } catch (statErr: unknown) {
-      if (
-        statErr &&
-        typeof statErr === 'object' &&
-        'code' in statErr &&
-        (statErr.code === 'ENOENT' || statErr.code === 'ENOTDIR')
-      ) {
-        // Path does not exist yet (or was removed by concurrent lock release), safe to proceed
-      } else {
-        throw statErr;
-      }
+      // Path does not exist yet (or was removed by concurrent lock release), safe to proceed
+      if (!this.isCode(statErr, 'ENOENT') && !this.isCode(statErr, 'ENOTDIR')) throw statErr;
     }
 
     let fd: number | null = null;
@@ -317,16 +309,14 @@ export class Storage {
           // ignore
         }
       }
-      if (err && typeof err === 'object' && 'code' in err) {
-        // The lock is held; the caller retries until its own timeout.
-        if (err.code === 'EEXIST') return null;
-        // Windows refuses to open a file another process is deleting or holding,
-        // reporting EPERM from CreateFile rather than EEXIST. That is contention,
-        // not a permission fault: two concurrent mutations otherwise fail one of
-        // them outright with a raw EPERM. A real permission problem still
-        // surfaces, as the timeout naming this path.
-        if (process.platform === 'win32' && err.code === 'EPERM') return null;
-      }
+      // The lock is held; the caller retries until its own timeout.
+      if (this.isCode(err, 'EEXIST')) return null;
+      // Windows refuses to open a file another process is deleting or holding,
+      // reporting EPERM from CreateFile rather than EEXIST. That is contention,
+      // not a permission fault: two concurrent mutations otherwise fail one of
+      // them outright with a raw EPERM. A real permission problem still
+      // surfaces, as the timeout naming this path.
+      if (process.platform === 'win32' && this.isCode(err, 'EPERM')) return null;
       throw err;
     }
   }
