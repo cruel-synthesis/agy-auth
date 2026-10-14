@@ -14,6 +14,9 @@ Options:
 - `-j, --json`: Output as JSON
 - `-h, --help`: Show this help
 
+Without `--offline`, `auto` first refreshes live quota for every OAuth account
+whose saved reading is over ten minutes old, then ranks them.
+
 ## How the choice is made
 
 Quota is spent through two allowances at once. The 5-hour allowance caps how much

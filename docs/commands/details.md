@@ -16,3 +16,6 @@ Options:
 - `-r, --refresh`: Fetch live plan and quota from Google before showing
 - `-j, --json`: Output as JSON
 - `-h, --help`: Show this help
+
+With no query, `details` opens the account picker in a terminal, and shows the
+account in use otherwise.

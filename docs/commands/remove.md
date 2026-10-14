@@ -14,10 +14,10 @@ Arguments:
 Options:
 
 - `--all`: Remove all accounts
-- `-y, --yes`: Skip confirmation prompt
+- `-y, --yes`: Skip confirmation prompt. Required with `--json` and when stdin is not a terminal
 - `-j, --json`: Output as JSON
 - `-h, --help`: Show this help
 
-Do not combine account selectors with `--all`; the command rejects that ambiguous destructive request. With `--json`, name the accounts or pass `--all`; JSON mode never opens the account picker.
+Do not combine account selectors with `--all`; the command rejects that ambiguous destructive request. With `--json`, name the accounts or pass `--all`, and pass `--yes`; JSON mode never opens the account picker.
 
 Selectors are resolved before deletion to prevent indexing shifts. Removing the currently active account clears the active account pointer. Materialized service-account key files are cleaned up from `~/.agy-auth/accounts/`.

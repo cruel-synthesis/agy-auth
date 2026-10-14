@@ -43,7 +43,6 @@
 
 4. **No Background Service**:
    `agy-auth` runs only when invoked from your terminal. It installs no background services, launch daemons, or cron jobs.
-   `agy-auth auto --watch` polls for as long as you leave it running and stops when you close it or press Ctrl-C.
 
 5. **Which Commands Use the Network**:
 
@@ -52,16 +51,16 @@
    | `agy-auth login` | Browser sign-in contacts Google's OAuth, token, and userinfo endpoints. |
    | `agy-auth add` | Contacts Google userinfo to confirm which account Antigravity is signed in to. Adding an API key, service account, or ADC makes no request. |
    | `agy-auth switch` | **Never** makes a network request. Renders cached plan and quota only. |
-   | `agy-auth list` | Refreshes live plan and quota for **every OAuth account whose cached reading is over ten minutes old**. |
+   | `agy-auth list` | None. With `--refresh`, refreshes live plan and quota for **every OAuth account whose cached reading is over ten minutes old**. |
    | `agy-auth list --check` | Verifies selected accounts (API keys use Google's official models endpoint) and refreshes live plan and quota for **every selected OAuth account** (at most 4 concurrent requests). |
-   | `agy-auth current` | Refreshes live plan and quota for the active OAuth account. |
-   | `agy-auth details <account>` | Refreshes live plan and quota for the selected OAuth account. |
-   | `agy-auth auto` | Refreshes live plan and quota for every OAuth account whose cached reading is over ten minutes old, then may switch. |
-   | `agy-auth auto --watch` | Each check refreshes the account in use; refreshes the others only when it runs out. |
+   | `agy-auth current` | None. With `--refresh`, refreshes live plan and quota for the active OAuth account. |
+   | `agy-auth details <account>` | None. With `--refresh`, refreshes live plan and quota for the selected OAuth account. |
+   | `agy-auth auto` | Refreshes live plan and quota for every OAuth account whose cached reading is over ten minutes old, then may switch. `--offline` ranks on cached readings instead. |
    | `agy-auth doctor` | Optional reachability probe; suppressed with `--offline`. |
+   | `agy-auth update` | Asks `registry.npmjs.org` for the latest version number, then runs `brew upgrade` or `npm install --global` when one is newer. `--check` and `--json` never install. |
    | every other command | No network request. |
 
-   - `--offline` on `list`, `current`, and `details` suppresses the refresh entirely and renders cached data. `--check --offline` is rejected as contradictory.
+   - Without `--refresh` or `--check`, `list`, `current`, and `details` render cached data and make no request.
    - Non-OAuth accounts (API key, service account, ADC) are never quota-probed.
    - A refresh failure is non-fatal: `agy-auth` prints one warning and shows the cached values.
 

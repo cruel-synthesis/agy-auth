@@ -20,5 +20,4 @@ Set `AGY_OAUTH_CLIENT_ID` (and `AGY_OAUTH_CLIENT_SECRET` if your client needs
 one) to use a client of your own instead; Google's individual tier answers only
 Antigravity's, so an account added that way reports no plan and no quota.
 
-To add the account already signed in to Antigravity, run `agy-auth add`, which
-also covers API key, Service Account, and ADC credentials.
+To add the account already signed in to Antigravity, run `agy-auth add`.

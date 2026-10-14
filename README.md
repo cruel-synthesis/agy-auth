@@ -32,6 +32,14 @@ Think of it as `gcloud config configurations`, but for Antigravity.
 
 ## Install
 
+With Homebrew (macOS and Linux):
+
+```bash
+brew install cruel-synthesis/tap/agy-auth
+```
+
+With npm (Node.js 22 or later):
+
 ```bash
 npm install -g @cruel-synthesis/agy-auth
 ```
@@ -42,7 +50,9 @@ Or try it without installing:
 npx @cruel-synthesis/agy-auth --help
 ```
 
-Requires Node.js 22 or later. Use the scoped name: the unscoped `agy-auth` on npm is an unrelated project.
+Use the scoped name on npm: the unscoped `agy-auth` there is an unrelated project.
+
+To update later, run `agy-auth update`. It uses whichever of Homebrew or npm installed it.
 
 ## Quick start
 
@@ -109,6 +119,7 @@ Read Google's [Antigravity terms](https://antigravity.google/terms) before you u
 | `login` | A browser sign-in using Antigravity's OAuth client. |
 | `list --refresh`, `current --refresh`, `details --refresh`, `list --check`, `auto` | Antigravity's undocumented quota endpoints, sent as the Antigravity app would send them, plus token renewal through Antigravity's client. Use `auto --offline` to rank on saved readings instead. |
 | `doctor` | One reachability request to a Google API, skipped with `--offline`. |
+| `update` | One request to `registry.npmjs.org` for the latest version number. |
 
 Live quota is **off unless you ask for it**, and it is experimental. The endpoints are undocumented and may change or vanish. When that happens, `agy-auth` says the quota is unavailable and keeps showing your last reading; it never invents a number.
 
@@ -147,6 +158,7 @@ On Linux and Windows, Antigravity may keep its sign-in in the system keyring, wh
 | `agy-auth alias \| project \| model <set\|clear>` | Name an account, or pin its GCP project or model |
 | `agy-auth export [file]` / `import <file>` | Back up and restore saved accounts |
 | `agy-auth doctor` | Check storage, registry and Antigravity session for problems |
+| `agy-auth update` | Update to the latest version (`--check`, `--json`) |
 
 Every command takes `--help`. The full reference is in [docs/commands](./docs/commands/README.md). Scripts can rely on `--json` envelopes and exit codes `0`, `1`, `2` and `130`; see the [JSON contract](./docs/json-contract.md).
 

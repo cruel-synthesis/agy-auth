@@ -21,7 +21,8 @@ again.
 
 Antigravity owns the sign-in itself. If no session is present, sign in to
 Antigravity first. If Google does not return the account address with the
-session, `add` asks for it, or you can pass `--email`.
+session, `add` asks for it in a terminal. With `--yes`, `--json` or in a
+script, pass `--email`.
 
 Options:
 
