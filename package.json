@@ -1,6 +1,6 @@
 {
   "name": "@cruel-synthesis/agy-auth",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Switch Google accounts for Antigravity (agy) in one command, with each account's plan, quota, model and GCP project side by side.",
   "type": "module",
   "bin": {

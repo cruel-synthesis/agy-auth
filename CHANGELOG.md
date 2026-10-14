@@ -2,6 +2,17 @@
 
 All notable changes to `@cruel-synthesis/agy-auth` will be documented in this file.
 
+## 0.1.2 - 2026-10-14
+
+### Added
+
+- `agy-auth update` installs the latest version with whichever of Homebrew or npm installed agy-auth. `--check` only reports, and `--json` never installs.
+- Homebrew install: `brew install cruel-synthesis/tap/agy-auth`.
+
+### Fixed
+
+- PRIVACY.md, SECURITY.md and several command pages described network behaviour and options from before 0.1.0. They now match the commands.
+
 ## 0.1.1 - 2026-10-14
 
 ### Changed
