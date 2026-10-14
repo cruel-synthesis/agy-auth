@@ -26,3 +26,4 @@ Overview of commands available in `agy-auth`.
 - [`import`](./import.md): Read a backup of saved accounts (`--overwrite`, `-j`)
 - [`clean`](./clean.md): Delete old managed backup files (`--dry-run`, `--all`, `-j`)
 - [`doctor`](./doctor.md): Check for problems (`--offline`, `-j`)
+- [`update`](./update.md): Update agy-auth to the latest version (`--check`, `-j`)

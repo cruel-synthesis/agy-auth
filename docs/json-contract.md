@@ -2,7 +2,7 @@
 
 Non-interactive commands in `agy-auth` support the `--json` flag, providing structured, deterministic machine output for scripting, CI/CD pipelines, and editor extensions.
 
-Supported commands: `list`, `current`, `details`, `switch`, `auto`, `add`, `remove`, `alias`, `project`, `model`, `env`, `export`, `import`, `clean`, `doctor`. (Interactive terminal onboarding via `login` is terminal-only.)
+Supported commands: `list`, `current`, `details`, `switch`, `auto`, `add`, `remove`, `alias`, `project`, `model`, `env`, `export`, `import`, `clean`, `doctor`, `update`. (Interactive terminal onboarding via `login` is terminal-only.)
 
 ---
 
@@ -114,7 +114,7 @@ The account object returned by `list`, `current`, `details`, and `switch` carrie
 |---|---|
 | `attempted` | `true` when at least one account was contacted. |
 | `offline` | `true` when no refresh was asked for (no `--refresh`, or `auto --offline`). |
-| `accounts[].reason` | Present only on failure. One of `not-applicable`, `token-expired`, `scope-insufficient`, `auth-failed`, `quota-unavailable`, `network-error`. |
+| `accounts[].reason` | Present only on failure. One of `not-applicable`, `token-expired`, `native-refresh-required`, `scope-insufficient`, `auth-failed`, `quota-unavailable`, `network-error`. |
 
 A failed refresh does **not** fail the command: `ok` stays `true`, the cached values are returned, and `stderr` stays silent in JSON mode.
 

@@ -16,6 +16,7 @@ import { modelClearCommand, modelSetCommand } from './commands/model.js';
 import { projectClearCommand, projectSetCommand } from './commands/project.js';
 import { removeCommand } from './commands/remove.js';
 import { switchCommand } from './commands/switch.js';
+import { updateCommand } from './commands/update.js';
 import {
   CancellationError,
   CliError,
@@ -314,6 +315,15 @@ export function createCli(): Command {
     .option('-j, --json', 'Output as JSON')
     .action(async (options) => {
       await doctorCommand(options);
+    });
+
+  program
+    .command('update')
+    .description('Update agy-auth to the latest version')
+    .option('--check', 'Only report whether a new version is available')
+    .option('-j, --json', 'Report as JSON; never installs')
+    .action(async (options) => {
+      await updateCommand(options);
     });
 
   return program;

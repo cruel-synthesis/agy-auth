@@ -18,6 +18,7 @@ const ALL_ACCOUNT_COMMANDS: CommandRow[] = [
   ['details [account]', 'Show everything stored for one account'],
   ['remove [account...]', 'Remove saved accounts', true],
   ['doctor', 'Check for problems', true],
+  ['update', 'Update agy-auth to the latest version', true],
 ];
 
 const ACCOUNT_COMMANDS: CommandRow[] = ALL_ACCOUNT_COMMANDS.filter(([, , common]) => common);
