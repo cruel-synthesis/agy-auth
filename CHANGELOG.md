@@ -2,6 +2,12 @@
 
 All notable changes to `@cruel-synthesis/agy-auth` will be documented in this file.
 
+## 0.1.1 - 2026-10-14
+
+### Changed
+
+- Internal cleanup: about 880 fewer lines across commands, storage, quota and terminal UI code. Commands, output, stored data and security checks are unchanged.
+
 ## 0.1.0 - 2026-10-06
 
 First release.
